@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oblik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oblik
+  template:
+    metadata:
+      labels:
+        app: oblik
+    spec:
+      serviceAccountName: oblik-account
+      containers:
+        - name: oblik
+          image: "{{ .Values.image.repository }}:{{ or .Values.image.tag "latest" }}"
+          {{ if .Values.image.pullPolicy }}
+          imagePullPolicy: "{{ .Values.image.tag }}"
+          {{ else if .Values.image.tag }}
+          imagePullPolicy: IfNotPresent
+          {{ else }}
+          imagePullPolicy: Always
+          {{ end }}
+          
