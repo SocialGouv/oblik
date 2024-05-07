@@ -47,8 +47,6 @@ github.com/google/gofuzz/bytesource
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
-# github.com/imdario/mergo v0.3.6
-## explicit
 # github.com/josharian/intern v1.0.0
 ## explicit; go 1.5
 github.com/josharian/intern
@@ -72,8 +70,6 @@ github.com/munnerz/goautoneg
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/spf13/pflag v1.0.5
-## explicit; go 1.12
 # golang.org/x/net v0.23.0
 ## explicit; go 1.18
 golang.org/x/net/context

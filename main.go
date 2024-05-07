@@ -83,16 +83,22 @@ func main() {
 		log.Fatalf("Error building metrics clientset: %s", err)
 	}
 
-	// Watch for OblikPodAutoscaler resources in all namespaces
-	watcher, err := clientset.CoreV1().Pods("").Watch(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Fatalf("Error setting up watcher across all namespaces: %s", err)
-	}
-
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("Error building dynamic client: %s", err)
 	}
+
+	oblikPodAutoscalerGVR := schema.GroupVersionResource{
+		Group:    "socialgouv.io",
+		Version:  "v1",
+		Resource: "oblikpodautoscalers",
+	}
+
+	watcher, err := dynamicClient.Resource(oblikPodAutoscalerGVR).Namespace("").Watch(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatalf("Failed to start watcher: %s", err)
+	}
+
 	vpaGVR := schema.GroupVersionResource{Group: "autoscaling.k8s.io", Version: "v1", Resource: "verticalpodautoscalers"}
 
 	ch := watcher.ResultChan()
