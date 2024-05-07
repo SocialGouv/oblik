@@ -15,4 +15,5 @@ FROM scratch
 
 COPY --from=builder /app/oblik /oblik
 
+USER 1000
 ENTRYPOINT ["/oblik"]
