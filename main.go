@@ -105,16 +105,34 @@ func main() {
 
 	for event := range ch {
 		switch event.Type {
-		case watch.Added:
-			pod := event.Object.(*OblikPodAutoscaler)
-			handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, pod, true)
-		case watch.Modified:
-			pod := event.Object.(*OblikPodAutoscaler)
-			handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, pod, false)
-		case watch.Deleted:
-			pod := event.Object.(*OblikPodAutoscaler)
-			handleDelete(clientset, dynamicClient, pod)
+		case watch.Added, watch.Modified, watch.Deleted:
+			opa, err := convertToOblikPodAutoscaler(event.Object.(*unstructured.Unstructured))
+			if err != nil {
+				log.Fatalf("Error converting unstructured to OblikPodAutoscaler: %s", err)
+			}
+			handleEvent(event.Type, clientset, metricsClient, dynamicClient, vpaGVR, opa)
 		}
+	}
+}
+
+func convertToOblikPodAutoscaler(u *unstructured.Unstructured) (*OblikPodAutoscaler, error) {
+	var opa OblikPodAutoscaler
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &opa)
+	if err != nil {
+		return nil, err
+	}
+	return &opa, nil
+}
+
+func handleEvent(eventType watch.EventType, clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler) {
+	fmt.Printf("Event Type: %s, OblikPodAutoscaler Name: %s\n", eventType, opa.Name)
+	switch eventType {
+	case watch.Added:
+		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa, true)
+	case watch.Modified:
+		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa, false)
+	case watch.Deleted:
+		handleDelete(clientset, dynamicClient, opa)
 	}
 }
 
