@@ -12,7 +12,7 @@ spec:
       labels:
         app: oblik
     spec:
-      serviceAccountName: oblik-account
+      serviceAccountName: oblik-operator
       containers:
         - name: oblik
           image: "{{ .Values.image.repository }}:{{ or .Values.image.tag "latest" }}"

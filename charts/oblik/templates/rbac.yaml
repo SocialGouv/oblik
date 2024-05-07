@@ -2,31 +2,35 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: oblik-account
+  name: oblik-operator
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: oblik-role
+  name: oblik-operator
 rules:
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["get", "list", "watch", "update"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources: ["verticalpodautoscalers", "horizontalpodautoscalers"]
+    verbs: ["get", "watch", "list", "create", "delete", "update"]
+  - apiGroups: ["socialgouv.io"]
+    resources: ["oblikpodautoscalers"]
+    verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: oblik-rolebinding
+  name: oblik-operator
 subjects:
   - kind: ServiceAccount
-    name: oblik-account
+    name: oblik-operator
     namespace: "{{ .Release.Namespace }}"
 roleRef:
-  kind: Role
-  name: oblik-role
+  kind: ClusterRole
+  name: oblik-operator
   apiGroup: rbac.authorization.k8s.io
+
 ---
 
