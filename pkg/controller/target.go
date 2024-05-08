@@ -72,8 +72,8 @@ func getCurrentReplicas(dynamicClient dynamic.Interface, targetRef TargetRef) (i
 
 	// Create a GVR based on the kind of the resource
 	gvr := schema.GroupVersionResource{
-		Group:    "apps", // This assumes all resources are in the 'apps' group, adjust if necessary
-		Version:  targetRef.APIVersion,
+		Group:    targetRef.Group,
+		Version:  targetRef.Version,
 		Resource: resource,
 	}
 

@@ -185,7 +185,10 @@ func startWatchingVpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Int
 			fmt.Printf("Detected %s on VPA: %s\n", event.Type, vpa.GetName())
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				handleVPARecommendation(clientset, dynamicClient, opa, vpa)
+				err := handleVPARecommendation(clientset, dynamicClient, opa, vpa)
+				if err != nil {
+					log.Printf("Failed to handle vpa recommendation for %s: %s", opa.Key, err)
+				}
 			}
 		}
 	}()
