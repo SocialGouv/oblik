@@ -101,7 +101,7 @@ func upsertVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler, mode st
 }
 
 func enableVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) error {
-	return upsertVPA(dynamicClient, opa, "On")
+	return upsertVPA(dynamicClient, opa, "Auto")
 }
 
 func disableVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) error {

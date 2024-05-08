@@ -15,6 +15,21 @@ spec:
             spec:
               type: object
               properties:
+                defaultLimit:
+                  type: boolean
+                  default: true
+                enforceLimit:
+                  type: boolean
+                  default: false
+                limitRatio:
+                  type: object
+                  properties:
+                    cpu:
+                      type: integer
+                      default: 1
+                    memory:
+                      type: integer
+                      default: 1
                 minReplicas:
                   type: integer
                   default: 2

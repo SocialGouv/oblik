@@ -39,6 +39,9 @@ type OblikPodAutoscalerSpec struct {
 	ContainerCursors []ContainerCursor `json:"containerCursors,omitempty"`
 	BaseResource     BaseResource      `json:"baseResource,omitempty"`
 	MinReplicas      int32             `json:"minReplicas,omitempty"`
+	DefaultLimit     bool              `json:"defaultLimit,omitempty"`
+	EnforceLimit     bool              `json:"enforceLimit,omitempty"`
+	LimitRatio       LimitRatio        `json:"limitRatio,omitempty"`
 }
 
 type BaseResource struct {
@@ -55,6 +58,11 @@ type ContainerCursor struct {
 	ContainerName string `json:"containerName"`
 	CPU           string `json:"cpu"`
 	Memory        string `json:"memory"`
+}
+
+type LimitRatio struct {
+	CPU    float64 `json:"cpu"`
+	Memory float64 `json:"memory"`
 }
 
 type Decision struct {
@@ -218,11 +226,21 @@ func handleVPARecommendation(clientset *kubernetes.Clientset, dynamicClient dyna
 		return err
 	}
 
-	if err := enforceMinReplicas(dynamicClient, opa.Spec.TargetRef, opa.Spec.MinReplicas); err != nil {
+	targetRef := opa.Spec.TargetRef
+	targetObj, err := getTargetResource(dynamicClient, targetRef)
+	if err != nil {
 		return err
 	}
 
-	currentReplicas, err := getCurrentReplicas(dynamicClient, opa.Spec.TargetRef)
+	if err := enforceMinReplicas(dynamicClient, targetObj, targetRef, opa.Spec.MinReplicas); err != nil {
+		return err
+	}
+
+	if err := enforceResourceLimits(dynamicClient, targetObj, targetRef, opa.Spec.LimitRatio, opa.Spec.DefaultLimit, opa.Spec.EnforceLimit); err != nil {
+		return err
+	}
+
+	currentReplicas, err := getCurrentReplicas(dynamicClient, targetObj, targetRef)
 	if err != nil {
 		return err
 	}
