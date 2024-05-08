@@ -10,7 +10,9 @@ import (
 )
 
 func main() {
-	handleSignals()
+	go func() {
+		handleSignals()
+	}()
 	controller.Run()
 }
 
