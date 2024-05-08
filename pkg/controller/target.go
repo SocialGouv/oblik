@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -110,7 +111,7 @@ func enforceMinReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstr
 	return nil
 }
 
-func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef, limitRatio LimitRatio, enableDefault bool, enableEnforce bool) error {
+func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef, limitRatio LimitRatio, enableDefault bool, enableEnforce bool, containerRecommendations []ContainerRecommendation) error {
 	if !enableDefault && !enableEnforce {
 		return nil
 	}
@@ -120,37 +121,61 @@ func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Un
 		return fmt.Errorf("error finding containers in the resource: %v", err)
 	}
 
-	touched := false
-	for _, container := range containers {
+	modified := false
+	for i, container := range containers {
 		containerMap := container.(map[string]interface{})
 
 		// Get current requests and limits
-		requests, foundRequests, _ := unstructured.NestedStringMap(containerMap, "resources", "requests")
-		_, foundLimits, _ := unstructured.NestedStringMap(containerMap, "resources", "limits")
+		requests, _, _ := unstructured.NestedStringMap(containerMap, "resources", "requests")
+		limits, _, _ := unstructured.NestedStringMap(containerMap, "resources", "limits")
 
-		if (!foundLimits && enableDefault) || enableEnforce {
-			newLimits := map[string]string{}
-			if foundRequests {
-				for key, reqStr := range requests {
-					reqQty := resource.MustParse(reqStr)
-					var limitQty resource.Quantity
-					switch key {
-					case "cpu":
-						limitQty = resource.MustParse(fmt.Sprintf("%.3f", reqQty.AsApproximateFloat64()*limitRatio.CPU))
-					case "memory":
-						limitQty = resource.MustParse(fmt.Sprintf("%.0f", reqQty.AsApproximateFloat64()*limitRatio.Memory))
-					}
-					newLimits[key] = limitQty.String()
-				}
-				if err := unstructured.SetNestedStringMap(containerMap, newLimits, "resources", "limits"); err != nil {
-					return fmt.Errorf("failed to set new limits: %v", err)
-				}
-				touched = true
+		newLimits := map[string]string{}
+
+		var containerRecommendation ContainerRecommendation
+		for _, recommendation := range containerRecommendations {
+			containerName, _, _ := unstructured.NestedString(containerMap, "name")
+			if recommendation.ContainerName == containerName {
+				containerRecommendation = recommendation
+				break
 			}
 		}
+
+		if limits["cpu"] == "" || limits["cpu"] == "0" || enableEnforce {
+			var reqCPUQty resource.Quantity
+			if requests["cpu"] != "" && requests["cpu"] != "0" {
+				reqCPUQty = resource.MustParse(requests["cpu"])
+			} else {
+				reqCPUQty = resource.MustParse(containerRecommendation.CPU)
+			}
+			newLimits["cpu"] = fmt.Sprintf("%.3f", reqCPUQty.AsApproximateFloat64()*limitRatio.CPU)
+			modified = true
+		} else {
+			newLimits["cpu"] = limits["cpu"]
+		}
+
+		if limits["memory"] == "" || limits["memory"] == "0" || enableEnforce {
+			var reqMemoryQty resource.Quantity
+			if requests["memory"] != "" && requests["memory"] != "0" {
+				reqMemoryQty = resource.MustParse(requests["memory"])
+			} else {
+				reqMemoryQty = resource.MustParse(containerRecommendation.Memory)
+			}
+			newLimits["memory"] = fmt.Sprintf("%.0f", reqMemoryQty.AsApproximateFloat64()*limitRatio.Memory)
+			if err := unstructured.SetNestedStringMap(containerMap, newLimits, "resources", "limits"); err != nil {
+				return fmt.Errorf("failed to set new limits: %v", err)
+			}
+			modified = true
+		} else {
+			newLimits["memory"] = limits["memory"]
+		}
+		// log.Printf("newLimits %v", newLimits)
+
+		containers[i] = containerMap
 	}
 
-	if !touched {
+	log.Printf("Resource limits not modified")
+
+	if !modified {
 		return nil
 	}
 
@@ -165,6 +190,8 @@ func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Un
 	if err != nil {
 		return fmt.Errorf("failed to update the resource limits: %v", err)
 	}
+
+	log.Printf("Resource limits updated")
 
 	return nil
 }

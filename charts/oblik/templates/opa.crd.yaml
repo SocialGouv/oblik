@@ -23,6 +23,7 @@ spec:
                   default: false
                 limitRatio:
                   type: object
+                  default: {}
                   properties:
                     cpu:
                       type: integer

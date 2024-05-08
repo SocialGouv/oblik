@@ -34,14 +34,14 @@ type OblikPodAutoscalerSpec struct {
 	TargetRef        TargetRef         `json:"targetRef"`
 	HPA              HPAConfiguration  `json:"hpa"`
 	VPA              VPAConfiguration  `json:"vpa"`
-	CursorMode       string            `json:"cursorMode,omitempty"`
+	CursorMode       string            `json:"cursorMode"`
 	PodCursor        ResourceCursor    `json:"podCursors,omitempty"`
 	ContainerCursors []ContainerCursor `json:"containerCursors,omitempty"`
 	BaseResource     BaseResource      `json:"baseResource,omitempty"`
-	MinReplicas      int32             `json:"minReplicas,omitempty"`
-	DefaultLimit     bool              `json:"defaultLimit,omitempty"`
-	EnforceLimit     bool              `json:"enforceLimit,omitempty"`
-	LimitRatio       LimitRatio        `json:"limitRatio,omitempty"`
+	MinReplicas      int32             `json:"minReplicas"`
+	DefaultLimit     bool              `json:"defaultLimit"`
+	EnforceLimit     bool              `json:"enforceLimit"`
+	LimitRatio       LimitRatio        `json:"limitRatio"`
 }
 
 type BaseResource struct {
@@ -236,7 +236,7 @@ func handleVPARecommendation(clientset *kubernetes.Clientset, dynamicClient dyna
 		return err
 	}
 
-	if err := enforceResourceLimits(dynamicClient, targetObj, targetRef, opa.Spec.LimitRatio, opa.Spec.DefaultLimit, opa.Spec.EnforceLimit); err != nil {
+	if err := enforceResourceLimits(dynamicClient, targetObj, targetRef, opa.Spec.LimitRatio, opa.Spec.DefaultLimit, opa.Spec.EnforceLimit, containerRecommendations); err != nil {
 		return err
 	}
 
