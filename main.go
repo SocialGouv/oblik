@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,8 +65,12 @@ type ContainerPolicy struct {
 }
 
 type TargetRef struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+	Group      string
+	Version    string
+	Resource    string
 }
 
 func main() {
@@ -115,12 +121,39 @@ func main() {
 	}
 }
 
+func convertKindToResource(kind string) string {
+	// Convert to lowercase
+	resource := strings.ToLower(kind)
+	// Handle special cases
+	switch resource {
+	case "endpoints":
+		return resource // "Endpoints" is already plural
+	default:
+		// This simple rule handles most cases
+		if strings.HasSuffix(resource, "s") {
+			return resource + "es" // For kinds ending in 's' like "Class", making it "classes"
+		} else if strings.HasSuffix(resource, "y") {
+			return strings.TrimSuffix(resource, "y") + "ies" // For kinds ending in 'y' like "Policy", making it "policies"
+		} else {
+			return resource + "s"
+		}
+	}
+}
+
 func convertToOblikPodAutoscaler(u *unstructured.Unstructured) (*OblikPodAutoscaler, error) {
 	var opa OblikPodAutoscaler
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &opa)
 	if err != nil {
 		return nil, err
 	}
+	group, version := splitAPIVersion(opa.Spec.TargetRef.APIVersion)
+	if group == "" && version != "" {
+		group = "core"
+	}
+	resource := convertKindToResource(opa.Spec.TargetRef.Kind)
+	opa.Spec.TargetRef.Group = group
+	opa.Spec.TargetRef.Version = version
+	opa.Spec.TargetRef.Resource = resource
 	return &opa, nil
 }
 
@@ -128,23 +161,156 @@ func handleEvent(eventType watch.EventType, clientset *kubernetes.Clientset, met
 	fmt.Printf("Event Type: %s, OblikPodAutoscaler Name: %s\n", eventType, opa.Name)
 	switch eventType {
 	case watch.Added:
-		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa, true)
+		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa)
 	case watch.Modified:
-		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa, false)
+		handleCreateOrUpdate(clientset, metricsClient, dynamicClient, vpaGVR, opa)
 	case watch.Deleted:
 		handleDelete(clientset, dynamicClient, opa)
 	}
 }
 
-func handleCreateOrUpdate(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler, isCreate bool) {
+func splitAPIVersion(apiVersion string) (string, string) {
+	parts := strings.Split(apiVersion, "/")
+	if len(parts) == 2 {
+		return parts[0], parts[1] // Returns group and version
+	}
+	// Handle the case for core API group which might be specified as just "v1"
+	if len(parts) == 1 {
+		return "", parts[0] // Returns empty group and version
+	}
+	return "", "" // Return empty if the format is not as expected
+}
+
+func targetRefExists(dynamicClient dynamic.Interface, targetRef TargetRef, namespace string) bool {
+	gvr := schema.GroupVersionResource{Group: targetRef.Group, Version: targetRef.Version, Resource: targetRef.Kind} // Adjust the GroupVersionResource according to your setup
+	_, err := dynamicClient.Resource(gvr).Namespace(namespace).Get(context.TODO(), targetRef.Name, metav1.GetOptions{})
+	return err == nil
+}
+
+func watchForTargetRef(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler, targetRef TargetRef) {
+	gvr := schema.GroupVersionResource{Group: targetRef.Group, Version: targetRef.Version, Resource: targetRef.Resource} // Adjust the GroupVersionResource according to your setup
+
+	listOptions := metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("metadata.name=%s", targetRef.Name),
+	}
+
+	watcher, err := dynamicClient.Resource(gvr).Namespace(opa.Namespace).Watch(context.TODO(), listOptions)
+	if err != nil {
+		log.Printf("Error on %v: %v", targetRef, err)
+		log.Fatalf("Failed to set up watcher for %s: %s", targetRef.Resource, err)
+	}
+
+	go func() {
+		for event := range watcher.ResultChan() {
+			switch event.Type {
+			case watch.Added:
+				log.Printf("targetRef %s appeared. Handling its appearance.", targetRef.Name)
+				handleTargetRefAppeared(clientset, metricsClient, dynamicClient, vpaGVR, opa, event.Object.(*unstructured.Unstructured))
+			case watch.Deleted:
+				log.Printf("targetRef %s was deleted. Handling its deletion.", targetRef.Name)
+				handleTargetRefDeleted(clientset, metricsClient, dynamicClient, vpaGVR, opa, event.Object.(*unstructured.Unstructured))
+			}
+		}
+	}()
+}
+
+func handleTargetRefAppeared(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler, obj *unstructured.Unstructured) {
+	// Implement logic to handle the appearance of targetRef
+	log.Printf("Handling appearance of new resource: %s", obj.GetName())
+	// Reinitialize or adjust OPA settings
+	handleTargetRef(clientset, metricsClient, dynamicClient, vpaGVR, opa)
+}
+
+func handleTargetRefDeleted(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler, obj *unstructured.Unstructured) {
+	// Implement logic to handle the deletion of targetRef
+	log.Printf("Handling deletion of resource: %s", obj.GetName())
+	disableHPA(clientset, opa)
+	disableVPA(dynamicClient, opa)
+}
+
+func handleTargetRef(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler) {
+	// Proceed with normal operations like ensuring HPA/VPA is correctly setup
 	if shouldEnableVPA(clientset, metricsClient, opa) {
 		// Enable VPA
 		fmt.Println("Enabling VPA...")
-		enableVPA(dynamicClient, vpaGVR, opa, isCreate)
+		enableVPA(clientset, dynamicClient, vpaGVR, opa)
 	} else {
 		// Enable HPA
 		fmt.Println("Enabling HPA...")
-		enableHPA(clientset, opa, isCreate)
+		enableHPA(clientset, dynamicClient, opa)
+	}
+}
+
+func upsertVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) error {
+    vpaGVR := schema.GroupVersionResource{
+        Group: "autoscaling.k8s.io",
+        Version: "v1",
+        Resource: "verticalpodautoscalers",
+    }
+
+    vpaName := fmt.Sprintf("%s-vpa", opa.Name) // Assume VPA name is derived from OPA name
+    namespace := opa.Namespace
+
+    // Define the desired state of the VPA object
+    vpaObject := &unstructured.Unstructured{
+        Object: map[string]interface{}{
+            "apiVersion": "autoscaling.k8s.io/v1",
+            "kind":       "VerticalPodAutoscaler",
+            "metadata": map[string]interface{}{
+                "name":      vpaName,
+                "namespace": namespace,
+            },
+            "spec": map[string]interface{}{
+                "targetRef": map[string]interface{}{
+                    "apiVersion": opa.Spec.TargetRef.APIVersion,
+                    "kind":       opa.Spec.TargetRef.Kind,
+                    "name":       opa.Spec.TargetRef.Name,
+                },
+                "updatePolicy": map[string]interface{}{
+                    "updateMode": "Off",
+                },
+            },
+        },
+    }
+
+    // Check if the VPA already exists
+    _, err := dynamicClient.Resource(vpaGVR).Namespace(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
+    if err != nil {
+        // If VPA does not exist, create it
+        if dynamic.IsNotFound(err) {
+            _, err := dynamicClient.Resource(vpaGVR).Namespace(namespace).Create(context.TODO(), vpaObject, metav1.CreateOptions{})
+            if err != nil {
+                log.Printf("Failed to create VPA: %v", err)
+                return err
+            }
+            log.Println("Created VPA successfully")
+            return nil
+        }
+        log.Printf("Failed to get VPA: %v", err)
+        return err
+    }
+
+    // If VPA exists, update it
+    _, err = dynamicClient.Resource(vpaGVR).Namespace(namespace).Update(context.TODO(), vpaObject, metav1.UpdateOptions{})
+    if err != nil {
+        log.Printf("Failed to update VPA: %v", err)
+        return err
+    }
+    log.Println("Updated VPA successfully")
+    return nil
+}
+
+
+func handleCreateOrUpdate(clientset *kubernetes.Clientset, metricsClient *metricsv.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler) {
+	
+	upsertVPA(dynamicClient, opa)
+
+	if !targetRefExists(dynamicClient, opa.Spec.TargetRef, opa.Namespace) {
+		log.Printf("targetRef %s/%s does not exist. Setting up watcher.", opa.Spec.TargetRef.Kind, opa.Spec.TargetRef.Name)
+		watchForTargetRef(clientset, metricsClient, dynamicClient, vpaGVR, opa, opa.Spec.TargetRef)
+	} else {
+		log.Printf("targetRef %s/%s exists. Proceeding with normal operations.", opa.Spec.TargetRef.Kind, opa.Spec.TargetRef.Name)
+		handleTargetRef(clientset, metricsClient, dynamicClient, vpaGVR, opa)
 	}
 }
 
@@ -182,7 +348,14 @@ func shouldEnableVPA(clientset *kubernetes.Clientset, metricsClient *metricsv.Cl
 	return totalCPU < cpuCursor64 && totalMemory < memoryCursor64
 }
 
-func enableVPA(dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler, isCreate bool) {
+func enableVPA(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResource, opa *OblikPodAutoscaler) {
+	// First, disable HPA
+	err := disableHPA(clientset, opa)
+	if err != nil {
+		log.Printf("Error disabling HPA: %s", err)
+		return
+	}
+
 	// Serialize VPA spec from OPA spec
 	vpaSpecData, err := json.Marshal(opa.Spec.VPA)
 	if err != nil {
@@ -206,6 +379,18 @@ func enableVPA(dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResour
 		"namespace": opa.Namespace,
 	}
 
+	var isCreate bool
+	// Check if the VPA exists
+	_, err = dynamicClient.Resource(vpaGVR).Namespace(opa.Namespace).Get(context.TODO(), opa.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			isCreate = true
+		} else {
+			log.Printf("Error checking if VPA exists for %s: %v", opa.Name, err)
+			return
+		}
+	}
+
 	// Create or update VPA based on the unstructured object
 	vpaObj := &unstructured.Unstructured{Object: unstructuredVPA}
 	if isCreate {
@@ -219,7 +404,15 @@ func enableVPA(dynamicClient dynamic.Interface, vpaGVR schema.GroupVersionResour
 	fmt.Println("VPA managed for", opa.Name)
 }
 
-func enableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler, isCreate bool) {
+func enableHPA(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) {
+
+	// First, disable VPA
+	err := disableVPA(dynamicClient, opa)
+	if err != nil {
+		log.Printf("Error disabling VPA: %s", err)
+		return
+	}
+
 	// Deserialize HPA spec from OPA spec
 	hpaSpec := &autoscalingv1.HorizontalPodAutoscalerSpec{}
 	hpaSpecData, _ := json.Marshal(opa.Spec.HPA) // Assume opa.Spec.HPA holds the full HPA spec as raw JSON
@@ -231,6 +424,17 @@ func enableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler, isCreat
 			Namespace: opa.Namespace,
 		},
 		Spec: *hpaSpec,
+	}
+
+	var isCreate bool
+	_, err = clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Get(context.TODO(), opa.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			isCreate = true
+		} else {
+			log.Printf("Error checking if HPA exists for %s: %v", opa.Name, err)
+			return
+		}
 	}
 
 	if isCreate {
@@ -246,6 +450,69 @@ func enableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler, isCreat
 	}
 	fmt.Println("HPA enabled for", opa.Name)
 }
+
+func disableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler) error {
+	// Check if the HPA exists
+	_, err := clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Get(context.TODO(), opa.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Printf("HPA %s not found, nothing to disable", opa.Name)
+			return nil
+		}
+		log.Printf("Error checking if HPA exists for %s: %v", opa.Name, err)
+		return err
+	}
+
+	// Delete HPA if it exists
+	deletePolicy := metav1.DeletePropagationForeground
+	err = clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Delete(context.TODO(), opa.Name, metav1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
+	if err != nil {
+		log.Printf("Failed to delete HPA for %s: %v", opa.Name, err)
+		return err
+	}
+
+	log.Printf("Successfully disabled HPA for %s", opa.Name)
+	return nil
+}
+
+func disableVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) error {
+    vpaGVR := schema.GroupVersionResource{
+        Group: "autoscaling.k8s.io",
+        Version: "v1",
+        Resource: "verticalpodautoscalers",
+    }
+
+    // Fetch the current VPA object
+    vpaObj, err := dynamicClient.Resource(vpaGVR).Namespace(opa.Namespace).Get(context.TODO(), opa.Name, metav1.GetOptions{})
+    if err != nil {
+        log.Printf("Failed to get VPA for %s: %v", opa.Name, err)
+        return err
+    }
+
+    // Update the updateMode to "Off"
+    if err := updateVPAUpdateMode(vpaObj, "Off"); err != nil {
+        log.Printf("Failed to prepare VPA update for %s: %v", opa.Name, err)
+        return err
+    }
+
+    // Update the VPA resource
+    _, err = dynamicClient.Resource(vpaGVR).Namespace(opa.Namespace).Update(context.TODO(), vpaObj, metav1.UpdateOptions{})
+    if err != nil {
+        log.Printf("Failed to update VPA for %s to Audit mode: %v", opa.Name, err)
+        return err
+    }
+
+    log.Printf("VPA for %s switched to Audit mode", opa.Name)
+    return nil
+}
+
+func updateVPAUpdateMode(vpaObj *unstructured.Unstructured, mode string) error {
+    unstructured.SetNestedField(vpaObj.Object, mode, "spec", "updatePolicy", "updateMode")
+    return nil
+}
+
 
 func calculateCPUUtilizationTarget(cursor string) *int32 {
 	utilization := int32(80) // Placeholder for calculation from cursor
