@@ -15,10 +15,40 @@ spec:
             spec:
               type: object
               properties:
-                cpuCursor:
+                minReplicas:
+                  type: integer
+                  default: 2
+                baseResource:
+                  type: object
+                  properties:
+                    cpu:
+                      type: string
+                      default: "0m"
+                    memory:
+                      type: string
+                      default: "0Mi"
+                cursorMode:
                   type: string
-                memoryCursor:
-                  type: string
+                  enum: ["all", "any"]
+                  default: "any"
+                podCursor:
+                  type: object
+                  properties:
+                    cpu:
+                      type: string
+                    memory:
+                      type: string
+                containerCursors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      containerName:
+                        type: string
+                      cpu:
+                        type: string
+                      memory:
+                        type: string
                 targetRef:
                   type: object
                   properties:
