@@ -9,6 +9,10 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -18,44 +22,28 @@ type HPAConfiguration struct {
 	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage"`
 }
 
-func enableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler) error {
+func enableHPA(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) error {
 	// Deserialize HPA spec from OPA spec
 	hpaSpec := &autoscalingv1.HorizontalPodAutoscalerSpec{}
 	hpaSpecData, _ := json.Marshal(opa.Spec.HPA) // Assume opa.Spec.HPA holds the full HPA spec as raw JSON
 	json.Unmarshal(hpaSpecData, &hpaSpec)
 
-	hpa := &autoscalingv1.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      opa.Name,
-			Namespace: opa.Namespace,
+	// Define the desired state of the HPA object
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "autoscaling.k8s.io/v1",
+			"kind":       "VerticalPodAutoscaler",
+			"metadata": map[string]interface{}{
+				"name":      opa.Name,
+				"namespace": opa.Namespace,
+			},
+			"spec": *hpaSpec,
 		},
-		Spec: *hpaSpec,
 	}
 
-	var isCreate bool
-	_, err := clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Get(context.TODO(), opa.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			isCreate = true
-		} else {
-			log.Printf("Error checking if HPA exists for %s: %v", opa.Name, err)
-			return err
-		}
-	}
+	flattenAndClean(obj)
 
-	if isCreate {
-		_, err := clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Create(context.TODO(), hpa, metav1.CreateOptions{})
-		if err != nil {
-			log.Printf("Failed to create HPA: %s", err)
-			return err
-		}
-	} else {
-		_, err := clientset.AutoscalingV1().HorizontalPodAutoscalers(opa.Namespace).Update(context.TODO(), hpa, metav1.UpdateOptions{})
-		if err != nil {
-			log.Printf("Failed to update HPA: %s", err)
-			return err
-		}
-	}
+	applyHPA(dynamicClient, opa, obj)
 	fmt.Println("HPA enabled for", opa.Name)
 	return nil
 }
@@ -83,5 +71,30 @@ func disableHPA(clientset *kubernetes.Clientset, opa *OblikPodAutoscaler) error 
 	}
 
 	log.Printf("Successfully disabled HPA for %s", opa.Name)
+	return nil
+}
+
+func applyHPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler, obj *unstructured.Unstructured) error {
+	gvr := schema.GroupVersionResource{
+		Group:    "autoscaling",
+		Version:  "v1",
+		Resource: "horizontalpodautoscalers",
+	}
+
+	// Convert the HPA specification to JSON for the patch
+	data, err := obj.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to marshal HPA JSON: %s", err)
+	}
+
+	// Send a server-side apply request
+	force := true
+	_, err = dynamicClient.Resource(gvr).Namespace(opa.Namespace).Patch(context.Background(), opa.Name, types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: FieldManager,
+		Force:        &force,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to apply HPA: %s", err)
+	}
 	return nil
 }

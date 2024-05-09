@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -80,11 +82,6 @@ func getCurrentReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstr
 
 func enforceMinReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef, minReplicas int32) error {
 
-	gvr, err := getGVR(targetRef)
-	if err != nil {
-		return err
-	}
-
 	// Get current replicas from the resource
 	currentReplicas, found, err := unstructured.NestedInt64(obj.UnstructuredContent(), "spec", "replicas")
 	if err != nil || !found {
@@ -98,11 +95,10 @@ func enforceMinReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstr
 			return fmt.Errorf("failed to set replicas in the resource spec: %v", err)
 		}
 
-		// Update the resource
-		_, err = dynamicClient.Resource(gvr).Namespace(targetRef.Namespace).Update(context.TODO(), obj, v1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to update the resource to enforce minReplicas: %v", err)
+		if err := applyTarget(dynamicClient, targetRef, obj); err != nil {
+			return err
 		}
+
 		fmt.Printf("Updated %s %s to have minReplicas = %d\n", targetRef.Kind, targetRef.Name, minReplicas)
 	} else {
 		fmt.Printf("%s %s already has %d or more replicas\n", targetRef.Kind, targetRef.Name, minReplicas)
@@ -182,17 +178,36 @@ func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Un
 	if err := unstructured.SetNestedSlice(obj.Object, containers, "spec", "template", "spec", "containers"); err != nil {
 		return fmt.Errorf("failed to update containers in the resource: %v", err)
 	}
-	gvr, err := getGVR(targetRef)
-	if err != nil {
-		return err
-	}
-	_, err = dynamicClient.Resource(gvr).Namespace(targetRef.Namespace).Update(context.TODO(), obj, v1.UpdateOptions{})
-	if err != nil {
+	if err := applyTarget(dynamicClient, targetRef, obj); err != nil {
 		return fmt.Errorf("failed to update the resource limits: %v", err)
 	}
 
 	log.Printf("Resource limits updated")
 
+	return nil
+}
+
+func applyTarget(dynamicClient dynamic.Interface, targetRef TargetRef, obj *unstructured.Unstructured) error {
+	gvr, err := getGVR(targetRef)
+	if err != nil {
+		return err
+	}
+
+	// Convert unstructured object to JSON bytes
+	data, err := obj.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to marshal deployment JSON: %s", err)
+	}
+
+	// Send a server-side apply request
+	force := true
+	_, err = dynamicClient.Resource(gvr).Namespace(targetRef.Namespace).Patch(context.Background(), targetRef.Name, types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: "example-manager",
+		Force:        &force,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to apply %s: %s", targetRef.Kind, err)
+	}
 	return nil
 }
 

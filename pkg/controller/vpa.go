@@ -3,28 +3,27 @@ package controller
 import (
 	"context"
 	"fmt"
-	"log"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 )
 
 type VPAConfiguration struct {
 	Mode           string            `json:"mode"`
-	ResourcePolicy VPAResourcePolicy `json:"resourcePolicy"`
+	ResourcePolicy VPAResourcePolicy `json:"resourcePolicy,omitempty"`
 }
 
 type VPAResourcePolicy struct {
-	ContainerPolicies []ContainerPolicy `json:"containerPolicies"`
+	ContainerPolicies []ContainerPolicy `json:"containerPolicies,omitempty"`
 }
 
 type ContainerPolicy struct {
 	ContainerName string            `json:"containerName"`
-	MinAllowed    map[string]string `json:"minAllowed"`
-	MaxAllowed    map[string]string `json:"maxAllowed"`
+	MinAllowed    map[string]string `json:"minAllowed,omitempty"`
+	MaxAllowed    map[string]string `json:"maxAllowed,omitempty"`
 }
 
 type ContainerRecommendation struct {
@@ -34,17 +33,12 @@ type ContainerRecommendation struct {
 }
 
 func upsertVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler, mode string) error {
-	vpaGVR := schema.GroupVersionResource{
-		Group:    "autoscaling.k8s.io",
-		Version:  "v1",
-		Resource: "verticalpodautoscalers",
-	}
 
 	vpaName := opa.Name
 	namespace := opa.Namespace
 
 	// Define the desired state of the VPA object
-	vpaObject := &unstructured.Unstructured{
+	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "autoscaling.k8s.io/v1",
 			"kind":       "VerticalPodAutoscaler",
@@ -61,42 +55,43 @@ func upsertVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler, mode st
 				"updatePolicy": map[string]interface{}{
 					"updateMode": mode,
 				},
+				"resourcePolicy": opa.Spec.VPA.ResourcePolicy,
 			},
 		},
 	}
 
-	// Check if the VPA already exists
-	currentResource, err := dynamicClient.Resource(vpaGVR).Namespace(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
-	if err != nil {
-		// If VPA does not exist, create it
-		if errors.IsNotFound(err) {
-			_, err := dynamicClient.Resource(vpaGVR).Namespace(namespace).Create(context.TODO(), vpaObject, metav1.CreateOptions{})
-			if err != nil {
-				log.Printf("Failed to create VPA: %v", err)
-				return err
-			}
-			log.Println("Created VPA successfully")
-			return nil
-		}
-		log.Printf("Failed to get VPA: %v", err)
+	flattenAndClean(obj)
+
+	if err := applyVPA(dynamicClient, opa, obj); err != nil {
 		return err
 	}
 
-	resourceVersion, _, err := unstructured.NestedString(currentResource.Object, "metadata", "resourceVersion")
+	return nil
+}
+
+func applyVPA(dynamicClient dynamic.Interface, opa *OblikPodAutoscaler, obj *unstructured.Unstructured) error {
+	data, err := obj.MarshalJSON()
 	if err != nil {
-		return fmt.Errorf("failed to get resourceVersion from current resource: %v", err)
+		return fmt.Errorf("failed to marshal VPA JSON: %s", err)
 	}
 
-	// Set the resource version on the updated resource
-	unstructured.SetNestedField(vpaObject.Object, resourceVersion, "metadata", "resourceVersion")
-
-	// If VPA exists, update it
-	_, err = dynamicClient.Resource(vpaGVR).Namespace(namespace).Update(context.TODO(), vpaObject, metav1.UpdateOptions{})
-	if err != nil {
-		log.Printf("Failed to update VPA: %v", err)
-		return err
+	gvr := schema.GroupVersionResource{
+		Group:    "autoscaling.k8s.io",
+		Version:  "v1",
+		Resource: "verticalpodautoscalers",
 	}
-	log.Println("Updated VPA successfully")
+
+	// Send a server-side apply request
+	force := true
+	_, err = dynamicClient.Resource(gvr).Namespace(opa.Namespace).Patch(context.Background(), opa.Name, types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: FieldManager,
+		Force:        &force,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to apply VPA: %s", err)
+	}
+
+	fmt.Println("VPA applied successfully.")
 	return nil
 }
 
@@ -114,7 +109,7 @@ func convertVPARecommendations(vpa *unstructured.Unstructured) ([]ContainerRecom
 		return nil, fmt.Errorf("error retrieving container recommendations: %v", err)
 	}
 	if !found {
-		return nil, fmt.Errorf("no recommendations found in VPA")
+		return nil, nil
 	}
 
 	var containerRecs []ContainerRecommendation

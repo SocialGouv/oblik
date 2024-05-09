@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"fmt"
 	"log"
+	"time"
 
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -24,6 +26,12 @@ func Run() {
 		log.Fatalf("Error building dynamic client: %s", err)
 	}
 
-	watchOpa(clientset, dynamicClient)
+	for {
+		if err := watchOpa(clientset, dynamicClient); err != nil {
+			fmt.Printf("Error watching OPA: %v\n", err)
+			time.Sleep(10 * time.Second) // Wait before retrying
+			continue
+		}
+	}
 
 }

@@ -71,7 +71,7 @@ type Decision struct {
 }
 
 // Watching OPA
-func watchOpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface) {
+func watchOpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface) error {
 	oblikPodAutoscalerGVR := schema.GroupVersionResource{
 		Group:    "socialgouv.io",
 		Version:  "v1",
@@ -82,6 +82,7 @@ func watchOpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface) 
 	if err != nil {
 		log.Fatalf("Failed to start watcher: %s", err)
 	}
+	defer watcher.Stop()
 
 	ch := watcher.ResultChan()
 
@@ -95,6 +96,8 @@ func watchOpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface) 
 			handleOpaEvent(event.Type, clientset, dynamicClient, opa)
 		}
 	}
+
+	return nil // Return nil if channel is closed, indicating a potential disconnection
 }
 
 func handleOpaEvent(eventType watch.EventType, clientset *kubernetes.Clientset, dynamicClient dynamic.Interface, opa *OblikPodAutoscaler) {
@@ -180,7 +183,6 @@ func startWatchingVpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Int
 		log.Fatalf("Failed to set up watcher for VPA: %s", err)
 		return err
 	}
-
 	watchers[opa.Key] = watcher
 
 	go func() {
@@ -197,7 +199,13 @@ func startWatchingVpa(clientset *kubernetes.Clientset, dynamicClient dynamic.Int
 				if err != nil {
 					log.Printf("Failed to handle vpa recommendation for %s: %s", opa.Key, err)
 				}
+			case watch.Deleted:
+				upsertVPA(dynamicClient, opa, "Off")
 			}
+		}
+		if _, exists := watchers[opa.Key]; exists { // disconnected, so reconnect
+			watcher.Stop()
+			startWatchingVpa(clientset, dynamicClient, opa)
 		}
 	}()
 
@@ -210,8 +218,8 @@ func stopWatchingVpa(opaKey string) {
 
 	watcher, exists := watchers[opaKey]
 	if exists {
-		watcher.Stop()
 		delete(watchers, opaKey)
+		watcher.Stop()
 		log.Printf("Stopped watching VPA for OPA with opaKey %s", opaKey)
 	} else {
 		log.Printf("No active watcher found for VPA with opaKey %s", opaKey)
@@ -224,6 +232,11 @@ func handleVPARecommendation(clientset *kubernetes.Clientset, dynamicClient dyna
 	if err != nil {
 		fmt.Printf("Error processing VPA recommendations: %s\n", err)
 		return err
+	}
+
+	if containerRecommendations == nil {
+		fmt.Printf("No VPA recommendations: %s\n", opa.Name)
+		return nil
 	}
 
 	targetRef := opa.Spec.TargetRef
@@ -333,7 +346,7 @@ func switchToHPA(clientset *kubernetes.Clientset, dynamicClient dynamic.Interfac
 		log.Printf("Failed to disable VPA: %v", err)
 		return err
 	}
-	if err := enableHPA(clientset, opa); err != nil {
+	if err := enableHPA(clientset, dynamicClient, opa); err != nil {
 		log.Printf("Failed to enable HPA: %v", err)
 		return err
 	}
