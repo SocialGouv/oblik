@@ -28,11 +28,17 @@ func enableHPA(clientset *kubernetes.Clientset, dynamicClient dynamic.Interface,
 	hpaSpecData, _ := json.Marshal(opa.Spec.HPA) // Assume opa.Spec.HPA holds the full HPA spec as raw JSON
 	json.Unmarshal(hpaSpecData, &hpaSpec)
 
+	hpaSpec.ScaleTargetRef = autoscalingv1.CrossVersionObjectReference{
+		APIVersion: opa.Spec.TargetRef.APIVersion,
+		Kind:       opa.Spec.TargetRef.Kind,
+		Name:       opa.Spec.TargetRef.Name,
+	}
+
 	// Define the desired state of the HPA object
 	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "autoscaling.k8s.io/v1",
-			"kind":       "VerticalPodAutoscaler",
+			"apiVersion": "autoscaling/v2",
+			"kind":       "HorizontalPodAutoscaler",
 			"metadata": map[string]interface{}{
 				"name":      opa.Name,
 				"namespace": opa.Namespace,

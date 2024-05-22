@@ -78,15 +78,6 @@ spec:
                   type: object
                   description: "Embedded full spec of Horizontal Pod Autoscaler"
                   properties:
-                    scaleTargetRef:
-                      type: object
-                      properties:
-                        apiVersion:
-                          type: string
-                        kind:
-                          type: string
-                        name:
-                          type: string
                     minReplicas:
                       type: integer
                     maxReplicas:
@@ -116,15 +107,6 @@ spec:
                   type: object
                   description: "Embedded full spec of Vertical Pod Autoscaler"
                   properties:
-                    targetRef:
-                      type: object
-                      properties:
-                        apiVersion:
-                          type: string
-                        kind:
-                          type: string
-                        name:
-                          type: string
                     updatePolicy:
                       type: object
                       properties:
