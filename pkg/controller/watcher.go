@@ -21,12 +21,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// const defaultCron = "0 2 * * *"
-// const defaultCronAddRandomMax = "120m"
-
-// debug
-const defaultCron = "* * * * *"
-const defaultCronAddRandomMax = "10s"
+const defaultCron = "0 2 * * *"
+const defaultCronAddRandomMax = "120m"
 
 func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clientset) {
 	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
@@ -115,6 +111,19 @@ func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodA
 		limitMemoryApplyMode = "enforce"
 	}
 
+	if limitCPUCalculatorAlgo == "" {
+		limitCPUCalculatorAlgo = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO", "ratio")
+	}
+	if limitMemoryCalculatorAlgo == "" {
+		limitMemoryCalculatorAlgo = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
+	}
+	if limitCPUCalculatorValue == "" {
+		limitCPUCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
+	}
+	if limitMemoryCalculatorValue == "" {
+		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
+	}
+
 	klog.Infof("Applying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
 		vpa.Name, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 
@@ -166,26 +175,24 @@ func updateDeployment(clientset *kubernetes.Clientset, namespace, deploymentName
 
 		// Apply CPU recommendations
 		if cpuRecoApplyMode != "off" {
-			newCPURequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-			newCPULimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-
 			if cpuRecoApplyMode == "enforce" {
+				newCPURequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
 				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
 			}
 			if limitCPUApplyMode == "enforce" {
+				newCPULimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
 				container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
 			}
 		}
 
 		// Apply memory recommendations
 		if memoryRecoApplyMode != "off" {
-			newMemoryRequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-			newMemoryLimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-
 			if memoryRecoApplyMode == "enforce" {
+				newMemoryRequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
 				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
 			}
 			if limitMemoryApplyMode == "enforce" {
+				newMemoryLimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
 				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
 			}
 		}
