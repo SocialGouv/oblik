@@ -203,8 +203,10 @@ func updateDeployment(clientset *kubernetes.Clientset, namespace, deploymentName
 		return
 	}
 
+	force := true
 	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 		FieldManager: "vpa-operator",
+		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
 		klog.Errorf("Error applying patch to deployment: %s", err.Error())
