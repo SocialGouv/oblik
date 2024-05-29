@@ -71,9 +71,11 @@ func handleVPA(clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clien
 func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler) {
 	annotations := vpa.Annotations
 	if annotations == nil {
-		klog.Info("No annotations found, skipping")
-		return
+		annotations = map[string]string{}
 	}
+
+	cronMutex.Lock()
+	defer cronMutex.Unlock()
 
 	cronExpr := annotations["oblik.socialgouv.io/cron"]
 	if cronExpr == "" {
@@ -126,21 +128,18 @@ func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodA
 
 	key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
 
-	klog.Infof("Applying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
+	klog.Infof("Scheduling VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
 		key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 
-	cronMutex.Lock()
-	defer cronMutex.Unlock()
-
-	// Remove existing cron job if it exists
 	if entryID, exists := cronJobs[key]; exists {
 		cronScheduler.Remove(entryID)
 	}
 
-	// Schedule the application of recommendations
 	entryID, err := cronScheduler.AddFunc(cronExpr, func() {
 		randomDelay := time.Duration(rand.Int63n(maxRandomDelay.Nanoseconds()))
 		time.Sleep(randomDelay)
+		klog.Infof("Apllying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
+			key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 		applyVPARecommendations(clientset, vpa, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 	})
 	if err != nil {
