@@ -2,222 +2,136 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
-	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/dynamic"
+	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
-type TargetRef struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-	Group      string
-	Version    string
-	Resource   string
-	Namespace  string
+func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	deploymentName := targetRef.Name
+
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Error fetching deployment: %s", err.Error())
+		return
+	}
+
+	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+
+	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
+	if err != nil {
+		klog.Errorf("Error creating patch: %s", err.Error())
+		return
+	}
+
+	force := true
+	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+		FieldManager: "vpa-operator",
+		Force:        &force, // Force the apply to take ownership of the fields
+	})
+	if err != nil {
+		klog.Errorf("Error applying patch to deployment: %s", err.Error())
+	}
 }
 
-func convertKindToResource(kind string) string {
-	// Convert to lowercase
-	resource := strings.ToLower(kind)
-	// Handle special cases
-	switch resource {
-	case "endpoints":
-		return resource // "Endpoints" is already plural
-	default:
-		// This simple rule handles most cases
-		if strings.HasSuffix(resource, "s") {
-			return resource + "es" // For kinds ending in 's' like "Class", making it "classes"
-		} else if strings.HasSuffix(resource, "y") {
-			return strings.TrimSuffix(resource, "y") + "ies" // For kinds ending in 'y' like "Policy", making it "policies"
-		} else {
-			return resource + "s"
+func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	statefulSetName := targetRef.Name
+
+	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(context.TODO(), statefulSetName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Error fetching stateful set: %s", err.Error())
+		return
+	}
+
+	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+
+	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
+	if err != nil {
+		klog.Errorf("Error creating patch: %s", err.Error())
+		return
+	}
+
+	_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+		FieldManager: "oblik-operator",
+	})
+	if err != nil {
+		klog.Errorf("Error applying patch to stateful set: %s", err.Error())
+	}
+}
+
+func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	for _, container := range containers {
+
+		if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
+			var newCPURequests resource.Quantity
+			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+				if containerRecommendation.ContainerName == container.Name {
+					newCPURequests = *containerRecommendation.Target.Cpu()
+					break
+				}
+			}
+			klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
+			container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
 		}
+		if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
+			newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+			klog.Infof("Setting CPU limits to %s for %s container: %s", newCPULimits.String(), vcfg.Key, container.Name)
+			container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
+		}
+
+		if vcfg.RequestMemoryApplyMode == ApplyModeEnforce {
+			var newMemoryRequests resource.Quantity
+			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+				if containerRecommendation.ContainerName == container.Name {
+					newMemoryRequests = *containerRecommendation.Target.Memory()
+					break
+				}
+			}
+			klog.Infof("Setting Memory requests to %s for %s container: %s", newMemoryRequests.String(), vcfg.Key, container.Name)
+			container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
+		}
+		if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
+			newMemoryLimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+			klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
+			container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
+		}
+
 	}
 }
 
-func splitAPIVersion(apiVersion string) (string, string) {
-	parts := strings.Split(apiVersion, "/")
-	if len(parts) == 2 {
-		return parts[0], parts[1] // Returns group and version
-	}
-	// Handle the case for core API group which might be specified as just "v1"
-	if len(parts) == 1 {
-		return "", parts[0] // Returns empty group and version
-	}
-	return "", "" // Return empty if the format is not as expected
-}
+func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
+	var patchedObj interface{}
 
-func getTargetResource(dynamicClient dynamic.Interface, targetRef TargetRef) (*unstructured.Unstructured, error) {
-	gvr, err := getGVR(targetRef)
+	switch t := obj.(type) {
+	case *appsv1.Deployment:
+		patchedObj = t.DeepCopy()
+		patchedObj.(*appsv1.Deployment).APIVersion = apiVersion
+		patchedObj.(*appsv1.Deployment).Kind = kind
+		patchedObj.(*appsv1.Deployment).ObjectMeta.ManagedFields = nil
+	case *appsv1.StatefulSet:
+		patchedObj = t.DeepCopy()
+		patchedObj.(*appsv1.StatefulSet).APIVersion = apiVersion
+		patchedObj.(*appsv1.StatefulSet).Kind = kind
+		patchedObj.(*appsv1.StatefulSet).ObjectMeta.ManagedFields = nil
+	default:
+		return nil, fmt.Errorf("unsupported type: %T", t)
+	}
+
+	jsonData, err := json.Marshal(patchedObj)
 	if err != nil {
 		return nil, err
 	}
-
-	// Get the current resource object
-	targetObj, err := dynamicClient.Resource(gvr).Namespace(targetRef.Namespace).Get(context.TODO(), targetRef.Name, v1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get the target resource %s/%s: %v", targetRef.Namespace, targetRef.Name, err)
-	}
-	return targetObj, nil
-}
-
-func getCurrentReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef) (int32, error) {
-	// Extract the 'spec.replicas' field which is common for Deployment and StatefulSet
-	replicas, found, err := unstructured.NestedInt64(obj.UnstructuredContent(), "spec", "replicas")
-	if err != nil || !found {
-		return 0, fmt.Errorf("error reading replicas for %s %s: %v", targetRef.Kind, targetRef.Name, err)
-	}
-
-	return int32(replicas), nil
-}
-
-func enforceMinReplicas(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef, minReplicas int32) error {
-
-	// Get current replicas from the resource
-	currentReplicas, found, err := unstructured.NestedInt64(obj.UnstructuredContent(), "spec", "replicas")
-	if err != nil || !found {
-		return fmt.Errorf("failed to get current replicas for %s: %v", targetRef.Name, err)
-	}
-
-	if currentReplicas < int64(minReplicas) {
-		// Set the replicas to minReplicas
-		err := unstructured.SetNestedField(obj.Object, int64(minReplicas), "spec", "replicas")
-		if err != nil {
-			return fmt.Errorf("failed to set replicas in the resource spec: %v", err)
-		}
-
-		if err := applyTarget(dynamicClient, targetRef, obj); err != nil {
-			return err
-		}
-
-		fmt.Printf("Updated %s %s to have minReplicas = %d\n", targetRef.Kind, targetRef.Name, minReplicas)
-	} else {
-		fmt.Printf("%s %s already has %d or more replicas\n", targetRef.Kind, targetRef.Name, minReplicas)
-	}
-
-	return nil
-}
-
-func enforceResourceLimits(dynamicClient dynamic.Interface, obj *unstructured.Unstructured, targetRef TargetRef, limitRatio LimitRatio, enableDefault bool, enableEnforce bool, containerRecommendations []ContainerRecommendation) error {
-	if !enableDefault && !enableEnforce {
-		return nil
-	}
-
-	containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "containers")
-	if err != nil || !found {
-		return fmt.Errorf("error finding containers in the resource: %v", err)
-	}
-
-	modified := false
-	for i, container := range containers {
-		containerMap := container.(map[string]interface{})
-
-		// Get current requests and limits
-		requests, _, _ := unstructured.NestedStringMap(containerMap, "resources", "requests")
-		limits, _, _ := unstructured.NestedStringMap(containerMap, "resources", "limits")
-
-		newLimits := map[string]string{}
-
-		var containerRecommendation ContainerRecommendation
-		for _, recommendation := range containerRecommendations {
-			containerName, _, _ := unstructured.NestedString(containerMap, "name")
-			if recommendation.ContainerName == containerName {
-				containerRecommendation = recommendation
-				break
-			}
-		}
-
-		if limits["cpu"] == "" || limits["cpu"] == "0" || enableEnforce {
-			var reqCPUQty resource.Quantity
-			if requests["cpu"] != "" && requests["cpu"] != "0" {
-				reqCPUQty = resource.MustParse(requests["cpu"])
-			} else {
-				reqCPUQty = resource.MustParse(containerRecommendation.CPU)
-			}
-			newLimits["cpu"] = fmt.Sprintf("%.3f", reqCPUQty.AsApproximateFloat64()*limitRatio.CPU)
-			modified = true
-		} else {
-			newLimits["cpu"] = limits["cpu"]
-		}
-
-		if limits["memory"] == "" || limits["memory"] == "0" || enableEnforce {
-			var reqMemoryQty resource.Quantity
-			if requests["memory"] != "" && requests["memory"] != "0" {
-				reqMemoryQty = resource.MustParse(requests["memory"])
-			} else {
-				reqMemoryQty = resource.MustParse(containerRecommendation.Memory)
-			}
-			newLimits["memory"] = fmt.Sprintf("%.0f", reqMemoryQty.AsApproximateFloat64()*limitRatio.Memory)
-			if err := unstructured.SetNestedStringMap(containerMap, newLimits, "resources", "limits"); err != nil {
-				return fmt.Errorf("failed to set new limits: %v", err)
-			}
-			modified = true
-		} else {
-			newLimits["memory"] = limits["memory"]
-		}
-		// log.Printf("newLimits %v", newLimits)
-
-		containers[i] = containerMap
-	}
-
-	log.Printf("Resource limits not modified")
-
-	if !modified {
-		return nil
-	}
-
-	if err := unstructured.SetNestedSlice(obj.Object, containers, "spec", "template", "spec", "containers"); err != nil {
-		return fmt.Errorf("failed to update containers in the resource: %v", err)
-	}
-	if err := applyTarget(dynamicClient, targetRef, obj); err != nil {
-		return fmt.Errorf("failed to update the resource limits: %v", err)
-	}
-
-	log.Printf("Resource limits updated")
-
-	return nil
-}
-
-func applyTarget(dynamicClient dynamic.Interface, targetRef TargetRef, obj *unstructured.Unstructured) error {
-	gvr, err := getGVR(targetRef)
-	if err != nil {
-		return err
-	}
-
-	// Convert unstructured object to JSON bytes
-	data, err := obj.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("failed to marshal deployment JSON: %s", err)
-	}
-
-	// Send a server-side apply request
-	force := true
-	_, err = dynamicClient.Resource(gvr).Namespace(targetRef.Namespace).Patch(context.Background(), targetRef.Name, types.ApplyPatchType, data, metav1.PatchOptions{
-		FieldManager: "example-manager",
-		Force:        &force,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to apply %s: %s", targetRef.Kind, err)
-	}
-	return nil
-}
-
-func getGVR(targetRef TargetRef) (schema.GroupVersionResource, error) {
-	switch targetRef.Kind {
-	case "Deployment":
-		return schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}, nil
-	case "StatefulSet":
-		return schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}, nil
-	default:
-		return schema.GroupVersionResource{}, fmt.Errorf("unsupported kind: %s", targetRef.Kind)
-	}
+	return jsonData, nil
 }
