@@ -2,13 +2,9 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,9 +16,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
-
-const defaultCron = "0 2 * * *"
-const defaultCronAddRandomMax = "120m"
 
 func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clientset) {
 	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
@@ -69,78 +62,24 @@ func handleVPA(clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clien
 }
 
 func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler) {
-	annotations := vpa.Annotations
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
-	cronExpr := annotations["oblik.socialgouv.io/cron"]
-	if cronExpr == "" {
-		cronExpr = getEnv("OBLIK_DEFAULT_CRON", defaultCron)
-	}
+	vcfg := createVPAOblikConfig(vpa)
 
-	cronAddRandomMax := annotations["oblik.socialgouv.io/cron-add-random-max"]
-	if cronAddRandomMax == "" {
-		cronAddRandomMax = getEnv("OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX", defaultCronAddRandomMax)
-	}
-	maxRandomDelay := parseDuration(cronAddRandomMax, 120*time.Minute)
+	key := vcfg.Key
 
-	cpuRecoApplyMode := annotations["oblik.socialgouv.io/cpu-reco-apply-mode"]
-	memoryRecoApplyMode := annotations["oblik.socialgouv.io/memory-reco-apply-mode"]
-
-	limitCPUApplyMode := annotations["oblik.socialgouv.io/limit-cpu-apply-mode"]
-	limitMemoryApplyMode := annotations["oblik.socialgouv.io/limit-memory-apply-mode"]
-
-	limitCPUCalculatorAlgo := annotations["oblik.socialgouv.io/limit-cpu-calculator-algo"]
-	limitMemoryCalculatorAlgo := annotations["oblik.socialgouv.io/limit-memory-calculator-algo"]
-
-	limitMemoryCalculatorValue := annotations["oblik.socialgouv.io/limit-memory-calculator-value"]
-	limitCPUCalculatorValue := annotations["oblik.socialgouv.io/limit-cpu-calculator-value"]
-
-	if cpuRecoApplyMode == "" {
-		cpuRecoApplyMode = "enforce"
-	}
-	if memoryRecoApplyMode == "" {
-		memoryRecoApplyMode = "enforce"
-	}
-	if limitCPUApplyMode == "" {
-		limitCPUApplyMode = "enforce"
-	}
-	if limitMemoryApplyMode == "" {
-		limitMemoryApplyMode = "enforce"
-	}
-
-	if limitCPUCalculatorAlgo == "" {
-		limitCPUCalculatorAlgo = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO", "ratio")
-	}
-	if limitMemoryCalculatorAlgo == "" {
-		limitMemoryCalculatorAlgo = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
-	}
-	if limitCPUCalculatorValue == "" {
-		limitCPUCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
-	}
-	if limitMemoryCalculatorValue == "" {
-		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
-	}
-
-	key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
-
-	klog.Infof("Scheduling VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
-		key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
+	klog.Infof("Scheduling VPA recommendations for %s with cron: %s", key, vcfg.CronExpr)
 
 	if entryID, exists := cronJobs[key]; exists {
 		cronScheduler.Remove(entryID)
 	}
 
-	entryID, err := cronScheduler.AddFunc(cronExpr, func() {
-		randomDelay := time.Duration(rand.Int63n(maxRandomDelay.Nanoseconds()))
+	entryID, err := cronScheduler.AddFunc(vcfg.CronExpr, func() {
+		randomDelay := time.Duration(rand.Int63n(vcfg.CronMaxRandomDelay.Nanoseconds()))
 		time.Sleep(randomDelay)
-		klog.Infof("Applying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
-			key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
-		applyVPARecommendations(clientset, vpa, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
+		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, vcfg.CronExpr)
+		applyVPARecommendations(clientset, vpa, vcfg)
 	})
 	if err != nil {
 		klog.Errorf("Error scheduling cron job: %s", err.Error())
@@ -149,53 +88,28 @@ func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodA
 	cronJobs[key] = entryID
 }
 
-func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue string) {
-	// Get the target deployment or statefulset
-	namespace := vpa.Namespace
+func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
 	targetRef := vpa.Spec.TargetRef
-
 	switch targetRef.Kind {
 	case "Deployment":
-		updateDeployment(clientset, namespace, targetRef.Name, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
+		updateDeployment(clientset, vpa, vcfg)
 	case "StatefulSet":
-		updateStatefulSet(clientset, namespace, targetRef.Name, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
+		updateStatefulSet(clientset, vpa, vcfg)
 	}
 }
 
-func updateDeployment(clientset *kubernetes.Clientset, namespace, deploymentName, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue string) {
+func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	deploymentName := targetRef.Name
+
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Error fetching deployment: %s", err.Error())
 		return
 	}
 
-	for i := range deployment.Spec.Template.Spec.Containers {
-		container := &deployment.Spec.Template.Spec.Containers[i]
-
-		// Apply CPU recommendations
-		if cpuRecoApplyMode != "off" {
-			if cpuRecoApplyMode == "enforce" {
-				newCPURequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
-			}
-			if limitCPUApplyMode == "enforce" {
-				newCPULimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-				container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
-			}
-		}
-
-		// Apply memory recommendations
-		if memoryRecoApplyMode != "off" {
-			if memoryRecoApplyMode == "enforce" {
-				newMemoryRequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
-			}
-			if limitMemoryApplyMode == "enforce" {
-				newMemoryLimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
-			}
-		}
-	}
+	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
@@ -213,42 +127,18 @@ func updateDeployment(clientset *kubernetes.Clientset, namespace, deploymentName
 	}
 }
 
-func updateStatefulSet(clientset *kubernetes.Clientset, namespace, statefulSetName, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue string) {
+func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	statefulSetName := targetRef.Name
+
 	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Error fetching stateful set: %s", err.Error())
 		return
 	}
 
-	for i := range statefulSet.Spec.Template.Spec.Containers {
-		container := &statefulSet.Spec.Template.Spec.Containers[i]
-
-		// Apply CPU recommendations
-		if cpuRecoApplyMode != "off" {
-			newCPURequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-			newCPULimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceCPU], limitCPUCalculatorAlgo, limitCPUCalculatorValue)
-
-			if cpuRecoApplyMode == "enforce" {
-				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
-			}
-			if limitCPUApplyMode == "enforce" {
-				container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
-			}
-		}
-
-		// Apply memory recommendations
-		if memoryRecoApplyMode != "off" {
-			newMemoryRequests := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-			newMemoryLimits := calculateNewResourceValue(container.Resources.Limits[corev1.ResourceMemory], limitMemoryCalculatorAlgo, limitMemoryCalculatorValue)
-
-			if memoryRecoApplyMode == "enforce" {
-				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
-			}
-			if limitMemoryApplyMode == "enforce" {
-				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
-			}
-		}
-	}
+	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
@@ -264,61 +154,38 @@ func updateStatefulSet(clientset *kubernetes.Clientset, namespace, statefulSetNa
 	}
 }
 
-func parseDuration(durationStr string, defaultDuration time.Duration) time.Duration {
-	if durationStr == "" {
-		return defaultDuration
+func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	for _, container := range containers {
+
+		if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
+			var newCPURequests resource.Quantity
+			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+				if containerRecommendation.ContainerName == container.Name {
+					newCPURequests = *containerRecommendation.Target.Cpu()
+					break
+				}
+			}
+			container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
+		}
+		if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
+			newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+			container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
+		}
+
+		if vcfg.RequestMemoryApplyMode == ApplyModeEnforce {
+			var newMemoryRequests resource.Quantity
+			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+				if containerRecommendation.ContainerName == container.Name {
+					newMemoryRequests = *containerRecommendation.Target.Memory()
+					break
+				}
+			}
+			container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
+		}
+		if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
+			newMemoryLimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+			container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
+		}
+
 	}
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		klog.Warningf("Error parsing duration: %s, using default: %s", err.Error(), defaultDuration)
-		return defaultDuration
-	}
-	return duration
-}
-
-func calculateNewResourceValue(currentValue resource.Quantity, algo, valueStr string) resource.Quantity {
-	value, err := strconv.ParseFloat(valueStr, 64)
-	if err != nil {
-		klog.Warningf("Error parsing calculator value: %s", err.Error())
-		return currentValue
-	}
-
-	currentQuantity := currentValue.AsApproximateFloat64()
-
-	newValue := currentValue.DeepCopy()
-	switch algo {
-	case "ratio":
-		newValue = *resource.NewQuantity(int64(currentQuantity*value), currentValue.Format)
-	case "margin":
-		newValue = *resource.NewQuantity(int64(currentQuantity+value), currentValue.Format)
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", algo)
-	}
-
-	return newValue
-}
-
-func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
-	var patchedObj interface{}
-
-	switch t := obj.(type) {
-	case *appsv1.Deployment:
-		patchedObj = t.DeepCopy()
-		patchedObj.(*appsv1.Deployment).APIVersion = apiVersion
-		patchedObj.(*appsv1.Deployment).Kind = kind
-		patchedObj.(*appsv1.Deployment).ObjectMeta.ManagedFields = nil
-	case *appsv1.StatefulSet:
-		patchedObj = t.DeepCopy()
-		patchedObj.(*appsv1.StatefulSet).APIVersion = apiVersion
-		patchedObj.(*appsv1.StatefulSet).Kind = kind
-		patchedObj.(*appsv1.StatefulSet).ObjectMeta.ManagedFields = nil
-	default:
-		return nil, fmt.Errorf("unsupported type: %T", t)
-	}
-
-	jsonData, err := json.Marshal(patchedObj)
-	if err != nil {
-		return nil, err
-	}
-	return jsonData, nil
 }
