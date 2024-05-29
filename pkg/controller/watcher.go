@@ -198,7 +198,7 @@ func updateDeployment(clientset *kubernetes.Clientset, namespace, deploymentName
 		}
 	}
 
-	patchData, err := createPatch(deployment)
+	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
 		klog.Errorf("Error creating patch: %s", err.Error())
 		return
@@ -249,7 +249,7 @@ func updateStatefulSet(clientset *kubernetes.Clientset, namespace, statefulSetNa
 		}
 	}
 
-	patchData, err := createPatch(statefulSet)
+	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
 		klog.Errorf("Error creating patch: %s", err.Error())
 		return
@@ -282,18 +282,14 @@ func calculateNewResourceValue(currentValue resource.Quantity, algo, valueStr st
 		return currentValue
 	}
 
-	currentQuantity, ok := currentValue.AsInt64()
-	if !ok {
-		klog.Warningf("Error converting quantity to int64 for resource")
-		return currentValue
-	}
+	currentQuantity := currentValue.AsApproximateFloat64()
 
 	newValue := currentValue.DeepCopy()
 	switch algo {
 	case "ratio":
-		newValue = *resource.NewQuantity(int64(float64(currentQuantity)*value), currentValue.Format)
+		newValue = *resource.NewQuantity(int64(currentQuantity*value), currentValue.Format)
 	case "margin":
-		newValue = *resource.NewQuantity(currentQuantity+int64(value), currentValue.Format)
+		newValue = *resource.NewQuantity(int64(currentQuantity+value), currentValue.Format)
 	default:
 		klog.Warningf("Unknown calculator algorithm: %s", algo)
 	}
@@ -301,14 +297,18 @@ func calculateNewResourceValue(currentValue resource.Quantity, algo, valueStr st
 	return newValue
 }
 
-func createPatch(obj interface{}) ([]byte, error) {
+func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
 	var patchedObj interface{}
 
 	switch t := obj.(type) {
 	case *appsv1.Deployment:
 		patchedObj = t.DeepCopy()
+		patchedObj.(*appsv1.Deployment).APIVersion = apiVersion
+		patchedObj.(*appsv1.Deployment).Kind = kind
 	case *appsv1.StatefulSet:
 		patchedObj = t.DeepCopy()
+		patchedObj.(*appsv1.StatefulSet).APIVersion = apiVersion
+		patchedObj.(*appsv1.StatefulSet).Kind = kind
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", t)
 	}
