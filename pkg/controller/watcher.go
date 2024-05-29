@@ -138,7 +138,7 @@ func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodA
 	entryID, err := cronScheduler.AddFunc(cronExpr, func() {
 		randomDelay := time.Duration(rand.Int63n(maxRandomDelay.Nanoseconds()))
 		time.Sleep(randomDelay)
-		klog.Infof("Apllying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
+		klog.Infof("Applying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
 			key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 		applyVPARecommendations(clientset, vpa, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 	})
@@ -304,10 +304,12 @@ func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
 		patchedObj = t.DeepCopy()
 		patchedObj.(*appsv1.Deployment).APIVersion = apiVersion
 		patchedObj.(*appsv1.Deployment).Kind = kind
+		patchedObj.(*appsv1.Deployment).ObjectMeta.ManagedFields = nil
 	case *appsv1.StatefulSet:
 		patchedObj = t.DeepCopy()
 		patchedObj.(*appsv1.StatefulSet).APIVersion = apiVersion
 		patchedObj.(*appsv1.StatefulSet).Kind = kind
+		patchedObj.(*appsv1.StatefulSet).ObjectMeta.ManagedFields = nil
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", t)
 	}
