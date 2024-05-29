@@ -82,10 +82,12 @@ func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPo
 					break
 				}
 			}
+			klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
 			container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
 		}
 		if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
 			newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+			klog.Infof("Setting CPU limits to %s for %s container: %s", newCPULimits.String(), vcfg.Key, container.Name)
 			container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
 		}
 
@@ -97,10 +99,12 @@ func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPo
 					break
 				}
 			}
+			klog.Infof("Setting Memory requests to %s for %s container: %s", newMemoryRequests.String(), vcfg.Key, container.Name)
 			container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
 		}
 		if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
 			newMemoryLimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+			klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
 			container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
 		}
 
