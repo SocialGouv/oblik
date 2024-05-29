@@ -27,9 +27,13 @@ func calculateNewLimitValue(currentValue resource.Quantity, algo CalculatorAlgo,
 	newValue := currentValue.DeepCopy()
 	switch algo {
 	case CalculatorAlgoRatio:
-		currentMilliValue := currentValue.MilliValue()
-		newMilliValue := int64(float64(currentMilliValue) * value)
-		newValue = *resource.NewMilliQuantity(newMilliValue, currentValue.Format)
+		if currentValue.Format == resource.DecimalSI { // Handles CPU
+			currentMilliValue := currentValue.MilliValue()
+			newMilliValue := int64(float64(currentMilliValue) * value)
+			newValue = *resource.NewMilliQuantity(newMilliValue, currentValue.Format)
+		} else { // Handles memory
+			newValue = *resource.NewQuantity(int64(float64(currentValue.Value())*value), currentValue.Format)
+		}
 	case CalculatorAlgoMargin:
 		newValue.Add(resource.MustParse(fmt.Sprintf("%.0fm", value*1000)))
 	}
