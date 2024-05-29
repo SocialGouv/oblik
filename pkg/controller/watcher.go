@@ -63,7 +63,7 @@ func handleVPA(clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clien
 		return
 	}
 
-	klog.Infof("Handling VPA: %s", vpa.Name)
+	klog.Infof("Handling VPA: %s/%s", vpa.Namespace, vpa.Name)
 
 	applyRecommendations(clientset, vpa)
 }
@@ -124,13 +124,13 @@ func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodA
 		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
 	}
 
+	key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
+
 	klog.Infof("Applying VPA recommendations for %s with cron: %s, maxRandomDelay: %s, cpuRecoApplyMode: %s, memoryRecoApplyMode: %s, limitMemoryApplyMode: %s, limitCPUApplyMode: %s, limitCPUCalculatorAlgo: %s, limitMemoryCalculatorAlgo: %s, limitMemoryCalculatorValue: %s, limitCPUCalculatorValue: %s",
-		vpa.Name, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
+		key, cronExpr, maxRandomDelay, cpuRecoApplyMode, memoryRecoApplyMode, limitMemoryApplyMode, limitCPUApplyMode, limitCPUCalculatorAlgo, limitMemoryCalculatorAlgo, limitMemoryCalculatorValue, limitCPUCalculatorValue)
 
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
-
-	key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
 
 	// Remove existing cron job if it exists
 	if entryID, exists := cronJobs[key]; exists {
