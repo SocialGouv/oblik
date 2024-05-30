@@ -26,10 +26,10 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
 
 - **`oblik.socialgouv.io/cron`**: Cron expression to schedule when the recommendations are applied. (default: `"0 2 * * *"`)
 - **`oblik.socialgouv.io/cron-add-random-max`**: Maximum random delay added to the cron schedule. (default: `"120m"`)
-- **`oblik.socialgouv.io/request-cpu-apply-mode`**: CPU recommendation mode. Options: `enforce`, `default`, `off`.
-- **`oblik.socialgouv.io/request-memory-apply-mode`**: Memory recommendation mode. Options: `enforce`, `default`, `off`.
-- **`oblik.socialgouv.io/limit-memory-apply-mode`**: Memory limit apply mode. Options: `enforce`, `default`, `off`.
-- **`oblik.socialgouv.io/limit-cpu-apply-mode`**: CPU limit apply mode. Options: `enforce`, `default`, `off`.
+- **`oblik.socialgouv.io/request-cpu-apply-mode`**: CPU recommendation mode. Options: `enforce`, `off`.
+- **`oblik.socialgouv.io/request-memory-apply-mode`**: Memory recommendation mode. Options: `enforce`, `off`.
+- **`oblik.socialgouv.io/limit-memory-apply-mode`**: Memory limit apply mode. Options: `enforce`, `off`.
+- **`oblik.socialgouv.io/limit-cpu-apply-mode`**: CPU limit apply mode. Options: `enforce`, `off`.
 - **`oblik.socialgouv.io/limit-cpu-calculator-algo`**: CPU limit calculator algorithm. Options: `ratio`, `margin`.
 - **`oblik.socialgouv.io/limit-memory-calculator-algo`**: Memory limit calculator algorithm. Options: `ratio`, `margin`.
 - **`oblik.socialgouv.io/limit-memory-calculator-value`**: Value used by the memory calculator algorithm.
