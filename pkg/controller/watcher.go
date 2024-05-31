@@ -55,10 +55,10 @@ func handleVPA(clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clien
 
 	klog.Infof("Handling VPA: %s/%s", vpa.Namespace, vpa.Name)
 
-	applyRecommendations(clientset, vpa)
+	scheduleVPA(clientset, vpa)
 }
 
-func applyRecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler) {
+func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler) {
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
