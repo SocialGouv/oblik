@@ -33,6 +33,8 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return
 	}
 
+	klog.Infof("patchData for %s: %v", vcfg.Key, patchData)
+
 	force := true
 	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 		FieldManager: "oblik-operator",
@@ -72,39 +74,35 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 
 func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
 	for _, container := range containers {
-
-		if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
-			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
-				if containerRecommendation.ContainerName == container.Name {
-					newCPURequests := *containerRecommendation.Target.Cpu()
-					klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
-					container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
-					break
-				}
+		for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+			if containerRecommendation.ContainerName != container.Name {
+				continue
 			}
-		}
-		if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
-			newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
-			klog.Infof("Setting CPU limits to %s for %s container: %s", newCPULimits.String(), vcfg.Key, container.Name)
-			container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
-		}
+			if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
+				newCPURequests := *containerRecommendation.Target.Cpu()
+				klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
+				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
+			}
+			if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
+				newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+				klog.Infof("Setting CPU limits to %s for %s container: %s", newCPULimits.String(), vcfg.Key, container.Name)
+				container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
+			}
 
-		if vcfg.RequestMemoryApplyMode == ApplyModeEnforce {
-			for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+			if vcfg.RequestMemoryApplyMode == ApplyModeEnforce {
 				if containerRecommendation.ContainerName == container.Name {
 					newMemoryRequests := *containerRecommendation.Target.Memory()
 					klog.Infof("Setting Memory requests to %s for %s container: %s", newMemoryRequests.String(), vcfg.Key, container.Name)
 					container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
-					break
 				}
 			}
+			if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
+				newMemoryLimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+				klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
+				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
+			}
+			break
 		}
-		if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
-			newMemoryLimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
-			klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
-			container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
-		}
-
 	}
 }
 
