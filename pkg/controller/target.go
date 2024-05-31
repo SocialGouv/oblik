@@ -18,22 +18,20 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	deploymentName := targetRef.Name
-
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Error fetching deployment: %s", err.Error())
 		return
 	}
 
-	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+	wrapper := &DeploymentWrapper{Deployment: deployment}
+	updateContainerResources(wrapper, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
 		klog.Errorf("Error creating patch: %s", err.Error())
 		return
 	}
-
-	klog.Infof("patchData for %s: %v", vcfg.Key, patchData)
 
 	force := true
 	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
@@ -56,7 +54,8 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return
 	}
 
-	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+	wrapper := &StatefulSetWrapper{StatefulSet: statefulSet}
+	updateContainerResources(wrapper, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
@@ -72,12 +71,20 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	}
 }
 
-func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
-	for _, container := range containers {
+func updateContainerResources(workload Workload, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	containers := []corev1.Container{}
+	for _, container := range workload.GetContainers() {
 		for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
 			}
+			if container.Resources.Requests == nil {
+				container.Resources.Requests = corev1.ResourceList{}
+			}
+			if container.Resources.Limits == nil {
+				container.Resources.Limits = corev1.ResourceList{}
+			}
+
 			if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
 				newCPURequests := *containerRecommendation.Target.Cpu()
 				klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
@@ -101,9 +108,11 @@ func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPo
 				klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
 				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
 			}
+			containers = append(containers, container)
 			break
 		}
 	}
+	workload.SetContainers(containers)
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {

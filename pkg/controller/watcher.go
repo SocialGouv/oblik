@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -38,6 +39,15 @@ func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientse
 			},
 			DeleteFunc: func(obj interface{}) {
 				klog.Info("VPA deleted")
+				vpa, ok := obj.(*vpa.VerticalPodAutoscaler)
+				if !ok {
+					klog.Error("Could not cast to VPA object")
+					return
+				}
+				key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
+				if entryID, exists := cronJobs[key]; exists {
+					cronScheduler.Remove(entryID)
+				}
 			},
 		},
 	)
