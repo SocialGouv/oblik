@@ -12,6 +12,8 @@ type Payload struct {
 }
 
 func sendMattermostAlert(message string) error {
+	webhookURL := getEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
+
 	payload := Payload{
 		Text: message,
 	}
@@ -39,4 +41,5 @@ func sendMattermostAlert(message string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Non-OK HTTP status: %v\n", resp.StatusCode)
 	}
+	return nil
 }
