@@ -1,37 +1,42 @@
 package controller
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/go-resty/resty/v2"
 )
 
-type MattermostMessage struct {
+type Payload struct {
 	Text string `json:"text"`
 }
 
 func sendMattermostAlert(message string) error {
-	client := resty.New()
-	msg := MattermostMessage{Text: message}
-	webhookURL := getEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
-
-	if webhookURL == "" {
-		return nil
+	payload := Payload{
+		Text: message,
 	}
 
-	resp, err := client.R().
-		SetHeader("User-Agent", "Oblik").
-		SetBody(msg).
-		Post(webhookURL)
-
+	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("error sending request: %w", err)
+		return err
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("received non-OK response code: %d", resp.StatusCode())
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return err
 	}
 
-	return nil
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Oblik")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Non-OK HTTP status: %v\n", resp.StatusCode)
+	}
 }
