@@ -5,10 +5,37 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"k8s.io/klog/v2"
 )
 
 type Payload struct {
 	Text string `json:"text"`
+}
+
+func sendUpdatesToMattermost(updates []Update, vcfg *VPAOblikConfig) {
+	if len(updates) == 0 {
+		return
+	}
+
+	for _, update := range updates {
+		typeLabel := getUpdateTypeLabel(update.Type)
+		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, update.New.String(), update.Old.String(), vcfg.Key, update.ContainerName)
+	}
+
+	markdown := []string{
+		fmt.Sprintf("Changes on %s", vcfg.Key),
+		"\n| Container Name | Change Type | Old Value | New Value |",
+		"|:-----|------|------|------|",
+	}
+	for _, update := range updates {
+		typeLabel := getUpdateTypeLabel(update.Type)
+		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+update.Old.String()+"|"+update.New.String()+"|")
+	}
+
+	if err := sendMattermostAlert(strings.Join(markdown, "\n")); err != nil {
+		klog.Errorf("Error sending Mattermost alert: %s", err.Error())
+	}
 }
 
 func sendMattermostAlert(message string) error {

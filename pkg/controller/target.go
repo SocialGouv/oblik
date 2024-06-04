@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -277,29 +276,7 @@ func updateContainerResources(containers []corev1.Container, vpaResources *vpa.V
 	recommandations := getTargetRecommandations(vpaResources)
 	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
 	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)
-
-	if len(updates) == 0 {
-		return
-	}
-
-	for _, update := range updates {
-		typeLabel := getUpdateTypeLabel(update.Type)
-		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, update.New.String(), update.Old.String(), vcfg.Key, update.ContainerName)
-	}
-
-	markdown := []string{
-		fmt.Sprintf("Changes on %s", vcfg.Key),
-		"| Container Name | Change Type | Old Value | New Value |",
-		"|:-----|------|------|------|",
-	}
-	for _, update := range updates {
-		typeLabel := getUpdateTypeLabel(update.Type)
-		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+update.Old.String()+"|"+update.New.String()+"|")
-	}
-
-	if err := sendMattermostAlert(strings.Join(markdown, "\n")); err != nil {
-		klog.Errorf("Error sending Mattermost alert: %s", err.Error())
-	}
+	sendUpdatesToMattermost(updates, vcfg)
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
