@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 type Payload struct {
@@ -14,32 +14,29 @@ type Payload struct {
 func sendMattermostAlert(message string) error {
 	webhookURL := getEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
 
-	payload := Payload{
-		Text: message,
-	}
+	payload := fmt.Sprintf(`{"text": "%s"}`, message)
 
-	jsonPayload, err := json.Marshal(payload)
+	formData := url.Values{}
+	formData.Set("payload", payload)
+
+	req, err := http.NewRequest("POST", webhookURL, strings.NewReader(formData.Encode()))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "Oblik")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("error sending request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Non-OK HTTP status: %v\n", resp.StatusCode)
+		return fmt.Errorf("non-OK HTTP status: %v", resp.StatusCode)
 	}
+
 	return nil
 }
