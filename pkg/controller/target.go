@@ -187,7 +187,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Limits = corev1.ResourceList{}
 			}
 
-			newCPURequests := *containerRecommendation.Target.Cpu()
+			newCPURequests := *containerRecommendation.Cpu
 			if vcfg.RequestCPUApplyMode == ApplyModeEnforce && newCPURequests != *container.Resources.Requests.Cpu() {
 				klog.Infof("Setting CPU requests to %s (previously %s) for %s container: %s", newCPURequests.String(), container.Resources.Requests.Cpu(), vcfg.Key, container.Name)
 				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
@@ -199,7 +199,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Limits[corev1.ResourceCPU] = newCPULimits
 			}
 
-			newMemoryRequests := *containerRecommendation.Target.Memory()
+			newMemoryRequests := *containerRecommendation.Memory
 			if vcfg.RequestMemoryApplyMode == ApplyModeEnforce && newMemoryRequests != *container.Resources.Requests.Memory() {
 				klog.Infof("Setting Memory requests to %s (previously %s) for %s container: %s", newMemoryRequests.String(), container.Resources.Requests.Memory(), vcfg.Key, container.Name)
 				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
