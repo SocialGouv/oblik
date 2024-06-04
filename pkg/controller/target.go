@@ -43,6 +43,36 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 	}
 }
 
+func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	cronjobName := targetRef.Name
+
+	cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.TODO(), cronjobName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Error fetching cronjob: %s", err.Error())
+		return
+	}
+
+	wrapper := &CronJobWrapper{CronJob: cronjob}
+	updateContainerResources(wrapper, vpa, vcfg)
+
+	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
+	if err != nil {
+		klog.Errorf("Error creating patch: %s", err.Error())
+		return
+	}
+
+	force := true
+	_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+		FieldManager: "oblik-operator",
+		Force:        &force, // Force the apply to take ownership of the fields
+	})
+	if err != nil {
+		klog.Errorf("Error applying patch to deployment: %s", err.Error())
+	}
+}
+
 func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef

@@ -2,6 +2,7 @@ package controller
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,4 +52,24 @@ func (w *StatefulSetWrapper) GetObjectMeta() *metav1.ObjectMeta {
 
 func (w *StatefulSetWrapper) GetSpec() interface{} {
 	return w.StatefulSet.Spec
+}
+
+type CronJobWrapper struct {
+	CronJob *batchv1.CronJob
+}
+
+func (w *CronJobWrapper) GetContainers() []corev1.Container {
+	return w.CronJob.Spec.JobTemplate.Spec.Template.Spec.Containers
+}
+
+func (w *CronJobWrapper) SetContainers(containers []corev1.Container) {
+	w.CronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = containers
+}
+
+func (w *CronJobWrapper) GetObjectMeta() *metav1.ObjectMeta {
+	return &w.CronJob.ObjectMeta
+}
+
+func (w *CronJobWrapper) GetSpec() interface{} {
+	return w.CronJob.Spec
 }

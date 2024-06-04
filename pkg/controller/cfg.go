@@ -25,6 +25,15 @@ const (
 	CalculatorAlgoMargin
 )
 
+type UnprovidedApplyDefaultMode int
+
+const (
+	UnprovidedApplyDefaultModeOff UnprovidedApplyDefaultMode = iota
+	UnprovidedApplyDefaultModeMinAllowed
+	UnprovidedApplyDefaultModeMaxAllowed
+	UnprovidedApplyDefaultModeValue
+)
+
 type VPAOblikConfig struct {
 	Key string
 
@@ -42,6 +51,9 @@ type VPAOblikConfig struct {
 
 	LimitMemoryCalculatorValue string
 	LimitCPUCalculatorValue    string
+
+	UnprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
+	UnprovidedApplyDefaultRequestCPUValue  string
 }
 
 func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
@@ -100,7 +112,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	case "margin":
 		defaultLimitCPUCalculatorAlgo = CalculatorAlgoMargin
 	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgo)
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgoParam)
 		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
 	}
 
@@ -125,7 +137,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	case "margin":
 		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoMargin
 	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgo)
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgoParam)
 		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
 	}
 

@@ -102,5 +102,7 @@ func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalP
 		updateDeployment(clientset, vpa, vcfg)
 	case "StatefulSet":
 		updateStatefulSet(clientset, vpa, vcfg)
+	case "CronJob":
+		updateCronJob(clientset, vpa, vcfg)
 	}
 }
