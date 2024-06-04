@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -98,10 +99,37 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	}
 }
 
-func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func findContainerPolicy(vpaResources *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
+	for _, containerPolicy := range vpaResources.Spec.ResourcePolicy.ContainerPolicies {
+		if containerPolicy.ContainerName == containerName || containerPolicy.ContainerName == "*" {
+			return &containerPolicy
+		}
+	}
+	return nil
+}
+
+type TargetRecommandation struct {
+	Cpu           *resource.Quantity
+	Memory        *resource.Quantity
+	ContainerName string
+}
+
+func getTargetRecommandations(vpaResources *vpa.VerticalPodAutoscaler) []TargetRecommandation {
+	recommandations := []TargetRecommandation{}
+	for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
+		recommandations = append(recommandations, TargetRecommandation{
+			Cpu:           containerRecommendation.Target.Cpu(),
+			Memory:        containerRecommendation.Target.Memory(),
+			ContainerName: containerRecommendation.ContainerName,
+		})
+	}
+	return recommandations
+}
+
+func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) []TargetRecommandation {
 	for _, container := range containers {
 		var found bool
-		for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
+		for _, containerRecommendation := range recommandations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
 			}
@@ -109,16 +137,45 @@ func updateContainerResources(containers []corev1.Container, vpaResources *vpa.V
 			break
 		}
 		if !found {
-			containerRecommandations := vpa.RecommendedContainerResources{}
-			// if vcfg.UnprovidedApplyDefaultRequestCPUSource == UnprovidedApplyDefaultModeOff {
+			containerRecommandation := TargetRecommandation{
+				ContainerName: container.Name,
+			}
+			switch vcfg.UnprovidedApplyDefaultRequestCPUSource {
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Cpu()
+			case UnprovidedApplyDefaultModeMinAllowed:
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MinAllowed.Cpu()
+			case UnprovidedApplyDefaultModeValue:
+				cpu, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestCPUValue)
+				if err != nil {
+					klog.Warningf("Set unprovided CPU resources, value parsing error: %s", err.Error())
+					break
+				}
+				containerRecommandation.Cpu = &cpu
+			}
+			switch vcfg.UnprovidedApplyDefaultRequestMemorySource {
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Memory()
+			case UnprovidedApplyDefaultModeMinAllowed:
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MinAllowed.Memory()
+			case UnprovidedApplyDefaultModeValue:
+				memory, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestMemoryValue)
+				if err != nil {
+					klog.Warningf("Set unprovided Memory resources, value parsing error: %s", err.Error())
+					break
+				}
+				containerRecommandation.Memory = &memory
+			}
 
-			// }
-			vpaResources.Status.Recommendation.ContainerRecommendations = append(vpaResources.Status.Recommendation.ContainerRecommendations, containerRecommandations)
+			recommandations = append(recommandations, containerRecommandation)
 		}
 	}
+	return recommandations
+}
 
+func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *VPAOblikConfig) {
 	for index, container := range containers {
-		for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
+		for _, containerRecommendation := range recommandations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
 			}
@@ -131,9 +188,9 @@ func updateContainerResources(containers []corev1.Container, vpaResources *vpa.V
 			}
 
 			if vcfg.RequestCPUApplyMode == ApplyModeEnforce {
-				newCPURequests := *containerRecommendation.Target.Cpu()
+				newCPURequests := containerRecommendation.Cpu
 				klog.Infof("Setting CPU requests to %s for %s container: %s", newCPURequests.String(), vcfg.Key, container.Name)
-				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
+				container.Resources.Requests[corev1.ResourceCPU] = *newCPURequests
 			}
 			if vcfg.LimitCPUApplyMode == ApplyModeEnforce {
 				newCPULimits := calculateNewLimitValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
@@ -143,9 +200,9 @@ func updateContainerResources(containers []corev1.Container, vpaResources *vpa.V
 
 			if vcfg.RequestMemoryApplyMode == ApplyModeEnforce {
 				if containerRecommendation.ContainerName == container.Name {
-					newMemoryRequests := *containerRecommendation.Target.Memory()
+					newMemoryRequests := containerRecommendation.Memory
 					klog.Infof("Setting Memory requests to %s for %s container: %s", newMemoryRequests.String(), vcfg.Key, container.Name)
-					container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequests
+					container.Resources.Requests[corev1.ResourceMemory] = *newMemoryRequests
 				}
 			}
 			if vcfg.LimitMemoryApplyMode == ApplyModeEnforce {
@@ -157,6 +214,12 @@ func updateContainerResources(containers []corev1.Container, vpaResources *vpa.V
 			break
 		}
 	}
+}
+
+func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	recommandations := getTargetRecommandations(vpaResources)
+	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
+	applyRecommandationsToContainers(containers, recommandations, vcfg)
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
