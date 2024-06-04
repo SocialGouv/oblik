@@ -22,6 +22,7 @@ func sendMattermostAlert(message string) error {
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("User-Agent", "Oblik").
 		SetBody(msg).
 		Post(webhookURL)
 
@@ -35,14 +36,3 @@ func sendMattermostAlert(message string) error {
 
 	return nil
 }
-
-// func main() {
-// 	webhookURL := "https://your-mattermost-instance/hooks/your-webhook-id"
-// 	message := "Alerte : quelque chose s'est passé !"
-
-// 	if err := sendMattermostAlert(webhookURL, message); err != nil {
-// 		fmt.Printf("Error sending alert: %v\n", err)
-// 	} else {
-// 		fmt.Println("Alerte envoyée avec succès !")
-// 	}
-// }
