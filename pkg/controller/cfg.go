@@ -54,6 +54,9 @@ type VPAOblikConfig struct {
 
 	UnprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
 	UnprovidedApplyDefaultRequestCPUValue  string
+
+	UnprovidedApplyDefaultRequestMemorySource UnprovidedApplyDefaultMode
+	UnprovidedApplyDefaultRequestMemoryValue  string
 }
 
 func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
@@ -162,6 +165,40 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	}
 	if cfg.LimitMemoryCalculatorValue == "" {
 		cfg.LimitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
+	}
+
+	unprovidedApplyDefaultRequestCPU := annotations["oblik.socialgouv.io/unprovided-apply-default-request-cpu"]
+	if unprovidedApplyDefaultRequestCPU == "" {
+		unprovidedApplyDefaultRequestCPU = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "off")
+	}
+
+	switch unprovidedApplyDefaultRequestCPU {
+	case "off":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeOff
+	case "maxAllowed":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMaxAllowed
+	case "minAllowed":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMinAllowed
+	default:
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeValue
+		cfg.UnprovidedApplyDefaultRequestCPUValue = unprovidedApplyDefaultRequestCPU
+	}
+
+	unprovidedApplyDefaultRequestMemory := annotations["oblik.socialgouv.io/unprovided-apply-default-request-memory"]
+	if unprovidedApplyDefaultRequestMemory == "" {
+		unprovidedApplyDefaultRequestMemory = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "off")
+	}
+
+	switch unprovidedApplyDefaultRequestMemory {
+	case "off":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeOff
+	case "maxAllowed":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMaxAllowed
+	case "minAllowed":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMinAllowed
+	default:
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeValue
+		cfg.UnprovidedApplyDefaultRequestMemoryValue = unprovidedApplyDefaultRequestMemory
 	}
 
 	return cfg

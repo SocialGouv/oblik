@@ -98,12 +98,31 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	}
 }
 
-func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
-	for index, container := range containers {
-		for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	for _, container := range containers {
+		var found bool
+		for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
 			}
+			found = true
+			break
+		}
+		if !found {
+			containerRecommandations := vpa.RecommendedContainerResources{}
+			// if vcfg.UnprovidedApplyDefaultRequestCPUSource == UnprovidedApplyDefaultModeOff {
+
+			// }
+			vpaResources.Status.Recommendation.ContainerRecommendations = append(vpaResources.Status.Recommendation.ContainerRecommendations, containerRecommandations)
+		}
+	}
+
+	for index, container := range containers {
+		for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
+			if containerRecommendation.ContainerName != container.Name {
+				continue
+			}
+
 			if container.Resources.Requests == nil {
 				container.Resources.Requests = corev1.ResourceList{}
 			}

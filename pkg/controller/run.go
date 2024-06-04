@@ -25,10 +25,6 @@ func Run() {
 		panic(err.Error())
 	}
 
-	if err != nil {
-		klog.Fatalf("Error building kubeconfig: %s", err.Error())
-	}
-
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		klog.Fatalf("Error creating Kubernetes client: %s", err.Error())
