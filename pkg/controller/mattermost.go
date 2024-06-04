@@ -21,7 +21,7 @@ func sendMattermostAlert(message string) error {
 	}
 
 	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Type", "text/html; charset=utf-8").
 		SetHeader("User-Agent", "Oblik").
 		SetBody(msg).
 		Post(webhookURL)

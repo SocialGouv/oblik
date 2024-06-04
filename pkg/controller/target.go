@@ -16,6 +16,22 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type UpdateType int
+
+const (
+	UpdateTypeCpuRequest UpdateType = iota
+	UpdateTypeMemoryRequest
+	UpdateTypeCpuLimit
+	UpdateTypeMemoryLimit
+)
+
+type Update struct {
+	Old           resource.Quantity
+	New           resource.Quantity
+	Type          UpdateType
+	ContainerName string
+}
+
 type TargetRecommandation struct {
 	Cpu           *resource.Quantity
 	Memory        *resource.Quantity
@@ -174,22 +190,6 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 	return recommandations
 }
 
-type UpdateType int
-
-const (
-	UpdateTypeCpuRequest UpdateType = iota
-	UpdateTypeMemoryRequest
-	UpdateTypeCpuLimit
-	UpdateTypeMemoryLimit
-)
-
-type Update struct {
-	Old           resource.Quantity
-	New           resource.Quantity
-	Type          UpdateType
-	ContainerName string
-}
-
 func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *VPAOblikConfig) []Update {
 	updates := []Update{}
 	for index, container := range containers {
@@ -214,7 +214,6 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					Type:          UpdateTypeCpuRequest,
 					ContainerName: container.Name,
 				})
-				// klog.Infof("Setting CPU requests to %s (previously %s) for %s container: %s", newCPURequests.String(), cpuRequest.String(), vcfg.Key, container.Name)
 				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
 			}
 
@@ -227,7 +226,6 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					Type:          UpdateTypeCpuLimit,
 					ContainerName: container.Name,
 				})
-				// klog.Infof("Setting CPU limits to %s (previously %s) for %s container: %s", newCPULimits.String(), cpuLimit.String(), vcfg.Key, container.Name)
 				container.Resources.Limits[corev1.ResourceCPU] = newCPULimit
 			}
 
@@ -240,7 +238,6 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					Type:          UpdateTypeMemoryRequest,
 					ContainerName: container.Name,
 				})
-				// klog.Infof("Setting Memory requests to %s (previously %s) for %s container: %s", newMemoryRequests.String(), memoryRequest.String(), vcfg.Key, container.Name)
 				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequest
 			}
 
@@ -253,7 +250,6 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					Type:          UpdateTypeMemoryLimit,
 					ContainerName: container.Name,
 				})
-				// klog.Infof("Setting Memory limits to %s (previously %s) for %s container: %s", newMemoryLimits.String(), memoryLimit.String(), vcfg.Key, container.Name)
 				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimit
 			}
 			containers[index] = container
