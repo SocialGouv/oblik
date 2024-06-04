@@ -24,8 +24,7 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return
 	}
 
-	wrapper := &DeploymentWrapper{Deployment: deployment}
-	updateContainerResources(wrapper, vpa, vcfg)
+	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
@@ -54,8 +53,7 @@ func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 		return
 	}
 
-	wrapper := &CronJobWrapper{CronJob: cronjob}
-	updateContainerResources(wrapper, vpa, vcfg)
+	updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
 	if err != nil {
@@ -84,8 +82,7 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return
 	}
 
-	wrapper := &StatefulSetWrapper{StatefulSet: statefulSet}
-	updateContainerResources(wrapper, vpa, vcfg)
+	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
@@ -101,9 +98,8 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	}
 }
 
-func updateContainerResources(workload Workload, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
-	containers := []corev1.Container{}
-	for _, container := range workload.GetContainers() {
+func updateContainerResources(containers []corev1.Container, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	for index, container := range containers {
 		for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
@@ -138,11 +134,10 @@ func updateContainerResources(workload Workload, vpa *vpa.VerticalPodAutoscaler,
 				klog.Infof("Setting Memory limits to %s for %s container: %s", newMemoryLimits.String(), vcfg.Key, container.Name)
 				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
 			}
-			containers = append(containers, container)
+			containers[index] = container
 			break
 		}
 	}
-	workload.SetContainers(containers)
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
