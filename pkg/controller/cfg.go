@@ -25,6 +25,15 @@ const (
 	CalculatorAlgoMargin
 )
 
+type UnprovidedApplyDefaultMode int
+
+const (
+	UnprovidedApplyDefaultModeOff UnprovidedApplyDefaultMode = iota
+	UnprovidedApplyDefaultModeMinAllowed
+	UnprovidedApplyDefaultModeMaxAllowed
+	UnprovidedApplyDefaultModeValue
+)
+
 type VPAOblikConfig struct {
 	Key string
 
@@ -42,6 +51,12 @@ type VPAOblikConfig struct {
 
 	LimitMemoryCalculatorValue string
 	LimitCPUCalculatorValue    string
+
+	UnprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
+	UnprovidedApplyDefaultRequestCPUValue  string
+
+	UnprovidedApplyDefaultRequestMemorySource UnprovidedApplyDefaultMode
+	UnprovidedApplyDefaultRequestMemoryValue  string
 }
 
 func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
@@ -100,7 +115,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	case "margin":
 		defaultLimitCPUCalculatorAlgo = CalculatorAlgoMargin
 	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgo)
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgoParam)
 		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
 	}
 
@@ -125,7 +140,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	case "margin":
 		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoMargin
 	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgo)
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgoParam)
 		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
 	}
 
@@ -150,6 +165,40 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	}
 	if cfg.LimitMemoryCalculatorValue == "" {
 		cfg.LimitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
+	}
+
+	unprovidedApplyDefaultRequestCPU := annotations["oblik.socialgouv.io/unprovided-apply-default-request-cpu"]
+	if unprovidedApplyDefaultRequestCPU == "" {
+		unprovidedApplyDefaultRequestCPU = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "off")
+	}
+
+	switch unprovidedApplyDefaultRequestCPU {
+	case "off":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeOff
+	case "maxAllowed":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMaxAllowed
+	case "minAllowed":
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMinAllowed
+	default:
+		cfg.UnprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeValue
+		cfg.UnprovidedApplyDefaultRequestCPUValue = unprovidedApplyDefaultRequestCPU
+	}
+
+	unprovidedApplyDefaultRequestMemory := annotations["oblik.socialgouv.io/unprovided-apply-default-request-memory"]
+	if unprovidedApplyDefaultRequestMemory == "" {
+		unprovidedApplyDefaultRequestMemory = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "off")
+	}
+
+	switch unprovidedApplyDefaultRequestMemory {
+	case "off":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeOff
+	case "maxAllowed":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMaxAllowed
+	case "minAllowed":
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMinAllowed
+	default:
+		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeValue
+		cfg.UnprovidedApplyDefaultRequestMemoryValue = unprovidedApplyDefaultRequestMemory
 	}
 
 	return cfg

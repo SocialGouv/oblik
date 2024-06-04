@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -24,8 +25,7 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return
 	}
 
-	wrapper := &DeploymentWrapper{Deployment: deployment}
-	updateContainerResources(wrapper, vpa, vcfg)
+	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
@@ -35,6 +35,35 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 
 	force := true
 	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+		FieldManager: "oblik-operator",
+		Force:        &force, // Force the apply to take ownership of the fields
+	})
+	if err != nil {
+		klog.Errorf("Error applying patch to deployment: %s", err.Error())
+	}
+}
+
+func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	cronjobName := targetRef.Name
+
+	cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.TODO(), cronjobName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Error fetching cronjob: %s", err.Error())
+		return
+	}
+
+	updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
+
+	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
+	if err != nil {
+		klog.Errorf("Error creating patch: %s", err.Error())
+		return
+	}
+
+	force := true
+	_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 		FieldManager: "oblik-operator",
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
@@ -54,8 +83,7 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return
 	}
 
-	wrapper := &StatefulSetWrapper{StatefulSet: statefulSet}
-	updateContainerResources(wrapper, vpa, vcfg)
+	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
@@ -71,13 +99,87 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	}
 }
 
-func updateContainerResources(workload Workload, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
-	containers := []corev1.Container{}
-	for _, container := range workload.GetContainers() {
-		for _, containerRecommendation := range vpa.Status.Recommendation.ContainerRecommendations {
+func findContainerPolicy(vpaResources *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
+	for _, containerPolicy := range vpaResources.Spec.ResourcePolicy.ContainerPolicies {
+		if containerPolicy.ContainerName == containerName || containerPolicy.ContainerName == "*" {
+			return &containerPolicy
+		}
+	}
+	return nil
+}
+
+type TargetRecommandation struct {
+	Cpu           *resource.Quantity
+	Memory        *resource.Quantity
+	ContainerName string
+}
+
+func getTargetRecommandations(vpaResources *vpa.VerticalPodAutoscaler) []TargetRecommandation {
+	recommandations := []TargetRecommandation{}
+	for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
+		recommandations = append(recommandations, TargetRecommandation{
+			Cpu:           containerRecommendation.Target.Cpu(),
+			Memory:        containerRecommendation.Target.Memory(),
+			ContainerName: containerRecommendation.ContainerName,
+		})
+	}
+	return recommandations
+}
+
+func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) []TargetRecommandation {
+	for _, container := range containers {
+		var found bool
+		for _, containerRecommendation := range recommandations {
 			if containerRecommendation.ContainerName != container.Name {
 				continue
 			}
+			found = true
+			break
+		}
+		if !found {
+			containerRecommandation := TargetRecommandation{
+				ContainerName: container.Name,
+			}
+			switch vcfg.UnprovidedApplyDefaultRequestCPUSource {
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Cpu()
+			case UnprovidedApplyDefaultModeMinAllowed:
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MinAllowed.Cpu()
+			case UnprovidedApplyDefaultModeValue:
+				cpu, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestCPUValue)
+				if err != nil {
+					klog.Warningf("Set unprovided CPU resources, value parsing error: %s", err.Error())
+					break
+				}
+				containerRecommandation.Cpu = &cpu
+			}
+			switch vcfg.UnprovidedApplyDefaultRequestMemorySource {
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Memory()
+			case UnprovidedApplyDefaultModeMinAllowed:
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MinAllowed.Memory()
+			case UnprovidedApplyDefaultModeValue:
+				memory, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestMemoryValue)
+				if err != nil {
+					klog.Warningf("Set unprovided Memory resources, value parsing error: %s", err.Error())
+					break
+				}
+				containerRecommandation.Memory = &memory
+			}
+
+			recommandations = append(recommandations, containerRecommandation)
+		}
+	}
+	return recommandations
+}
+
+func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *VPAOblikConfig) {
+	for index, container := range containers {
+		for _, containerRecommendation := range recommandations {
+			if containerRecommendation.ContainerName != container.Name {
+				continue
+			}
+
 			if container.Resources.Requests == nil {
 				container.Resources.Requests = corev1.ResourceList{}
 			}
@@ -108,11 +210,16 @@ func updateContainerResources(workload Workload, vpa *vpa.VerticalPodAutoscaler,
 				klog.Infof("Setting Memory limits to %s (previously %s) for %s container: %s", newMemoryLimits.String(), container.Resources.Limits.Memory(), vcfg.Key, container.Name)
 				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimits
 			}
-			containers = append(containers, container)
+			containers[index] = container
 			break
 		}
 	}
-	workload.SetContainers(containers)
+}
+
+func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+	recommandations := getTargetRecommandations(vpaResources)
+	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
+	applyRecommandationsToContainers(containers, recommandations, vcfg)
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {

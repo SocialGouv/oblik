@@ -32,10 +32,10 @@ func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientse
 		time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				handleVPA(clientset, vpaClientset, obj)
+				handleVPA(clientset, obj)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				handleVPA(clientset, vpaClientset, newObj)
+				handleVPA(clientset, newObj)
 			},
 			DeleteFunc: func(obj interface{}) {
 				klog.Info("VPA deleted")
@@ -56,7 +56,7 @@ func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientse
 	controller.Run(ctx.Done())
 }
 
-func handleVPA(clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clientset, obj interface{}) {
+func handleVPA(clientset *kubernetes.Clientset, obj interface{}) {
 	vpa, ok := obj.(*vpa.VerticalPodAutoscaler)
 	if !ok {
 		klog.Error("Could not cast to VPA object")
@@ -102,5 +102,7 @@ func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalP
 		updateDeployment(clientset, vpa, vcfg)
 	case "StatefulSet":
 		updateStatefulSet(clientset, vpa, vcfg)
+	case "CronJob":
+		updateCronJob(clientset, vpa, vcfg)
 	}
 }
