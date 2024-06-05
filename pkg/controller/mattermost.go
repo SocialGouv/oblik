@@ -18,11 +18,6 @@ func sendUpdatesToMattermost(updates []Update, vcfg *VPAOblikConfig) {
 		return
 	}
 
-	for _, update := range updates {
-		typeLabel := getUpdateTypeLabel(update.Type)
-		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, update.New.String(), update.Old.String(), vcfg.Key, update.ContainerName)
-	}
-
 	markdown := []string{
 		fmt.Sprintf("Changes on %s", vcfg.Key),
 		"\n| Container Name | Change Type | Old Value | New Value |",

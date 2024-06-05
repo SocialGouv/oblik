@@ -37,22 +37,20 @@ type TargetRecommandation struct {
 	ContainerName string
 }
 
-func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	deploymentName := targetRef.Name
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("Error fetching deployment: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error fetching deployment: %s", err.Error())
 	}
 
-	updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+	updates := updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
-		klog.Errorf("Error creating patch: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
 	force := true
@@ -63,25 +61,25 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 	if err != nil {
 		klog.Errorf("Error applying patch to deployment: %s", err.Error())
 	}
+	return &updates, nil
 }
 
-func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	cronjobName := targetRef.Name
 
 	cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.TODO(), cronjobName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("Error fetching cronjob: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error fetching cronjob: %s", err.Error())
 	}
 
-	updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
+	updates := updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
 	if err != nil {
-		klog.Errorf("Error creating patch: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
+
 	}
 
 	force := true
@@ -90,27 +88,26 @@ func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
-		klog.Errorf("Error applying patch to deployment: %s", err.Error())
+		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
 	}
+	return &updates, nil
 }
 
-func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	statefulSetName := targetRef.Name
 
 	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("Error fetching stateful set: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error fetching stateful set: %s", err.Error())
 	}
 
-	updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+	updates := updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
-		klog.Errorf("Error creating patch: %s", err.Error())
-		return
+		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
 	_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
@@ -119,6 +116,7 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	if err != nil {
 		klog.Errorf("Error applying patch to statefulset: %s", err.Error())
 	}
+	return &updates, nil
 }
 
 func findContainerPolicy(vpaResources *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
@@ -272,11 +270,11 @@ func getUpdateTypeLabel(updateType UpdateType) string {
 	return ""
 }
 
-func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) []Update {
 	recommandations := getTargetRecommandations(vpaResources)
 	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
 	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)
-	sendUpdatesToMattermost(updates, vcfg)
+	return updates
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {

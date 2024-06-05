@@ -95,14 +95,33 @@ func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler
 	cronJobs[key] = entryID
 }
 
+func reportUpdated(updates []Update, vcfg *VPAOblikConfig) {
+	if len(updates) == 0 {
+		return
+	}
+	klog.Infof("Updated: %s", vcfg.Key)
+	for _, update := range updates {
+		typeLabel := getUpdateTypeLabel(update.Type)
+		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, update.New.String(), update.Old.String(), vcfg.Key, update.ContainerName)
+	}
+	sendUpdatesToMattermost(updates, vcfg)
+}
+
 func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
 	targetRef := vpa.Spec.TargetRef
+	var updates *[]Update
+	var err error
 	switch targetRef.Kind {
 	case "Deployment":
-		updateDeployment(clientset, vpa, vcfg)
+		updates, err = updateDeployment(clientset, vpa, vcfg)
 	case "StatefulSet":
-		updateStatefulSet(clientset, vpa, vcfg)
+		updates, err = updateStatefulSet(clientset, vpa, vcfg)
 	case "CronJob":
-		updateCronJob(clientset, vpa, vcfg)
+		updates, err = updateCronJob(clientset, vpa, vcfg)
 	}
+	if err != nil {
+		klog.Errorf("Failed to apply updates for %s: %s", vcfg.Key, err.Error())
+		return
+	}
+	reportUpdated(*updates, vcfg)
 }
