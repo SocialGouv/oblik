@@ -203,7 +203,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.UnprovidedApplyDefaultRequestMemoryValue = unprovidedApplyDefaultRequestMemory
 	}
 
-	increaseRequestCpuAlgo := annotations["increase-request-cpu-algo"]
+	increaseRequestCpuAlgo := annotations["oblik.socialgouv.io/increase-request-cpu-algo"]
 	if increaseRequestCpuAlgo == "" {
 		increaseRequestCpuAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO", "ratio")
 	}
@@ -217,7 +217,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.IncreaseRequestCpuAlgo = CalculatorAlgoRatio
 	}
 
-	increaseRequestMemoryAlgo := annotations["increase-request-memory-algo"]
+	increaseRequestMemoryAlgo := annotations["oblik.socialgouv.io/increase-request-memory-algo"]
 	if increaseRequestMemoryAlgo == "" {
 		increaseRequestMemoryAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO", "ratio")
 	}
