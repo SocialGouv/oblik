@@ -18,6 +18,10 @@ helm upgrade --install oblik . --namespace oblik
 - Configurable via annotations on VPA objects.
 - Supports CPU and memory resource recommendations.
 - Allows random delays to stagger updates.
+- Default resource requests for CPU and memory if not provided.
+- Support Deployments, StatefulSets and CronJob adjustements.
+- Customizable algorithms and values for increasing resource requests.
+- Mattermost webhook notification on resources updates
 
 
 ## Configuration
@@ -26,14 +30,21 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
 
 - **`oblik.socialgouv.io/cron`**: Cron expression to schedule when the recommendations are applied. (default: `"0 2 * * *"`)
 - **`oblik.socialgouv.io/cron-add-random-max`**: Maximum random delay added to the cron schedule. (default: `"120m"`)
-- **`oblik.socialgouv.io/request-cpu-apply-mode`**: CPU recommendation mode. Options: `enforce`, `off`.
-- **`oblik.socialgouv.io/request-memory-apply-mode`**: Memory recommendation mode. Options: `enforce`, `off`.
-- **`oblik.socialgouv.io/limit-memory-apply-mode`**: Memory limit apply mode. Options: `enforce`, `off`.
-- **`oblik.socialgouv.io/limit-cpu-apply-mode`**: CPU limit apply mode. Options: `enforce`, `off`.
-- **`oblik.socialgouv.io/limit-cpu-calculator-algo`**: CPU limit calculator algorithm. Options: `ratio`, `margin`.
-- **`oblik.socialgouv.io/limit-memory-calculator-algo`**: Memory limit calculator algorithm. Options: `ratio`, `margin`.
-- **`oblik.socialgouv.io/limit-memory-calculator-value`**: Value used by the memory calculator algorithm.
-- **`oblik.socialgouv.io/limit-cpu-calculator-value`**: Value used by the CPU calculator algorithm.
+- **`oblik.socialgouv.io/request-cpu-apply-mode`**: CPU recommendation mode. Options: `enforce` (default), `off`.
+- **`oblik.socialgouv.io/request-memory-apply-mode`**: Memory recommendation mode. Options: `enforce`  (default), `off`.
+- **`oblik.socialgouv.io/limit-memory-apply-mode`**: Memory limit apply mode. Options: `enforce`  (default), `off`.
+- **`oblik.socialgouv.io/limit-cpu-apply-mode`**: CPU limit apply mode. Options: `enforce`  (default), `off`.
+- **`oblik.socialgouv.io/limit-cpu-calculator-algo`**: CPU limit calculator algorithm. Options: `ratio`  (default), `margin`.
+- **`oblik.socialgouv.io/limit-memory-calculator-algo`**: Memory limit calculator algorithm. Options: `ratio`  (default), `margin`.
+- **`oblik.socialgouv.io/limit-memory-calculator-value`**: Value used by the memory calculator algorithm.   Default is `1`.
+- **`oblik.socialgouv.io/limit-cpu-calculator-value`**: Value used by the CPU calculator algorithm.   Default is `1`.
+- **`oblik.socialgouv.io/unprovided-apply-default-request-cpu`**: Default CPU request if not provided by the VPA. Options: `off` (default), `minAllowed`, `maxAllowed`, or an arbitrary value.
+- **`oblik.socialgouv.io/unprovided-apply-default-request-memory`**: Default memory request if not provided by the VPA. Options: `off` (default), `minAllowed`, `maxAllowed`, or an arbitrary value.
+- **`oblik.socialgouv.io/increase-request-cpu-algo`**: Algorithm to increase CPU request. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/increase-request-memory-algo`**: Algorithm to increase memory request. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/increase-request-cpu-value`**: Value used to increase CPU request. Default is `1`.
+- **`oblik.socialgouv.io/increase-request-memory-value`**: Value used to increase memory request. Default is `1`.
+
 
 ## Usage
 
@@ -56,6 +67,12 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
         oblik.socialgouv.io/limit-memory-calculator-algo: "ratio"
         oblik.socialgouv.io/limit-memory-calculator-value: "1"
         oblik.socialgouv.io/limit-cpu-calculator-value: "1"
+        oblik.socialgouv.io/unprovided-apply-default-request-cpu: "100m"
+        oblik.socialgouv.io/unprovided-apply-default-request-memory: "128Mi"
+        oblik.socialgouv.io/increase-request-cpu-algo: "ratio"
+        oblik.socialgouv.io/increase-request-memory-algo: "ratio"
+        oblik.socialgouv.io/increase-request-cpu-value: "1"
+        oblik.socialgouv.io/increase-request-memory-value: "1"
     spec:
       targetRef:
         apiVersion: "apps/v1"
@@ -72,6 +89,98 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
     ```
 
 3. The operator will watch for changes and apply recommendations according to the configured cron schedule and annotations.
+
+
+### Annotations Usage
+
+#### Default CPU Request
+
+- **`oblik.socialgouv.io/unprovided-apply-default-request-cpu`**: Specifies the default CPU request to apply if the CPU request is not provided in the resource specifications.
+  - **Options**:
+    - `off` (default): Do not apply any default CPU request.
+    - `minAllow`: Apply the minimum allowed CPU request value.
+    - `maxAllow`: Apply the maximum allowed CPU request value.
+    - An arbitrary value (e.g., `"100m"`): Apply the specified CPU request value.
+
+#### Default Memory Request
+
+- **`oblik.socialgouv.io/unprovided-apply-default-request-memory`**: Specifies the default memory request to apply if the memory request is not provided in the resource specifications.
+  - **Options**:
+    - `off` (default): Do not apply any default memory request.
+    - `minAllow`: Apply the minimum allowed memory request value.
+    - `maxAllow`: Apply the maximum allowed memory request value.
+    - An arbitrary value (e.g., `"128Mi"`): Apply the specified memory request value.
+
+
+#### Increase CPU Request
+
+- **`oblik.socialgouv.io/increase-request-cpu-algo`**: Specifies the algorithm to use for increasing CPU request.
+  - **Options**:
+    - `ratio` (default): Increase the CPU request by a ratio.
+    - `margin`: Increase the CPU request by a fixed margin.
+
+- **`oblik.socialgouv.io/increase-request-cpu-value`**: Specifies the value to use with the algorithm for increasing CPU request. Default is `1`.
+
+#### Increase Memory Request
+
+- **`oblik.socialgouv.io/increase-request-memory-algo`**: Specifies the algorithm to use for increasing memory request.
+  - **Options**:
+    - `ratio` (default): Increase the memory request by a ratio.
+    - `margin`: Increase the memory request by a fixed margin.
+
+- **`oblik.socialgouv.io/increase-request-memory-value`**: Specifies the value to use with the algorithm for increasing memory request. Default is `1`.
+
+
+### Environment Variables
+
+The Oblik Kubernetes VPA Operator uses the following environment variables for configuration. These environment variables allow you to set default values and customize the behavior of the operator.
+
+* **`OBLIK_DEFAULT_CRON`**: Default cron expression for scheduling when the recommendations are applied.
+    
+    * **Default**: `"0 2 * * *"`
+* **`OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX`**: Maximum random delay added to the cron schedule.
+    
+    * **Default**: `"120m"`
+* **`OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO`**: Default algorithm to use for calculating CPU limits.
+    
+    * **Options**: `ratio`, `margin`
+    * **Default**: `"ratio"`
+* **`OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO`**: Default algorithm to use for calculating memory limits.
+    
+    * **Options**: `ratio`, `margin`
+    * **Default**: `"ratio"`
+* **`OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE`**: Default value to use with the CPU limit calculator algorithm.
+    
+    * **Default**: `"1"`
+* **`OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE`**: Default value to use with the memory limit calculator algorithm.
+    
+    * **Default**: `"1"`
+* **`OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU`**: Default behavior for CPU requests if not provided.
+    
+    * **Options**: `off`, `minAllow`, `maxAllow`, or an arbitrary value
+    * **Default**: `"off"`
+* **`OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY`**: Default behavior for memory requests if not provided.
+    
+    * **Options**: `off`, `minAllow`, `maxAllow`, or an arbitrary value
+    * **Default**: `"off"`
+* **`OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO`**: Default algorithm to use for increasing CPU requests.
+    
+    * **Options**: `ratio`, `margin`
+    * **Default**: `"ratio"`
+* **`OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO`**: Default algorithm to use for increasing memory requests.
+    
+    * **Options**: `ratio`, `margin`
+    * **Default**: `"ratio"`
+* **`OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE`**: Default value to use with the algorithm for increasing CPU requests.
+    
+    * **Default**: `"1"`
+* **`OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE`**: Default value to use with the algorithm for increasing memory requests.
+    
+    * **Default**: `"1"`
+* **`OBLIK_MATTERMOST_WEBHOOK_URL`**: Webhook URL for Mattermost notifications.
+    
+    * **Default**: `""`
+
 
 
 ## Contributing
