@@ -26,7 +26,9 @@ func sendUpdatesToMattermost(updates []Update, vcfg *VPAOblikConfig) {
 	}
 	for _, update := range updates {
 		typeLabel := getUpdateTypeLabel(update.Type)
-		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+update.Old.String()+"|"+update.New.String()+"|")
+		oldValueText := getResourceValueText(update.Type, update.Old)
+		newValueText := getResourceValueText(update.Type, update.New)
+		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+oldValueText+"|"+newValueText+"|")
 	}
 
 	if err := sendMattermostAlert(strings.Join(markdown, "\n")); err != nil {

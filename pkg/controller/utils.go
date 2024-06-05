@@ -52,3 +52,24 @@ func parseDuration(durationStr string, defaultDuration time.Duration) time.Durat
 	}
 	return duration
 }
+
+func formatMemory(quantity resource.Quantity) string {
+	bytes := quantity.Value()
+	if bytes < 1024 {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	kib := bytes / 1024
+	if kib < 1024 {
+		return fmt.Sprintf("%d KiB", kib)
+	}
+	mib := kib / 1024
+	if mib < 1024 {
+		return fmt.Sprintf("%d MiB", mib)
+	}
+	gib := mib / 1024
+	if gib < 1024 {
+		return fmt.Sprintf("%d GiB", gib)
+	}
+	tib := gib / 1024
+	return fmt.Sprintf("%d TiB", tib)
+}

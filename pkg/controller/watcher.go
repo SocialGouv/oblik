@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -95,6 +96,17 @@ func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler
 	cronJobs[key] = entryID
 }
 
+func getResourceValueText(updateType UpdateType, value resource.Quantity) string {
+	switch updateType {
+	case UpdateTypeMemoryLimit:
+		return formatMemory(value)
+	case UpdateTypeMemoryRequest:
+		return formatMemory(value)
+	default:
+		return value.String()
+	}
+}
+
 func reportUpdated(updates []Update, vcfg *VPAOblikConfig) {
 	if len(updates) == 0 {
 		return
@@ -102,7 +114,9 @@ func reportUpdated(updates []Update, vcfg *VPAOblikConfig) {
 	klog.Infof("Updated: %s", vcfg.Key)
 	for _, update := range updates {
 		typeLabel := getUpdateTypeLabel(update.Type)
-		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, update.New.String(), update.Old.String(), vcfg.Key, update.ContainerName)
+		oldValueText := getResourceValueText(update.Type, update.Old)
+		newValueText := getResourceValueText(update.Type, update.New)
+		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, newValueText, oldValueText, vcfg.Key, update.ContainerName)
 	}
 	sendUpdatesToMattermost(updates, vcfg)
 }
