@@ -202,7 +202,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Limits = corev1.ResourceList{}
 			}
 
-			newCPURequests := calculateNewResourcetValue(*containerRecommendation.Cpu, vcfg.IncreaseRequestCpuAlgo, vcfg.IncreaseRequestCpuValue)
+			newCPURequests := calculateNewResourceValue(*containerRecommendation.Cpu, vcfg.IncreaseRequestCpuAlgo, vcfg.IncreaseRequestCpuValue)
 			cpuRequest := *container.Resources.Requests.Cpu()
 			if vcfg.RequestCPUApplyMode == ApplyModeEnforce && newCPURequests.String() != cpuRequest.String() {
 				updates = append(updates, Update{
@@ -214,7 +214,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Requests[corev1.ResourceCPU] = newCPURequests
 			}
 
-			newCPULimit := calculateNewResourcetValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+			newCPULimit := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
 			cpuLimit := *container.Resources.Limits.Cpu()
 			if vcfg.LimitCPUApplyMode == ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
 				updates = append(updates, Update{
@@ -226,7 +226,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Limits[corev1.ResourceCPU] = newCPULimit
 			}
 
-			newMemoryRequest := calculateNewResourcetValue(*containerRecommendation.Memory, vcfg.IncreaseRequestMemoryAlgo, vcfg.IncreaseRequestMemoryValue)
+			newMemoryRequest := calculateNewResourceValue(*containerRecommendation.Memory, vcfg.IncreaseRequestMemoryAlgo, vcfg.IncreaseRequestMemoryValue)
 			memoryRequest := *container.Resources.Requests.Memory()
 			if vcfg.RequestMemoryApplyMode == ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
 				updates = append(updates, Update{
@@ -238,7 +238,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequest
 			}
 
-			newMemoryLimit := calculateNewResourcetValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+			newMemoryLimit := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
 			memoryLimit := *container.Resources.Limits.Memory()
 			if vcfg.LimitMemoryApplyMode == ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
 				updates = append(updates, Update{

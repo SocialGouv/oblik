@@ -237,8 +237,8 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	if cfg.IncreaseRequestCpuValue == "" {
 		cfg.IncreaseRequestCpuValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
 	}
-	if cfg.LimitMemoryCalculatorValue == "" {
-		cfg.LimitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
+	if cfg.IncreaseRequestMemoryValue == "" {
+		cfg.IncreaseRequestMemoryValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
 	}
 
 	return cfg
