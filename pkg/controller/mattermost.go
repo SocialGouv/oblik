@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -36,10 +37,17 @@ func sendUpdatesToMattermost(updates []Update, vcfg *VPAOblikConfig) {
 func sendMattermostAlert(message string) error {
 	webhookURL := getEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
 
-	payload := fmt.Sprintf(`{"text": "%s"}`, message)
+	payload := Payload{Text: message}
+
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Error marshaling payload: %s\n", err)
+	}
+
+	payloadString := string(payloadJSON)
 
 	formData := url.Values{}
-	formData.Set("payload", payload)
+	formData.Set("payload", payloadString)
 
 	req, err := http.NewRequest("POST", webhookURL, strings.NewReader(formData.Encode()))
 	if err != nil {
