@@ -17,7 +17,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAlgo, valueStr string) resource.Quantity {
+func calculateNewResourceValue(currentValue *resource.Quantity, algo CalculatorAlgo, valueStr string) *resource.Quantity {
+	if currentValue == nil {
+		return nil
+	}
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
 		klog.Warningf("Error parsing calculator value: %s", err.Error())
@@ -38,7 +41,7 @@ func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAl
 		newValue.Add(resource.MustParse(fmt.Sprintf("%.0fm", value*1000)))
 	}
 
-	return newValue
+	return &newValue
 }
 
 func parseDuration(durationStr string, defaultDuration time.Duration) time.Duration {
