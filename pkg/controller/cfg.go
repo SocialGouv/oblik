@@ -42,21 +42,23 @@ type VPAOblikConfig struct {
 
 	RequestCPUApplyMode    ApplyMode
 	RequestMemoryApplyMode ApplyMode
+	LimitCPUApplyMode      ApplyMode
+	LimitMemoryApplyMode   ApplyMode
 
-	LimitCPUApplyMode    ApplyMode
-	LimitMemoryApplyMode ApplyMode
-
-	LimitCPUCalculatorAlgo    CalculatorAlgo
-	LimitMemoryCalculatorAlgo CalculatorAlgo
-
+	LimitCPUCalculatorAlgo     CalculatorAlgo
+	LimitMemoryCalculatorAlgo  CalculatorAlgo
 	LimitMemoryCalculatorValue string
 	LimitCPUCalculatorValue    string
 
-	UnprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
-	UnprovidedApplyDefaultRequestCPUValue  string
-
+	UnprovidedApplyDefaultRequestCPUSource    UnprovidedApplyDefaultMode
+	UnprovidedApplyDefaultRequestCPUValue     string
 	UnprovidedApplyDefaultRequestMemorySource UnprovidedApplyDefaultMode
 	UnprovidedApplyDefaultRequestMemoryValue  string
+
+	IncreaseRequestCpuAlgo     CalculatorAlgo
+	IncreaseRequestMemoryAlgo  CalculatorAlgo
+	IncreaseRequestCpuValue    string
+	IncreaseRequestMemoryValue string
 }
 
 func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
@@ -199,6 +201,44 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 	default:
 		cfg.UnprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeValue
 		cfg.UnprovidedApplyDefaultRequestMemoryValue = unprovidedApplyDefaultRequestMemory
+	}
+
+	increaseRequestCpuAlgo := annotations["increase-request-cpu-algo"]
+	if increaseRequestCpuAlgo == "" {
+		increaseRequestCpuAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO", "ratio")
+	}
+	switch increaseRequestCpuAlgo {
+	case "ratio":
+		cfg.IncreaseRequestCpuAlgo = CalculatorAlgoRatio
+	case "margin":
+		cfg.IncreaseRequestCpuAlgo = CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", increaseRequestCpuAlgo)
+		cfg.IncreaseRequestCpuAlgo = CalculatorAlgoRatio
+	}
+
+	increaseRequestMemoryAlgo := annotations["increase-request-memory-algo"]
+	if increaseRequestMemoryAlgo == "" {
+		increaseRequestMemoryAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO", "ratio")
+	}
+	switch increaseRequestMemoryAlgo {
+	case "ratio":
+		cfg.IncreaseRequestMemoryAlgo = CalculatorAlgoRatio
+	case "margin":
+		cfg.IncreaseRequestMemoryAlgo = CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", increaseRequestMemoryAlgo)
+		cfg.IncreaseRequestMemoryAlgo = CalculatorAlgoRatio
+	}
+
+	cfg.IncreaseRequestCpuValue = annotations["oblik.socialgouv.io/increase-request-cpu-value"]
+	cfg.IncreaseRequestMemoryValue = annotations["oblik.socialgouv.io/increase-request-memory-value"]
+
+	if cfg.IncreaseRequestCpuValue == "" {
+		cfg.IncreaseRequestCpuValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
+	}
+	if cfg.LimitMemoryCalculatorValue == "" {
+		cfg.LimitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
 	}
 
 	return cfg
