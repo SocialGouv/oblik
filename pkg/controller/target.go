@@ -37,7 +37,7 @@ type TargetRecommandation struct {
 	ContainerName string
 }
 
-func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
+func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	deploymentName := targetRef.Name
@@ -64,7 +64,7 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 	return &updates, nil
 }
 
-func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
+func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	cronjobName := targetRef.Name
@@ -93,7 +93,7 @@ func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 	return &updates, nil
 }
 
-func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) (*[]Update, error) {
+func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	statefulSetName := targetRef.Name
@@ -140,11 +140,12 @@ func getTargetRecommandations(vpaResources *vpa.VerticalPodAutoscaler) []TargetR
 	return recommandations
 }
 
-func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) []TargetRecommandation {
+func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []TargetRecommandation {
 	for _, container := range containers {
+		containerName := container.Name
 		var found bool
 		for _, containerRecommendation := range recommandations {
-			if containerRecommendation.ContainerName != container.Name {
+			if containerRecommendation.ContainerName != containerName {
 				continue
 			}
 			found = true
@@ -152,28 +153,28 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 		}
 		if !found {
 			containerRecommandation := TargetRecommandation{
-				ContainerName: container.Name,
+				ContainerName: containerName,
 			}
-			switch vcfg.UnprovidedApplyDefaultRequestCPUSource {
+			switch vcfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
 			case UnprovidedApplyDefaultModeMaxAllowed:
-				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Cpu()
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, containerName).MaxAllowed.Cpu()
 			case UnprovidedApplyDefaultModeMinAllowed:
-				containerRecommandation.Cpu = findContainerPolicy(vpaResources, container.Name).MinAllowed.Cpu()
+				containerRecommandation.Cpu = findContainerPolicy(vpaResources, containerName).MinAllowed.Cpu()
 			case UnprovidedApplyDefaultModeValue:
-				cpu, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestCPUValue)
+				cpu, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName))
 				if err != nil {
 					klog.Warningf("Set unprovided CPU resources, value parsing error: %s", err.Error())
 					break
 				}
 				containerRecommandation.Cpu = &cpu
 			}
-			switch vcfg.UnprovidedApplyDefaultRequestMemorySource {
+			switch vcfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
 			case UnprovidedApplyDefaultModeMaxAllowed:
-				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MaxAllowed.Memory()
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, containerName).MaxAllowed.Memory()
 			case UnprovidedApplyDefaultModeMinAllowed:
-				containerRecommandation.Memory = findContainerPolicy(vpaResources, container.Name).MinAllowed.Memory()
+				containerRecommandation.Memory = findContainerPolicy(vpaResources, containerName).MinAllowed.Memory()
 			case UnprovidedApplyDefaultModeValue:
-				memory, err := resource.ParseQuantity(vcfg.UnprovidedApplyDefaultRequestMemoryValue)
+				memory, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName))
 				if err != nil {
 					klog.Warningf("Set unprovided Memory resources, value parsing error: %s", err.Error())
 					break
@@ -187,11 +188,13 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 	return recommandations
 }
 
-func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *VPAOblikConfig) []Update {
+func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *VpaWorkloadCfg) []Update {
 	updates := []Update{}
+
 	for index, container := range containers {
+		containerName := container.Name
 		for _, containerRecommendation := range recommandations {
-			if containerRecommendation.ContainerName != container.Name {
+			if containerRecommendation.ContainerName != containerName {
 				continue
 			}
 
@@ -203,64 +206,64 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 			}
 
 			if containerRecommendation.Cpu != nil {
-				newCPURequest := calculateNewResourceValue(*containerRecommendation.Cpu, vcfg.IncreaseRequestCpuAlgo, vcfg.IncreaseRequestCpuValue)
+				newCPURequest := calculateNewResourceValue(*containerRecommendation.Cpu, vcfg.GetIncreaseRequestCpuAlgo(containerName), vcfg.GetIncreaseRequestCpuValue(containerName))
 				cpuRequest := *container.Resources.Requests.Cpu()
-				if vcfg.RequestCPUApplyMode == ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
+				if vcfg.GetRequestCPUApplyMode(containerName) == ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
 					updates = append(updates, Update{
 						Old:           cpuRequest,
 						New:           newCPURequest,
 						Type:          UpdateTypeCpuRequest,
-						ContainerName: container.Name,
+						ContainerName: containerName,
 					})
 					container.Resources.Requests[corev1.ResourceCPU] = newCPURequest
 				}
 
-				newCPULimit := calculateNewResourceValue(newCPURequest, vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
+				newCPULimit := calculateNewResourceValue(newCPURequest, vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
 				cpuLimit := *container.Resources.Limits.Cpu()
-				if vcfg.MinLimitCpu != nil && newCPULimit.Cmp(*vcfg.MinLimitCpu) == -1 {
-					newCPULimit = *vcfg.MinLimitCpu
+				if vcfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMinLimitCpu(containerName)) == -1 {
+					newCPULimit = *vcfg.GetMinLimitCpu(containerName)
 				}
-				if vcfg.MaxLimitCpu != nil && newCPULimit.Cmp(*vcfg.MaxLimitCpu) == 1 {
-					newCPULimit = *vcfg.MaxLimitCpu
+				if vcfg.GetMaxLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMaxLimitCpu(containerName)) == 1 {
+					newCPULimit = *vcfg.GetMaxLimitCpu(containerName)
 				}
-				if vcfg.LimitCPUApplyMode == ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
+				if vcfg.GetLimitCPUApplyMode(containerName) == ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
 					updates = append(updates, Update{
 						Old:           cpuLimit,
 						New:           newCPULimit,
 						Type:          UpdateTypeCpuLimit,
-						ContainerName: container.Name,
+						ContainerName: containerName,
 					})
 					container.Resources.Limits[corev1.ResourceCPU] = newCPULimit
 				}
 			}
 
 			if containerRecommendation.Memory != nil {
-				newMemoryRequest := calculateNewResourceValue(*containerRecommendation.Memory, vcfg.IncreaseRequestMemoryAlgo, vcfg.IncreaseRequestMemoryValue)
+				newMemoryRequest := calculateNewResourceValue(*containerRecommendation.Memory, vcfg.GetIncreaseRequestMemoryAlgo(containerName), vcfg.GetIncreaseRequestMemoryValue(containerName))
 				memoryRequest := *container.Resources.Requests.Memory()
-				if vcfg.RequestMemoryApplyMode == ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
+				if vcfg.GetRequestMemoryApplyMode(containerName) == ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
 					updates = append(updates, Update{
 						Old:           memoryRequest,
 						New:           newMemoryRequest,
 						Type:          UpdateTypeMemoryRequest,
-						ContainerName: container.Name,
+						ContainerName: containerName,
 					})
 					container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequest
 				}
 
-				newMemoryLimit := calculateNewResourceValue(newMemoryRequest, vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
+				newMemoryLimit := calculateNewResourceValue(newMemoryRequest, vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
 				memoryLimit := *container.Resources.Limits.Memory()
-				if vcfg.MinLimitMemory != nil && newMemoryLimit.Cmp(*vcfg.MinLimitMemory) == -1 {
-					newMemoryLimit = *vcfg.MinLimitMemory
+				if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
+					newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
 				}
-				if vcfg.MaxLimitMemory != nil && newMemoryLimit.Cmp(*vcfg.MaxLimitMemory) == 1 {
-					newMemoryLimit = *vcfg.MaxLimitMemory
+				if vcfg.GetMaxLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMaxLimitMemory(containerName)) == 1 {
+					newMemoryLimit = *vcfg.GetMaxLimitMemory(containerName)
 				}
-				if vcfg.LimitMemoryApplyMode == ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
+				if vcfg.GetLimitMemoryApplyMode(containerName) == ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
 					updates = append(updates, Update{
 						Old:           memoryLimit,
 						New:           newMemoryLimit,
 						Type:          UpdateTypeMemoryLimit,
-						ContainerName: container.Name,
+						ContainerName: containerName,
 					})
 					container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimit
 				}
@@ -287,7 +290,7 @@ func getUpdateTypeLabel(updateType UpdateType) string {
 	return ""
 }
 
-func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) []Update {
+func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []Update {
 	recommandations := getTargetRecommandations(vpaResources)
 	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
 	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)

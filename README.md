@@ -50,6 +50,10 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
 - **`oblik.socialgouv.io/max-limit-memory`**: Value used to cap maximum memory limit.
 
 
+To target specific container, suffix the config annotation with name of the container, eg:
+- **`oblik.socialgouv.io/min-limit-memory.hasura`**: Value used to cap minimum memory limit of container hasura.
+
+
 ## Usage
 
 1. Create a VPA object with the desired annotations:

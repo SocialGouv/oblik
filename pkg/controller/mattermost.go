@@ -14,7 +14,7 @@ type Payload struct {
 	Text string `json:"text"`
 }
 
-func sendUpdatesToMattermost(updates []Update, vcfg *VPAOblikConfig) {
+func sendUpdatesToMattermost(updates []Update, vcfg *VpaWorkloadCfg) {
 	if len(updates) == 0 {
 		return
 	}
