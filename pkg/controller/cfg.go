@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
@@ -59,6 +60,15 @@ type VPAOblikConfig struct {
 	IncreaseRequestMemoryAlgo  CalculatorAlgo
 	IncreaseRequestCpuValue    string
 	IncreaseRequestMemoryValue string
+
+	MinLimitCpu    *resource.Quantity
+	MaxLimitCpu    *resource.Quantity
+	MinLimitMemory *resource.Quantity
+	MaxLimitMemory *resource.Quantity
+}
+
+func getAnnotation(name string, annotations map[string]string) string {
+	return annotations["oblik.socialgouv.io/"+name]
 }
 
 func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
@@ -73,37 +83,37 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		annotations = map[string]string{}
 	}
 
-	cronExpr := annotations["oblik.socialgouv.io/cron"]
+	cronExpr := getAnnotation("cron", annotations)
 	if cronExpr == "" {
 		cronExpr = getEnv("OBLIK_DEFAULT_CRON", defaultCron)
 	}
 	cfg.CronExpr = cronExpr
 
-	cronAddRandomMax := annotations["oblik.socialgouv.io/cron-add-random-max"]
+	cronAddRandomMax := getAnnotation("cron-add-random-max", annotations)
 	if cronAddRandomMax == "" {
 		cronAddRandomMax = getEnv("OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX", defaultCronAddRandomMax)
 	}
 	cfg.CronMaxRandomDelay = parseDuration(cronAddRandomMax, 120*time.Minute)
 
-	if annotations["oblik.socialgouv.io/request-cpu-apply-mode"] == "off" {
+	if getAnnotation("request-cpu-apply-mode", annotations) == "off" {
 		cfg.RequestCPUApplyMode = ApplyModeOff
 	} else {
 		cfg.RequestCPUApplyMode = ApplyModeEnforce
 	}
 
-	if annotations["oblik.socialgouv.io/request-memory-apply-mode"] == "off" {
+	if getAnnotation("request-memory-apply-mode", annotations) == "off" {
 		cfg.RequestMemoryApplyMode = ApplyModeOff
 	} else {
 		cfg.RequestMemoryApplyMode = ApplyModeEnforce
 	}
 
-	if annotations["oblik.socialgouv.io/limit-cpu-apply-mode"] == "off" {
+	if getAnnotation("limit-cpu-apply-mode", annotations) == "off" {
 		cfg.LimitCPUApplyMode = ApplyModeOff
 	} else {
 		cfg.LimitCPUApplyMode = ApplyModeEnforce
 	}
 
-	if annotations["oblik.socialgouv.io/limit-memory-apply-mode"] == "off" {
+	if getAnnotation("limit-memory-apply-mode", annotations) == "off" {
 		cfg.LimitMemoryApplyMode = ApplyModeOff
 	} else {
 		cfg.LimitMemoryApplyMode = ApplyModeEnforce
@@ -121,7 +131,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
 	}
 
-	limitCPUCalculatorAlgo := annotations["oblik.socialgouv.io/limit-cpu-calculator-algo"]
+	limitCPUCalculatorAlgo := getAnnotation("limit-cpu-calculator-algo", annotations)
 	switch limitCPUCalculatorAlgo {
 	case "ratio":
 		cfg.LimitCPUCalculatorAlgo = CalculatorAlgoRatio
@@ -146,7 +156,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
 	}
 
-	limitMemoryCalculatorAlgo := annotations["oblik.socialgouv.io/limit-memory-calculator-algo"]
+	limitMemoryCalculatorAlgo := getAnnotation("limit-memory-calculator-algo", annotations)
 	switch limitMemoryCalculatorAlgo {
 	case "ratio":
 		cfg.LimitMemoryCalculatorAlgo = CalculatorAlgoRatio
@@ -159,8 +169,8 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.LimitMemoryCalculatorAlgo = defaultLimitMemoryCalculatorAlgo
 	}
 
-	cfg.LimitMemoryCalculatorValue = annotations["oblik.socialgouv.io/limit-memory-calculator-value"]
-	cfg.LimitCPUCalculatorValue = annotations["oblik.socialgouv.io/limit-cpu-calculator-value"]
+	cfg.LimitMemoryCalculatorValue = getAnnotation("limit-memory-calculator-value", annotations)
+	cfg.LimitCPUCalculatorValue = getAnnotation("limit-cpu-calculator-value", annotations)
 
 	if cfg.LimitCPUCalculatorValue == "" {
 		cfg.LimitCPUCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
@@ -169,7 +179,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.LimitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
 	}
 
-	unprovidedApplyDefaultRequestCPU := annotations["oblik.socialgouv.io/unprovided-apply-default-request-cpu"]
+	unprovidedApplyDefaultRequestCPU := getAnnotation("unprovided-apply-default-request-cpu", annotations)
 	if unprovidedApplyDefaultRequestCPU == "" {
 		unprovidedApplyDefaultRequestCPU = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "off")
 	}
@@ -186,7 +196,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.UnprovidedApplyDefaultRequestCPUValue = unprovidedApplyDefaultRequestCPU
 	}
 
-	unprovidedApplyDefaultRequestMemory := annotations["oblik.socialgouv.io/unprovided-apply-default-request-memory"]
+	unprovidedApplyDefaultRequestMemory := getAnnotation("unprovided-apply-default-request-memory", annotations)
 	if unprovidedApplyDefaultRequestMemory == "" {
 		unprovidedApplyDefaultRequestMemory = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "off")
 	}
@@ -203,7 +213,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.UnprovidedApplyDefaultRequestMemoryValue = unprovidedApplyDefaultRequestMemory
 	}
 
-	increaseRequestCpuAlgo := annotations["oblik.socialgouv.io/increase-request-cpu-algo"]
+	increaseRequestCpuAlgo := getAnnotation("increase-request-cpu-algo", annotations)
 	if increaseRequestCpuAlgo == "" {
 		increaseRequestCpuAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO", "ratio")
 	}
@@ -217,7 +227,7 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.IncreaseRequestCpuAlgo = CalculatorAlgoRatio
 	}
 
-	increaseRequestMemoryAlgo := annotations["oblik.socialgouv.io/increase-request-memory-algo"]
+	increaseRequestMemoryAlgo := getAnnotation("increase-request-memory-algo", annotations)
 	if increaseRequestMemoryAlgo == "" {
 		increaseRequestMemoryAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO", "ratio")
 	}
@@ -231,14 +241,66 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		cfg.IncreaseRequestMemoryAlgo = CalculatorAlgoRatio
 	}
 
-	cfg.IncreaseRequestCpuValue = annotations["oblik.socialgouv.io/increase-request-cpu-value"]
-	cfg.IncreaseRequestMemoryValue = annotations["oblik.socialgouv.io/increase-request-memory-value"]
+	cfg.IncreaseRequestCpuValue = getAnnotation("increase-request-cpu-value", annotations)
+	cfg.IncreaseRequestMemoryValue = getAnnotation("increase-request-memory-value", annotations)
 
 	if cfg.IncreaseRequestCpuValue == "" {
 		cfg.IncreaseRequestCpuValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
 	}
 	if cfg.IncreaseRequestMemoryValue == "" {
 		cfg.IncreaseRequestMemoryValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
+	}
+
+	minLimitCpuStr := getAnnotation("min-limit-cpu", annotations)
+	if minLimitCpuStr == "" {
+		minLimitCpuStr = getEnv("OBLIK_DEFAULT_MIN_LIMIT_CPU", "")
+	}
+	if minLimitCpuStr != "" {
+		minLimitCpu, err := resource.ParseQuantity(minLimitCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-limit-cpu: %s, error: %s", minLimitCpuStr, err.Error())
+		} else {
+			cfg.MinLimitCpu = &minLimitCpu
+		}
+	}
+
+	maxLimitCpuStr := getAnnotation("max-limit-cpu", annotations)
+	if maxLimitCpuStr == "" {
+		maxLimitCpuStr = getEnv("OBLIK_DEFAULT_MAX_LIMIT_CPU", "")
+	}
+	if maxLimitCpuStr != "" {
+		maxLimitCpu, err := resource.ParseQuantity(maxLimitCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-limit-cpu: %s, error: %s", maxLimitCpuStr, err.Error())
+		} else {
+			cfg.MinLimitCpu = &maxLimitCpu
+		}
+	}
+
+	minLimitMemoryStr := getAnnotation("min-limit-cpu", annotations)
+	if minLimitMemoryStr == "" {
+		minLimitMemoryStr = getEnv("OBLIK_DEFAULT_MIN_LIMIT_MEMORY", "")
+	}
+	if minLimitMemoryStr != "" {
+		minLimitMemory, err := resource.ParseQuantity(minLimitMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-limit-cpu: %s, error: %s", minLimitMemoryStr, err.Error())
+		} else {
+			cfg.MinLimitMemory = &minLimitMemory
+		}
+	}
+
+	maxLimitMemoryStr := getAnnotation("max-limit-cpu", annotations)
+	if maxLimitMemoryStr == "" {
+		maxLimitMemoryStr = getEnv("OBLIK_DEFAULT_MAX_LIMIT_MEMORY", "")
+	}
+	if maxLimitMemoryStr != "" {
+		maxLimitMemory, err := resource.ParseQuantity(maxLimitMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-limit-cpu: %s, error: %s", maxLimitMemoryStr, err.Error())
+		} else {
+			cfg.MinLimitMemory = &maxLimitMemory
+		}
 	}
 
 	return cfg

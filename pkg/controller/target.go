@@ -217,6 +217,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 				newCPULimit := calculateNewResourceValue(newCPURequest, vcfg.LimitCPUCalculatorAlgo, vcfg.LimitCPUCalculatorValue)
 				cpuLimit := *container.Resources.Limits.Cpu()
+				if vcfg.MinLimitCpu != nil && newCPULimit.Cmp(*vcfg.MinLimitCpu) == -1 {
+					newCPULimit = *vcfg.MinLimitCpu
+				}
+				if vcfg.MaxLimitCpu != nil && newCPULimit.Cmp(*vcfg.MaxLimitCpu) == 1 {
+					newCPULimit = *vcfg.MaxLimitCpu
+				}
 				if vcfg.LimitCPUApplyMode == ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
 					updates = append(updates, Update{
 						Old:           cpuLimit,
@@ -243,6 +249,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 				newMemoryLimit := calculateNewResourceValue(newMemoryRequest, vcfg.LimitMemoryCalculatorAlgo, vcfg.LimitMemoryCalculatorValue)
 				memoryLimit := *container.Resources.Limits.Memory()
+				if vcfg.MinLimitMemory != nil && newMemoryLimit.Cmp(*vcfg.MinLimitMemory) == -1 {
+					newMemoryLimit = *vcfg.MinLimitMemory
+				}
+				if vcfg.MaxLimitMemory != nil && newMemoryLimit.Cmp(*vcfg.MaxLimitMemory) == 1 {
+					newMemoryLimit = *vcfg.MaxLimitMemory
+				}
 				if vcfg.LimitMemoryApplyMode == ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
 					updates = append(updates, Update{
 						Old:           memoryLimit,
