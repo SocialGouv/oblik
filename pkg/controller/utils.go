@@ -18,15 +18,14 @@ func getEnv(key, fallback string) string {
 }
 
 func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAlgo, valueStr string) resource.Quantity {
-	value, err := strconv.ParseFloat(valueStr, 64)
-	if err != nil {
-		klog.Warningf("Error parsing calculator value: %s", err.Error())
-		return currentValue
-	}
-
 	newValue := currentValue.DeepCopy()
 	switch algo {
 	case CalculatorAlgoRatio:
+		value, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			klog.Warningf("Error parsing calculator ratio value: %s", err.Error())
+			return currentValue
+		}
 		if currentValue.Format == resource.DecimalSI { // Handles CPU
 			currentMilliValue := currentValue.MilliValue()
 			newMilliValue := int64(float64(currentMilliValue) * value)
@@ -35,7 +34,12 @@ func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAl
 			newValue = *resource.NewQuantity(int64(float64(currentValue.Value())*value), currentValue.Format)
 		}
 	case CalculatorAlgoMargin:
-		newValue.Add(resource.MustParse(fmt.Sprintf("%.0fm", value*1000)))
+		value, err := resource.ParseQuantity(valueStr)
+		if err != nil {
+			klog.Warningf("Error parsing calculator margin value: %s", err.Error())
+			return currentValue
+		}
+		newValue.Add(value)
 	}
 
 	return newValue
