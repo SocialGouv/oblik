@@ -44,6 +44,10 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
 - **`oblik.socialgouv.io/increase-request-memory-algo`**: Algorithm to increase memory request. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/increase-request-cpu-value`**: Value used to increase CPU request. Default is `1`.
 - **`oblik.socialgouv.io/increase-request-memory-value`**: Value used to increase memory request. Default is `1`.
+- **`oblik.socialgouv.io/min-limit-cpu`**: Value used to cap minimum CPU limit.
+- **`oblik.socialgouv.io/max-limit-cpu`**: Value used to cap maximum CPU limit.
+- **`oblik.socialgouv.io/min-limit-memory`**: Value used to cap minimum memory limit.
+- **`oblik.socialgouv.io/max-limit-memory`**: Value used to cap maximum memory limit.
 
 
 ## Usage
@@ -73,6 +77,10 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
         oblik.socialgouv.io/increase-request-memory-algo: "ratio"
         oblik.socialgouv.io/increase-request-cpu-value: "1"
         oblik.socialgouv.io/increase-request-memory-value: "1"
+        oblik.socialgouv.io/min-limit-cpu: "200m"
+        oblik.socialgouv.io/mxn-limit-cpu: "4"
+        oblik.socialgouv.io/min-limit-memory: "200Mi"
+        oblik.socialgouv.io/mxn-limit-memory: "8Gi"
     spec:
       targetRef:
         apiVersion: "apps/v1"
