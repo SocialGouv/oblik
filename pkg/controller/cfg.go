@@ -277,27 +277,27 @@ func createVPAOblikConfig(vpa *vpa.VerticalPodAutoscaler) *VPAOblikConfig {
 		}
 	}
 
-	minLimitMemoryStr := getAnnotation("min-limit-cpu", annotations)
+	minLimitMemoryStr := getAnnotation("min-limit-memory", annotations)
 	if minLimitMemoryStr == "" {
 		minLimitMemoryStr = getEnv("OBLIK_DEFAULT_MIN_LIMIT_MEMORY", "")
 	}
 	if minLimitMemoryStr != "" {
 		minLimitMemory, err := resource.ParseQuantity(minLimitMemoryStr)
 		if err != nil {
-			klog.Warningf("Error parsing min-limit-cpu: %s, error: %s", minLimitMemoryStr, err.Error())
+			klog.Warningf("Error parsing min-limit-memory: %s, error: %s", minLimitMemoryStr, err.Error())
 		} else {
 			cfg.MinLimitMemory = &minLimitMemory
 		}
 	}
 
-	maxLimitMemoryStr := getAnnotation("max-limit-cpu", annotations)
+	maxLimitMemoryStr := getAnnotation("max-limit-memory", annotations)
 	if maxLimitMemoryStr == "" {
 		maxLimitMemoryStr = getEnv("OBLIK_DEFAULT_MAX_LIMIT_MEMORY", "")
 	}
 	if maxLimitMemoryStr != "" {
 		maxLimitMemory, err := resource.ParseQuantity(maxLimitMemoryStr)
 		if err != nil {
-			klog.Warningf("Error parsing max-limit-cpu: %s, error: %s", maxLimitMemoryStr, err.Error())
+			klog.Warningf("Error parsing max-limit-memory: %s, error: %s", maxLimitMemoryStr, err.Error())
 		} else {
 			cfg.MinLimitMemory = &maxLimitMemory
 		}
