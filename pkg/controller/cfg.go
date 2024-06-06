@@ -127,7 +127,10 @@ func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemoryValue(containerNa
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestMemoryValue != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestMemoryValue
 	}
-	return *v.UnprovidedApplyDefaultRequestMemoryValue
+	if v.UnprovidedApplyDefaultRequestMemoryValue != nil {
+		return *v.UnprovidedApplyDefaultRequestMemoryValue
+	}
+	return ""
 }
 
 func (v *VpaWorkloadCfg) GetIncreaseRequestCpuAlgo(containerName string) CalculatorAlgo {
