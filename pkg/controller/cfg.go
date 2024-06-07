@@ -258,9 +258,11 @@ func createVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCf
 
 	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, "")
 
-	for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
-		vpaContainerCfg := createVpaContainerCfg(vpaResource, containerRecommendation.ContainerName)
-		cfg.Containers[containerRecommendation.ContainerName] = vpaContainerCfg
+	if vpaResource.Status.Recommendation != nil {
+		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
+			vpaContainerCfg := createVpaContainerCfg(vpaResource, containerRecommendation.ContainerName)
+			cfg.Containers[containerRecommendation.ContainerName] = vpaContainerCfg
+		}
 	}
 
 	return cfg
