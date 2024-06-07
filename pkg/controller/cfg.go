@@ -530,7 +530,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if err != nil {
 			klog.Warningf("Error parsing max-limit-cpu: %s, error: %s", maxLimitCpuStr, err.Error())
 		} else {
-			cfg.MinLimitCpu = &maxLimitCpu
+			cfg.MaxLimitCpu = &maxLimitCpu
 		}
 	}
 
@@ -556,7 +556,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if err != nil {
 			klog.Warningf("Error parsing max-limit-memory: %s, error: %s", maxLimitMemoryStr, err.Error())
 		} else {
-			cfg.MinLimitMemory = &maxLimitMemory
+			cfg.MaxLimitMemory = &maxLimitMemory
 		}
 	}
 
