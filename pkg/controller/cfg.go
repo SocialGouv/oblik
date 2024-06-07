@@ -412,8 +412,8 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	limitMemoryCalculatorValue := getAnnotation("limit-memory-calculator-value")
 	limitCPUCalculatorValue := getAnnotation("limit-cpu-calculator-value")
 
-	if limitMemoryCalculatorValue == "" {
-		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
+	if limitCPUCalculatorValue == "" {
+		limitCPUCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
 	}
 	if limitMemoryCalculatorValue == "" {
 		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
