@@ -156,10 +156,18 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 				ContainerName: containerName,
 			}
 			switch vcfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
-			case UnprovidedApplyDefaultModeMaxAllowed:
-				containerRecommandation.Cpu = findContainerPolicy(vpaResources, containerName).MaxAllowed.Cpu()
 			case UnprovidedApplyDefaultModeMinAllowed:
-				containerRecommandation.Cpu = findContainerPolicy(vpaResources, containerName).MinAllowed.Cpu()
+				minCpu := findContainerPolicy(vpaResources, containerName).MinAllowed.Cpu()
+				if vcfg.GetMinRequestCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*vcfg.GetMinRequestCpu(containerName)) == -1) {
+					minCpu = vcfg.GetMinRequestCpu(containerName)
+				}
+				containerRecommandation.Cpu = minCpu
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				maxCpu := findContainerPolicy(vpaResources, containerName).MaxAllowed.Cpu()
+				if vcfg.GetMaxRequestCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*vcfg.GetMaxRequestCpu(containerName)) == 1) {
+					maxCpu = vcfg.GetMaxRequestCpu(containerName)
+				}
+				containerRecommandation.Cpu = maxCpu
 			case UnprovidedApplyDefaultModeValue:
 				cpu, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName))
 				if err != nil {
@@ -169,10 +177,18 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 				containerRecommandation.Cpu = &cpu
 			}
 			switch vcfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
-			case UnprovidedApplyDefaultModeMaxAllowed:
-				containerRecommandation.Memory = findContainerPolicy(vpaResources, containerName).MaxAllowed.Memory()
 			case UnprovidedApplyDefaultModeMinAllowed:
-				containerRecommandation.Memory = findContainerPolicy(vpaResources, containerName).MinAllowed.Memory()
+				minMemory := findContainerPolicy(vpaResources, containerName).MinAllowed.Memory()
+				if vcfg.GetMinRequestMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1) {
+					minMemory = vcfg.GetMinRequestMemory(containerName)
+				}
+				containerRecommandation.Memory = minMemory
+			case UnprovidedApplyDefaultModeMaxAllowed:
+				maxMemory := findContainerPolicy(vpaResources, containerName).MaxAllowed.Memory()
+				if vcfg.GetMaxRequestMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*vcfg.GetMaxRequestMemory(containerName)) == 1) {
+					maxMemory = vcfg.GetMaxRequestMemory(containerName)
+				}
+				containerRecommandation.Memory = maxMemory
 			case UnprovidedApplyDefaultModeValue:
 				memory, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName))
 				if err != nil {
@@ -207,6 +223,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 			if containerRecommendation.Cpu != nil {
 				newCPURequest := calculateNewResourceValue(*containerRecommendation.Cpu, vcfg.GetIncreaseRequestCpuAlgo(containerName), vcfg.GetIncreaseRequestCpuValue(containerName))
+				if vcfg.GetMinRequestCpu(containerName) != nil && newCPURequest.Cmp(*vcfg.GetMinRequestCpu(containerName)) == -1 {
+					newCPURequest = *vcfg.GetMinRequestCpu(containerName)
+				}
+				if vcfg.GetMaxRequestCpu(containerName) != nil && newCPURequest.Cmp(*vcfg.GetMaxRequestCpu(containerName)) == 1 {
+					newCPURequest = *vcfg.GetMaxRequestCpu(containerName)
+				}
 				cpuRequest := *container.Resources.Requests.Cpu()
 				if vcfg.GetRequestCPUApplyMode(containerName) == ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
 					updates = append(updates, Update{
@@ -239,6 +261,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 			if containerRecommendation.Memory != nil {
 				newMemoryRequest := calculateNewResourceValue(*containerRecommendation.Memory, vcfg.GetIncreaseRequestMemoryAlgo(containerName), vcfg.GetIncreaseRequestMemoryValue(containerName))
+				if vcfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1 {
+					newMemoryRequest = *vcfg.GetMinRequestMemory(containerName)
+				}
+				if vcfg.GetMaxRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*vcfg.GetMaxRequestMemory(containerName)) == 1 {
+					newMemoryRequest = *vcfg.GetMaxRequestMemory(containerName)
+				}
 				memoryRequest := *container.Resources.Requests.Memory()
 				if vcfg.GetRequestMemoryApplyMode(containerName) == ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
 					updates = append(updates, Update{

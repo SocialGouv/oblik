@@ -48,6 +48,10 @@ The operator uses annotations on VPA objects to configure its behavior. Below ar
 - **`oblik.socialgouv.io/max-limit-cpu`**: Value used to cap maximum CPU limit.
 - **`oblik.socialgouv.io/min-limit-memory`**: Value used to cap minimum memory limit.
 - **`oblik.socialgouv.io/max-limit-memory`**: Value used to cap maximum memory limit.
+- **`oblik.socialgouv.io/min-request-cpu`**: Value used to cap minimum CPU request (this is like an overriding for native VPA minAllowed.cpu).
+- **`oblik.socialgouv.io/max-request-cpu`**: Value used to cap maximum CPU request (this is like an overriding for native VPA maxAllowed.cpu).
+- **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request. (this is like an overriding for native VPA minAllowed.memory)
+- **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request. (this is like an overriding for native VPA maxAllowed.memory)
 
 
 To target specific container, suffix the config annotation with name of the container, eg:
@@ -82,9 +86,13 @@ To target specific container, suffix the config annotation with name of the cont
         oblik.socialgouv.io/increase-request-cpu-value: "1"
         oblik.socialgouv.io/increase-request-memory-value: "1"
         oblik.socialgouv.io/min-limit-cpu: "200m"
-        oblik.socialgouv.io/mxn-limit-cpu: "4"
+        oblik.socialgouv.io/max-limit-cpu: "4"
         oblik.socialgouv.io/min-limit-memory: "200Mi"
-        oblik.socialgouv.io/mxn-limit-memory: "8Gi"
+        oblik.socialgouv.io/max-limit-memory: "8Gi"
+        oblik.socialgouv.io/min-request-cpu: "80m"
+        oblik.socialgouv.io/max-request-cpu: "8"
+        oblik.socialgouv.io/min-request-memory: "200Mi"
+        oblik.socialgouv.io/max-request-memory: "20Gi"
     spec:
       targetRef:
         apiVersion: "apps/v1"
@@ -169,11 +177,11 @@ The Oblik Kubernetes VPA Operator uses the following environment variables for c
     * **Default**: `"1"`
 * **`OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU`**: Default behavior for CPU requests if not provided.
     
-    * **Options**: `off`, `minAllow`, `maxAllow`, or an arbitrary value
+    * **Options**: `off`, `minAllow`/`min`, `maxAllow`/`max`, or an arbitrary value
     * **Default**: `"off"`
 * **`OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY`**: Default behavior for memory requests if not provided.
     
-    * **Options**: `off`, `minAllow`, `maxAllow`, or an arbitrary value
+    * **Options**: `off`, `minAllow`/`min`, `maxAllow`/`max`, or an arbitrary value
     * **Default**: `"off"`
 * **`OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO`**: Default algorithm to use for increasing CPU requests.
     
@@ -189,6 +197,32 @@ The Oblik Kubernetes VPA Operator uses the following environment variables for c
 * **`OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE`**: Default value to use with the algorithm for increasing memory requests.
     
     * **Default**: `"1"`
+
+* **`OBLIK_DEFAULT_MIN_LIMIT_CPU`**: Value used to cap minimum CPU limit.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MAX_LIMIT_CPU`**: Value used to cap maximum CPU limit.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MIN_LIMIT_MEMORY`**: Value used to cap minimum memory limit.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MAX_LIMIT_MEMORY`**: Value used to cap maximum memory limit.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MIN_REQUEST_CPU`**: Value used to cap minimum CPU request.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MAX_REQUEST_CPU`**: Value used to cap maximum CPU request.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MIN_REQUEST_MEMORY`**: Value used to cap minimum memory request.
+    
+    * **Default**: `""`
+* **`OBLIK_DEFAULT_MAX_REQUEST_MEMORY`**: Value used to cap maximum memory request.
+    
+    * **Default**: `""`
+
 * **`OBLIK_MATTERMOST_WEBHOOK_URL`**: Webhook URL for Mattermost notifications.
     
     * **Default**: `""`

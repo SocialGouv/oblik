@@ -189,6 +189,34 @@ func (v *VpaWorkloadCfg) GetMaxLimitMemory(containerName string) *resource.Quant
 	return v.MaxLimitMemory
 }
 
+func (v *VpaWorkloadCfg) GetMinRequestCpu(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestCpu != nil {
+		return v.Containers[containerName].MinRequestCpu
+	}
+	return v.MinRequestCpu
+}
+
+func (v *VpaWorkloadCfg) GetMaxRequestCpu(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestCpu != nil {
+		return v.Containers[containerName].MaxRequestCpu
+	}
+	return v.MaxRequestCpu
+}
+
+func (v *VpaWorkloadCfg) GetMinRequestMemory(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestMemory != nil {
+		return v.Containers[containerName].MinRequestMemory
+	}
+	return v.MinRequestMemory
+}
+
+func (v *VpaWorkloadCfg) GetMaxRequestMemory(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestMemory != nil {
+		return v.Containers[containerName].MaxRequestMemory
+	}
+	return v.MaxRequestMemory
+}
+
 type LoadCfg struct {
 	CronExpr           string
 	CronMaxRandomDelay time.Duration
@@ -217,6 +245,11 @@ type LoadCfg struct {
 	MaxLimitCpu    *resource.Quantity
 	MinLimitMemory *resource.Quantity
 	MaxLimitMemory *resource.Quantity
+
+	MinRequestCpu    *resource.Quantity
+	MaxRequestCpu    *resource.Quantity
+	MinRequestMemory *resource.Quantity
+	MaxRequestMemory *resource.Quantity
 }
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
@@ -397,8 +430,12 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	switch unprovidedApplyDefaultRequestCPU {
 	case "off":
 		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeOff
+	case "max":
+		fallthrough
 	case "maxAllowed":
 		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMaxAllowed
+	case "min":
+		fallthrough
 	case "minAllowed":
 		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMinAllowed
 	default:
@@ -520,6 +557,60 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 			klog.Warningf("Error parsing max-limit-memory: %s, error: %s", maxLimitMemoryStr, err.Error())
 		} else {
 			cfg.MinLimitMemory = &maxLimitMemory
+		}
+	}
+
+	///
+
+	minRequestCpuStr := getAnnotation("min-request-cpu")
+	if minRequestCpuStr == "" {
+		minRequestCpuStr = getEnv("OBLIK_DEFAULT_MIN_REQUEST_CPU", "")
+	}
+	if minRequestCpuStr != "" {
+		minRequestCpu, err := resource.ParseQuantity(minRequestCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-request-cpu: %s, error: %s", minRequestCpuStr, err.Error())
+		} else {
+			cfg.MinRequestCpu = &minRequestCpu
+		}
+	}
+
+	maxRequestCpuStr := getAnnotation("max-request-cpu")
+	if maxRequestCpuStr == "" {
+		maxRequestCpuStr = getEnv("OBLIK_DEFAULT_MAX_REQUEST_CPU", "")
+	}
+	if maxRequestCpuStr != "" {
+		maxRequestCpu, err := resource.ParseQuantity(maxRequestCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-request-cpu: %s, error: %s", maxRequestCpuStr, err.Error())
+		} else {
+			cfg.MinRequestCpu = &maxRequestCpu
+		}
+	}
+
+	minRequestMemoryStr := getAnnotation("min-request-memory")
+	if minRequestMemoryStr == "" {
+		minRequestMemoryStr = getEnv("OBLIK_DEFAULT_MIN_REQUEST_MEMORY", "")
+	}
+	if minRequestMemoryStr != "" {
+		minRequestMemory, err := resource.ParseQuantity(minRequestMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-request-memory: %s, error: %s", minRequestMemoryStr, err.Error())
+		} else {
+			cfg.MinRequestMemory = &minRequestMemory
+		}
+	}
+
+	maxRequestMemoryStr := getAnnotation("max-request-memory")
+	if maxRequestMemoryStr == "" {
+		maxRequestMemoryStr = getEnv("OBLIK_DEFAULT_MAX_REQUEST_MEMORY", "")
+	}
+	if maxRequestMemoryStr != "" {
+		maxRequestMemory, err := resource.ParseQuantity(maxRequestMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-request-memory: %s, error: %s", maxRequestMemoryStr, err.Error())
+		} else {
+			cfg.MinRequestMemory = &maxRequestMemory
 		}
 	}
 }
