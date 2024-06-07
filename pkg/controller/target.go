@@ -119,8 +119,8 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 	return &updates, nil
 }
 
-func findContainerPolicy(vpaResources *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
-	for _, containerPolicy := range vpaResources.Spec.ResourcePolicy.ContainerPolicies {
+func findContainerPolicy(vpaResource *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
+	for _, containerPolicy := range vpaResource.Spec.ResourcePolicy.ContainerPolicies {
 		if containerPolicy.ContainerName == containerName || containerPolicy.ContainerName == "*" {
 			return &containerPolicy
 		}
@@ -128,19 +128,21 @@ func findContainerPolicy(vpaResources *vpa.VerticalPodAutoscaler, containerName 
 	return nil
 }
 
-func getTargetRecommandations(vpaResources *vpa.VerticalPodAutoscaler) []TargetRecommandation {
+func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler) []TargetRecommandation {
 	recommandations := []TargetRecommandation{}
-	for _, containerRecommendation := range vpaResources.Status.Recommendation.ContainerRecommendations {
-		recommandations = append(recommandations, TargetRecommandation{
-			Cpu:           containerRecommendation.Target.Cpu(),
-			Memory:        containerRecommendation.Target.Memory(),
-			ContainerName: containerRecommendation.ContainerName,
-		})
+	if vpaResource.Status.Recommendation != nil {
+		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
+			recommandations = append(recommandations, TargetRecommandation{
+				Cpu:           containerRecommendation.Target.Cpu(),
+				Memory:        containerRecommendation.Target.Memory(),
+				ContainerName: containerRecommendation.ContainerName,
+			})
+		}
 	}
 	return recommandations
 }
 
-func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []TargetRecommandation {
+func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResource *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []TargetRecommandation {
 	for _, container := range containers {
 		containerName := container.Name
 		var found bool
@@ -157,13 +159,13 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 			}
 			switch vcfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
 			case UnprovidedApplyDefaultModeMinAllowed:
-				minCpu := findContainerPolicy(vpaResources, containerName).MinAllowed.Cpu()
+				minCpu := findContainerPolicy(vpaResource, containerName).MinAllowed.Cpu()
 				if vcfg.GetMinRequestCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*vcfg.GetMinRequestCpu(containerName)) == -1) {
 					minCpu = vcfg.GetMinRequestCpu(containerName)
 				}
 				containerRecommandation.Cpu = minCpu
 			case UnprovidedApplyDefaultModeMaxAllowed:
-				maxCpu := findContainerPolicy(vpaResources, containerName).MaxAllowed.Cpu()
+				maxCpu := findContainerPolicy(vpaResource, containerName).MaxAllowed.Cpu()
 				if vcfg.GetMaxRequestCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*vcfg.GetMaxRequestCpu(containerName)) == 1) {
 					maxCpu = vcfg.GetMaxRequestCpu(containerName)
 				}
@@ -178,13 +180,13 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 			}
 			switch vcfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
 			case UnprovidedApplyDefaultModeMinAllowed:
-				minMemory := findContainerPolicy(vpaResources, containerName).MinAllowed.Memory()
+				minMemory := findContainerPolicy(vpaResource, containerName).MinAllowed.Memory()
 				if vcfg.GetMinRequestMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1) {
 					minMemory = vcfg.GetMinRequestMemory(containerName)
 				}
 				containerRecommandation.Memory = minMemory
 			case UnprovidedApplyDefaultModeMaxAllowed:
-				maxMemory := findContainerPolicy(vpaResources, containerName).MaxAllowed.Memory()
+				maxMemory := findContainerPolicy(vpaResource, containerName).MaxAllowed.Memory()
 				if vcfg.GetMaxRequestMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*vcfg.GetMaxRequestMemory(containerName)) == 1) {
 					maxMemory = vcfg.GetMaxRequestMemory(containerName)
 				}
@@ -318,9 +320,9 @@ func getUpdateTypeLabel(updateType UpdateType) string {
 	return ""
 }
 
-func updateContainerResources(containers []corev1.Container, vpaResources *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []Update {
-	recommandations := getTargetRecommandations(vpaResources)
-	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResources, vcfg)
+func updateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []Update {
+	recommandations := getTargetRecommandations(vpaResource)
+	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResource, vcfg)
 	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)
 	return updates
 }
