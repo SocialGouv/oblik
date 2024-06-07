@@ -73,7 +73,7 @@ func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
-	vcfg := createVPAOblikConfig(vpa)
+	vcfg := createVpaWorkloadCfg(vpa)
 
 	key := vcfg.Key
 
@@ -107,7 +107,7 @@ func getResourceValueText(updateType UpdateType, value resource.Quantity) string
 	}
 }
 
-func reportUpdated(updates []Update, vcfg *VPAOblikConfig) {
+func reportUpdated(updates []Update, vcfg *VpaWorkloadCfg) {
 	if len(updates) == 0 {
 		return
 	}
@@ -121,7 +121,7 @@ func reportUpdated(updates []Update, vcfg *VPAOblikConfig) {
 	sendUpdatesToMattermost(updates, vcfg)
 }
 
-func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VPAOblikConfig) {
+func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) {
 	targetRef := vpa.Spec.TargetRef
 	var updates *[]Update
 	var err error
