@@ -18,6 +18,9 @@ func getEnv(key, fallback string) string {
 }
 
 func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAlgo, valueStr string) resource.Quantity {
+	if valueStr == "" {
+		return currentValue
+	}
 	newValue := currentValue.DeepCopy()
 	switch algo {
 	case CalculatorAlgoRatio:
