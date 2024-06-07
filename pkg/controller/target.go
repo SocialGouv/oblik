@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +38,8 @@ type TargetRecommandation struct {
 	ContainerName string
 }
 
+var FieldManager = "oblik-operator"
+
 func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) (*[]Update, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
@@ -55,7 +58,7 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 
 	force := true
 	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: "oblik-operator",
+		FieldManager: FieldManager,
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
@@ -79,12 +82,11 @@ func updateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
-
 	}
 
 	force := true
 	_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: "oblik-operator",
+		FieldManager: FieldManager,
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
@@ -110,8 +112,10 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
+	force := true
 	_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: "oblik-operator",
+		FieldManager: FieldManager,
+		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
 		klog.Errorf("Error applying patch to statefulset: %s", err.Error())
@@ -341,6 +345,11 @@ func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {
 		patchedObj.(*appsv1.StatefulSet).APIVersion = apiVersion
 		patchedObj.(*appsv1.StatefulSet).Kind = kind
 		patchedObj.(*appsv1.StatefulSet).ObjectMeta.ManagedFields = nil
+	case *batchv1.CronJob:
+		patchedObj = t.DeepCopy()
+		patchedObj.(*batchv1.CronJob).APIVersion = apiVersion
+		patchedObj.(*batchv1.CronJob).Kind = kind
+		patchedObj.(*batchv1.CronJob).ObjectMeta.ManagedFields = nil
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", t)
 	}
