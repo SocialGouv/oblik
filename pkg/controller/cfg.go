@@ -234,8 +234,9 @@ func getVpaAnnotations(vpaResource *vpa.VerticalPodAutoscaler) map[string]string
 func createVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCfg {
 	key := fmt.Sprintf("%s/%s", vpaResource.Namespace, vpaResource.Name)
 	cfg := &VpaWorkloadCfg{
-		Key:     key,
-		LoadCfg: &LoadCfg{},
+		Key:        key,
+		LoadCfg:    &LoadCfg{},
+		Containers: map[string]*VpaContainerCfg{},
 	}
 
 	annotations := getVpaAnnotations(vpaResource)
