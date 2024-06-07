@@ -560,8 +560,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		}
 	}
 
-	///
-
 	minRequestCpuStr := getAnnotation("min-request-cpu")
 	if minRequestCpuStr == "" {
 		minRequestCpuStr = getEnv("OBLIK_DEFAULT_MIN_REQUEST_CPU", "")
@@ -584,7 +582,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if err != nil {
 			klog.Warningf("Error parsing max-request-cpu: %s, error: %s", maxRequestCpuStr, err.Error())
 		} else {
-			cfg.MinRequestCpu = &maxRequestCpu
+			cfg.MaxRequestCpu = &maxRequestCpu
 		}
 	}
 
@@ -610,7 +608,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if err != nil {
 			klog.Warningf("Error parsing max-request-memory: %s, error: %s", maxRequestMemoryStr, err.Error())
 		} else {
-			cfg.MinRequestMemory = &maxRequestMemory
+			cfg.MaxRequestMemory = &maxRequestMemory
 		}
 	}
 }
