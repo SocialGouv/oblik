@@ -5,14 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 
+	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -62,7 +67,7 @@ func updateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
-		klog.Errorf("Error applying patch to deployment: %s", err.Error())
+		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
 	}
 	return &updates, nil
 }
@@ -118,7 +123,64 @@ func updateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		Force:        &force, // Force the apply to take ownership of the fields
 	})
 	if err != nil {
-		klog.Errorf("Error applying patch to statefulset: %s", err.Error())
+		return nil, fmt.Errorf("Error applying patch to statefulset: %s", err.Error())
+	}
+	return &updates, nil
+}
+
+func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) (*[]Update, error) {
+	namespace := vpa.Namespace
+	targetRef := vpa.Spec.TargetRef
+	clusterName := targetRef.Name
+
+	gvr := schema.GroupVersionResource{
+		Group:    "postgresql.cnpg.io",
+		Version:  "v1",
+		Resource: "clusters",
+	}
+
+	clusterResource, err := dynamicClient.Resource(gvr).Namespace(namespace).Get(context.TODO(), clusterName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching cluster: %s", err.Error())
+	}
+
+	originalClusterJSON, err := json.Marshal(clusterResource)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling original cluster: %s", err.Error())
+	}
+
+	var cluster cnpgv1.Cluster
+	err = json.Unmarshal(originalClusterJSON, &cluster)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling cluster: %s", err.Error())
+	}
+
+	containers := []corev1.Container{
+		corev1.Container{
+			Name:      "postgres",
+			Resources: cluster.Spec.Resources,
+		},
+	}
+	updates := updateContainerResources(containers, vpa, vcfg)
+	cluster.Spec.Resources = containers[0].Resources
+
+	updatedClusterJSON, err := json.Marshal(cluster)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling updated cluster: %s", err.Error())
+	}
+
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(originalClusterJSON, updatedClusterJSON, v1.Cluster{})
+	if err != nil {
+		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
+	}
+
+	force := true
+	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{
+		FieldManager: FieldManager,
+		Force:        &force,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
 	}
 	return &updates, nil
 }
