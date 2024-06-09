@@ -19,7 +19,11 @@ helm upgrade --install oblik . --namespace oblik
 - Supports CPU and memory resource recommendations.
 - Allows random delays to stagger updates.
 - Default resource requests for CPU and memory if not provided.
-- Support Deployments, StatefulSets and CronJob adjustements.
+- Support adjustements on kinds:
+    - Deployments
+    - StatefulSets
+    - CronJob
+    - postgresql.cnpg.io/Cluster (to make the VPA work on cnpg cluster see https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2155389267)
 - Customizable algorithms and values for increasing resource requests.
 - Mattermost webhook notification on resources updates
 
