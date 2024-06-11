@@ -11,12 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientset *vpaclientset.Clientset) {
+func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset) {
 	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
 	watchlist := cache.NewFilteredListWatchFromClient(
 		vpaClientset.AutoscalingV1().RESTClient(),
@@ -33,10 +34,10 @@ func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientse
 		time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				handleVPA(clientset, obj)
+				handleVPA(clientset, dynamicClient, obj)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				handleVPA(clientset, newObj)
+				handleVPA(clientset, dynamicClient, newObj)
 			},
 			DeleteFunc: func(obj interface{}) {
 				klog.Info("VPA deleted")
@@ -57,7 +58,7 @@ func watchVPAs(ctx context.Context, clientset *kubernetes.Clientset, vpaClientse
 	controller.Run(ctx.Done())
 }
 
-func handleVPA(clientset *kubernetes.Clientset, obj interface{}) {
+func handleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, obj interface{}) {
 	vpa, ok := obj.(*vpa.VerticalPodAutoscaler)
 	if !ok {
 		klog.Error("Could not cast to VPA object")
@@ -66,10 +67,10 @@ func handleVPA(clientset *kubernetes.Clientset, obj interface{}) {
 
 	klog.Infof("Handling VPA: %s/%s", vpa.Namespace, vpa.Name)
 
-	scheduleVPA(clientset, vpa)
+	scheduleVPA(clientset, dynamicClient, vpa)
 }
 
-func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler) {
+func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler) {
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
@@ -87,7 +88,7 @@ func scheduleVPA(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler
 		randomDelay := time.Duration(rand.Int63n(vcfg.CronMaxRandomDelay.Nanoseconds()))
 		time.Sleep(randomDelay)
 		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, vcfg.CronExpr)
-		applyVPARecommendations(clientset, vpa, vcfg)
+		applyVPARecommendations(clientset, dynamicClient, vpa, vcfg)
 	})
 	if err != nil {
 		klog.Errorf("Error scheduling cron job: %s", err.Error())
@@ -121,7 +122,7 @@ func reportUpdated(updates []Update, vcfg *VpaWorkloadCfg) {
 	sendUpdatesToMattermost(updates, vcfg)
 }
 
-func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) {
+func applyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) {
 	targetRef := vpa.Spec.TargetRef
 	var updates *[]Update
 	var err error
@@ -132,6 +133,13 @@ func applyVPARecommendations(clientset *kubernetes.Clientset, vpa *vpa.VerticalP
 		updates, err = updateStatefulSet(clientset, vpa, vcfg)
 	case "CronJob":
 		updates, err = updateCronJob(clientset, vpa, vcfg)
+	case "Cluster":
+		if targetRef.APIVersion == "postgresql.cnpg.io/v1" {
+			updates, err = updateCluster(dynamicClient, vpa, vcfg)
+		} else {
+			klog.Warningf("Unsupported Cluster kind from apiVersion: %s", targetRef.APIVersion)
+			return
+		}
 	}
 	if err != nil {
 		klog.Errorf("Failed to apply updates for %s: %s", vcfg.Key, err.Error())
