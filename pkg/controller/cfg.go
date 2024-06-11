@@ -50,77 +50,158 @@ func (v *VpaWorkloadCfg) GetRequestCPUApplyMode(containerName string) ApplyMode 
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCPUApplyMode != nil {
 		return *v.Containers[containerName].RequestCPUApplyMode
 	}
-	return *v.RequestCPUApplyMode
+	if v.RequestCPUApplyMode != nil {
+		return *v.RequestCPUApplyMode
+	}
+	return ApplyModeEnforce
 }
 
 func (v *VpaWorkloadCfg) GetRequestMemoryApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryApplyMode != nil {
 		return *v.Containers[containerName].RequestMemoryApplyMode
 	}
-	return *v.RequestMemoryApplyMode
+	if v.RequestMemoryApplyMode != nil {
+		return *v.RequestMemoryApplyMode
+	}
+	return ApplyModeEnforce
 }
 
 func (v *VpaWorkloadCfg) GetLimitCPUApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUApplyMode != nil {
 		return *v.Containers[containerName].LimitCPUApplyMode
 	}
-	return *v.LimitCPUApplyMode
+	if v.LimitCPUApplyMode != nil {
+		return *v.LimitCPUApplyMode
+	}
+	return ApplyModeEnforce
 }
 
 func (v *VpaWorkloadCfg) GetLimitMemoryApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryApplyMode != nil {
 		return *v.Containers[containerName].LimitMemoryApplyMode
 	}
-	return *v.LimitMemoryApplyMode
+	if v.LimitMemoryApplyMode != nil {
+		return *v.LimitMemoryApplyMode
+	}
+	return ApplyModeEnforce
 }
 
 func (v *VpaWorkloadCfg) GetLimitCPUCalculatorAlgo(containerName string) CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUCalculatorAlgo != nil {
 		return *v.Containers[containerName].LimitCPUCalculatorAlgo
 	}
-	return *v.LimitCPUCalculatorAlgo
+	if v.LimitCPUCalculatorAlgo != nil {
+		return *v.LimitCPUCalculatorAlgo
+	}
+	var defaultLimitCPUCalculatorAlgo CalculatorAlgo
+	defaultLimitCPUCalculatorAlgoParam := getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
+	switch defaultLimitCPUCalculatorAlgoParam {
+	case "ratio":
+		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
+	case "margin":
+		defaultLimitCPUCalculatorAlgo = CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgoParam)
+		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
+	}
+	return defaultLimitCPUCalculatorAlgo
 }
 
 func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorAlgo(containerName string) CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryCalculatorAlgo != nil {
 		return *v.Containers[containerName].LimitMemoryCalculatorAlgo
 	}
-	return *v.LimitMemoryCalculatorAlgo
+	if v.LimitMemoryCalculatorAlgo != nil {
+		return *v.LimitMemoryCalculatorAlgo
+	}
+	var defaultLimitMemoryCalculatorAlgo CalculatorAlgo
+	defaultLimitMemoryCalculatorAlgoParam := getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
+	switch defaultLimitMemoryCalculatorAlgoParam {
+	case "ratio":
+		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
+	case "margin":
+		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgoParam)
+		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
+	}
+	return defaultLimitMemoryCalculatorAlgo
 }
 
 func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryCalculatorValue != nil {
 		return *v.Containers[containerName].LimitMemoryCalculatorValue
 	}
-	return *v.LimitMemoryCalculatorValue
+	if v.LimitMemoryCalculatorValue != nil {
+		return *v.LimitMemoryCalculatorValue
+	}
+	return getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
 }
 
 func (v *VpaWorkloadCfg) GetLimitCPUCalculatorValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUCalculatorValue != nil {
 		return *v.Containers[containerName].LimitCPUCalculatorValue
 	}
-	return *v.LimitCPUCalculatorValue
+	if v.LimitCPUCalculatorValue != nil {
+		return *v.LimitCPUCalculatorValue
+	}
+	return getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
 }
 
 func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUSource(containerName string) UnprovidedApplyDefaultMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestCPUSource != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestCPUSource
 	}
-	return *v.UnprovidedApplyDefaultRequestCPUSource
+	if v.UnprovidedApplyDefaultRequestCPUSource != nil {
+		return *v.UnprovidedApplyDefaultRequestCPUSource
+	}
+	switch getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "off") {
+	case "off":
+		return UnprovidedApplyDefaultModeOff
+	case "max":
+		fallthrough
+	case "maxAllowed":
+		return UnprovidedApplyDefaultModeMaxAllowed
+	case "min":
+		fallthrough
+	case "minAllowed":
+		return UnprovidedApplyDefaultModeMinAllowed
+	default:
+		return UnprovidedApplyDefaultModeValue
+	}
 }
 
 func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestCPUValue != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestCPUValue
 	}
-	return *v.UnprovidedApplyDefaultRequestCPUValue
+	if v.UnprovidedApplyDefaultRequestCPUValue != nil {
+		return *v.UnprovidedApplyDefaultRequestCPUValue
+	}
+	return ""
 }
 
 func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemorySource(containerName string) UnprovidedApplyDefaultMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestMemorySource != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestMemorySource
 	}
-	return *v.UnprovidedApplyDefaultRequestMemorySource
+	if v.UnprovidedApplyDefaultRequestMemorySource != nil {
+		return *v.UnprovidedApplyDefaultRequestMemorySource
+	}
+	switch getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "off") {
+	case "off":
+		return UnprovidedApplyDefaultModeOff
+	case "max":
+		fallthrough
+	case "maxAllowed":
+		return UnprovidedApplyDefaultModeMaxAllowed
+	case "min":
+		fallthrough
+	case "minAllowed":
+		return UnprovidedApplyDefaultModeMinAllowed
+	default:
+		return UnprovidedApplyDefaultModeValue
+	}
 }
 
 func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemoryValue(containerName string) string {
@@ -137,87 +218,196 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestCpuAlgo(containerName string) Calcula
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestCpuAlgo != nil {
 		return *v.Containers[containerName].IncreaseRequestCpuAlgo
 	}
-	return *v.IncreaseRequestCpuAlgo
+	if v.IncreaseRequestCpuAlgo != nil {
+		return *v.IncreaseRequestCpuAlgo
+	}
+	return CalculatorAlgoRatio
 }
 
 func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryAlgo(containerName string) CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestMemoryAlgo != nil {
 		return *v.Containers[containerName].IncreaseRequestMemoryAlgo
 	}
-	return *v.IncreaseRequestMemoryAlgo
+	if v.IncreaseRequestMemoryAlgo != nil {
+		return *v.IncreaseRequestMemoryAlgo
+	}
+	return CalculatorAlgoRatio
 }
 
 func (v *VpaWorkloadCfg) GetIncreaseRequestCpuValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestCpuValue != nil {
 		return *v.Containers[containerName].IncreaseRequestCpuValue
 	}
-	return *v.IncreaseRequestCpuValue
+	if v.IncreaseRequestCpuValue != nil {
+		return *v.IncreaseRequestCpuValue
+	}
+	return getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
 }
 
 func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestMemoryValue != nil {
 		return *v.Containers[containerName].IncreaseRequestMemoryValue
 	}
-	return *v.IncreaseRequestMemoryValue
+	if v.IncreaseRequestMemoryValue != nil {
+		return *v.IncreaseRequestMemoryValue
+	}
+	return getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
 }
 
 func (v *VpaWorkloadCfg) GetMinLimitCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinLimitCpu != nil {
 		return v.Containers[containerName].MinLimitCpu
 	}
-	return v.MinLimitCpu
+	if v.MinLimitCpu != nil {
+		return v.MinLimitCpu
+	}
+	minLimitCpuStr := getEnv("OBLIK_DEFAULT_MIN_LIMIT_CPU", "")
+	if minLimitCpuStr != "" {
+		minLimitCpu, err := resource.ParseQuantity(minLimitCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-limit-cpu: %s, error: %s", minLimitCpuStr, err.Error())
+		} else {
+			return &minLimitCpu
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMaxLimitCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxLimitCpu != nil {
 		return v.Containers[containerName].MaxLimitCpu
 	}
-	return v.MaxLimitCpu
+	if v.MaxLimitCpu != nil {
+		return v.MaxLimitCpu
+	}
+	maxLimitCpuStr := getEnv("OBLIK_DEFAULT_MAX_LIMIT_CPU", "")
+	if maxLimitCpuStr != "" {
+		maxLimitCpu, err := resource.ParseQuantity(maxLimitCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-limit-cpu: %s, error: %s", maxLimitCpuStr, err.Error())
+		} else {
+			return &maxLimitCpu
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMinLimitMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinLimitMemory != nil {
 		return v.Containers[containerName].MinLimitMemory
 	}
-	return v.MinLimitMemory
+	if v.MinLimitMemory != nil {
+		return v.MinLimitMemory
+	}
+	minLimitMemoryStr := getEnv("OBLIK_DEFAULT_MIN_LIMIT_MEMORY", "")
+	if minLimitMemoryStr != "" {
+		minLimitMemory, err := resource.ParseQuantity(minLimitMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-limit-memory: %s, error: %s", minLimitMemoryStr, err.Error())
+		} else {
+			return &minLimitMemory
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMaxLimitMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxLimitMemory != nil {
 		return v.Containers[containerName].MaxLimitMemory
 	}
-	return v.MaxLimitMemory
+	if v.MaxLimitMemory != nil {
+		return v.MaxLimitMemory
+	}
+	maxLimitMemoryStr := getEnv("OBLIK_DEFAULT_MAX_LIMIT_MEMORY", "")
+	if maxLimitMemoryStr != "" {
+		maxLimitMemory, err := resource.ParseQuantity(maxLimitMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-limit-memory: %s, error: %s", maxLimitMemoryStr, err.Error())
+		} else {
+			return &maxLimitMemory
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMinRequestCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestCpu != nil {
 		return v.Containers[containerName].MinRequestCpu
 	}
-	return v.MinRequestCpu
+	if v.MinRequestCpu != nil {
+		return v.MinRequestCpu
+	}
+	minRequestCpuStr := getEnv("OBLIK_DEFAULT_MIN_REQUEST_CPU", "")
+	if minRequestCpuStr != "" {
+		minRequestCpu, err := resource.ParseQuantity(minRequestCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-request-cpu: %s, error: %s", minRequestCpuStr, err.Error())
+		} else {
+			return &minRequestCpu
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMaxRequestCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestCpu != nil {
 		return v.Containers[containerName].MaxRequestCpu
 	}
-	return v.MaxRequestCpu
+	if v.MaxRequestCpu != nil {
+		return v.MaxRequestCpu
+	}
+	maxRequestCpuStr := getEnv("OBLIK_DEFAULT_MAX_REQUEST_CPU", "")
+	if maxRequestCpuStr != "" {
+		maxRequestCpu, err := resource.ParseQuantity(maxRequestCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-request-cpu: %s, error: %s", maxRequestCpuStr, err.Error())
+		} else {
+			return &maxRequestCpu
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMinRequestMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestMemory != nil {
 		return v.Containers[containerName].MinRequestMemory
 	}
-	return v.MinRequestMemory
+	if v.MinRequestMemory != nil {
+		return v.MinRequestMemory
+	}
+	minRequestMemoryStr := getEnv("OBLIK_DEFAULT_MIN_REQUEST_MEMORY", "")
+	if minRequestMemoryStr != "" {
+		minRequestMemory, err := resource.ParseQuantity(minRequestMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-request-memory: %s, error: %s", minRequestMemoryStr, err.Error())
+		} else {
+			return &minRequestMemory
+		}
+	}
+	return nil
 }
 
 func (v *VpaWorkloadCfg) GetMaxRequestMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestMemory != nil {
 		return v.Containers[containerName].MaxRequestMemory
 	}
-	return v.MaxRequestMemory
+	if v.MaxRequestMemory != nil {
+		return v.MaxRequestMemory
+	}
+	maxRequestMemoryStr := getEnv("OBLIK_DEFAULT_MAX_REQUEST_MEMORY", "")
+	if maxRequestMemoryStr != "" {
+		maxRequestMemory, err := resource.ParseQuantity(maxRequestMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-request-memory: %s, error: %s", maxRequestMemoryStr, err.Error())
+		} else {
+			return &maxRequestMemory
+		}
+	}
+	return nil
 }
 
 type LoadCfg struct {
+	Key                string
 	CronExpr           string
 	CronMaxRandomDelay time.Duration
 
@@ -267,8 +457,10 @@ func getVpaAnnotations(vpaResource *vpa.VerticalPodAutoscaler) map[string]string
 func createVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCfg {
 	key := fmt.Sprintf("%s/%s", vpaResource.Namespace, vpaResource.Name)
 	cfg := &VpaWorkloadCfg{
-		Key:        key,
-		LoadCfg:    &LoadCfg{},
+		Key: key,
+		LoadCfg: &LoadCfg{
+			Key: key,
+		},
 		Containers: map[string]*VpaContainerCfg{},
 	}
 
@@ -306,7 +498,9 @@ func createVpaContainerCfg(vpaResource *vpa.VerticalPodAutoscaler, containerName
 	cfg := &VpaContainerCfg{
 		Key:           key,
 		ContainerName: containerName,
-		LoadCfg:       &LoadCfg{},
+		LoadCfg: &LoadCfg{
+			Key: key,
+		},
 	}
 	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, containerName)
 	return cfg
@@ -326,45 +520,21 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	if getAnnotation("request-cpu-apply-mode") == "off" {
 		applyMode := ApplyModeOff
 		cfg.RequestCPUApplyMode = &applyMode
-	} else {
-		applyMode := ApplyModeEnforce
-		cfg.RequestCPUApplyMode = &applyMode
 	}
 
 	if getAnnotation("request-memory-apply-mode") == "off" {
 		applyMode := ApplyModeOff
-		cfg.RequestMemoryApplyMode = &applyMode
-	} else {
-		applyMode := ApplyModeEnforce
 		cfg.RequestMemoryApplyMode = &applyMode
 	}
 
 	if getAnnotation("limit-cpu-apply-mode") == "off" {
 		applyMode := ApplyModeOff
 		cfg.LimitCPUApplyMode = &applyMode
-	} else {
-		applyMode := ApplyModeEnforce
-		cfg.LimitCPUApplyMode = &applyMode
 	}
 
 	if getAnnotation("limit-memory-apply-mode") == "off" {
 		applyMode := ApplyModeOff
 		cfg.LimitMemoryApplyMode = &applyMode
-	} else {
-		applyMode := ApplyModeEnforce
-		cfg.LimitMemoryApplyMode = &applyMode
-	}
-
-	var defaultLimitCPUCalculatorAlgo CalculatorAlgo
-	defaultLimitCPUCalculatorAlgoParam := getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
-	switch defaultLimitCPUCalculatorAlgoParam {
-	case "ratio":
-		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
-	case "margin":
-		defaultLimitCPUCalculatorAlgo = CalculatorAlgoMargin
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitCPUCalculatorAlgoParam)
-		defaultLimitCPUCalculatorAlgo = CalculatorAlgoRatio
 	}
 
 	limitCPUCalculatorAlgo := getAnnotation("limit-cpu-calculator-algo")
@@ -379,19 +549,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if limitCPUCalculatorAlgo != "" {
 			klog.Warningf("Unknown calculator algorithm: %s", limitCPUCalculatorAlgo)
 		}
-		cfg.LimitCPUCalculatorAlgo = &defaultLimitCPUCalculatorAlgo
-	}
-
-	var defaultLimitMemoryCalculatorAlgo CalculatorAlgo
-	defaultLimitMemoryCalculatorAlgoParam := getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO", "ratio")
-	switch defaultLimitMemoryCalculatorAlgoParam {
-	case "ratio":
-		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
-	case "margin":
-		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoMargin
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", defaultLimitMemoryCalculatorAlgoParam)
-		defaultLimitMemoryCalculatorAlgo = CalculatorAlgoRatio
 	}
 
 	limitMemoryCalculatorAlgo := getAnnotation("limit-memory-calculator-algo")
@@ -406,62 +563,54 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		if limitMemoryCalculatorAlgo != "" {
 			klog.Warningf("Unknown calculator algorithm: %s", limitMemoryCalculatorAlgo)
 		}
-		cfg.LimitMemoryCalculatorAlgo = &defaultLimitMemoryCalculatorAlgo
 	}
 
-	limitMemoryCalculatorValue := getAnnotation("limit-memory-calculator-value")
 	limitCPUCalculatorValue := getAnnotation("limit-cpu-calculator-value")
-
-	if limitCPUCalculatorValue == "" {
-		limitCPUCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
+	limitMemoryCalculatorValue := getAnnotation("limit-memory-calculator-value")
+	if limitCPUCalculatorValue != "" {
+		cfg.LimitCPUCalculatorValue = &limitCPUCalculatorValue
 	}
-	if limitMemoryCalculatorValue == "" {
-		limitMemoryCalculatorValue = getEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
+	if limitMemoryCalculatorValue != "" {
+		cfg.LimitMemoryCalculatorValue = &limitMemoryCalculatorValue
 	}
-	cfg.LimitMemoryCalculatorValue = &limitMemoryCalculatorValue
-	cfg.LimitCPUCalculatorValue = &limitCPUCalculatorValue
 
 	unprovidedApplyDefaultRequestCPU := getAnnotation("unprovided-apply-default-request-cpu")
-	if unprovidedApplyDefaultRequestCPU == "" {
-		unprovidedApplyDefaultRequestCPU = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "off")
+	if unprovidedApplyDefaultRequestCPU != "" {
+		var unprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
+		switch unprovidedApplyDefaultRequestCPU {
+		case "off":
+			unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeOff
+		case "max":
+			fallthrough
+		case "maxAllowed":
+			unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMaxAllowed
+		case "min":
+			fallthrough
+		case "minAllowed":
+			unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMinAllowed
+		default:
+			unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeValue
+			cfg.UnprovidedApplyDefaultRequestCPUValue = &unprovidedApplyDefaultRequestCPU
+		}
+		cfg.UnprovidedApplyDefaultRequestCPUSource = &unprovidedApplyDefaultRequestCPUSource
 	}
-
-	var unprovidedApplyDefaultRequestCPUSource UnprovidedApplyDefaultMode
-	switch unprovidedApplyDefaultRequestCPU {
-	case "off":
-		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeOff
-	case "max":
-		fallthrough
-	case "maxAllowed":
-		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMaxAllowed
-	case "min":
-		fallthrough
-	case "minAllowed":
-		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeMinAllowed
-	default:
-		unprovidedApplyDefaultRequestCPUSource = UnprovidedApplyDefaultModeValue
-		cfg.UnprovidedApplyDefaultRequestCPUValue = &unprovidedApplyDefaultRequestCPU
-	}
-	cfg.UnprovidedApplyDefaultRequestCPUSource = &unprovidedApplyDefaultRequestCPUSource
 
 	unprovidedApplyDefaultRequestMemory := getAnnotation("unprovided-apply-default-request-memory")
-	if unprovidedApplyDefaultRequestMemory == "" {
-		unprovidedApplyDefaultRequestMemory = getEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "off")
+	if unprovidedApplyDefaultRequestMemory != "" {
+		var unprovidedApplyDefaultRequestMemorySource UnprovidedApplyDefaultMode
+		switch unprovidedApplyDefaultRequestMemory {
+		case "off":
+			unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeOff
+		case "maxAllowed":
+			unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMaxAllowed
+		case "minAllowed":
+			unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMinAllowed
+		default:
+			unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeValue
+			cfg.UnprovidedApplyDefaultRequestMemoryValue = &unprovidedApplyDefaultRequestMemory
+		}
+		cfg.UnprovidedApplyDefaultRequestMemorySource = &unprovidedApplyDefaultRequestMemorySource
 	}
-
-	var unprovidedApplyDefaultRequestMemorySource UnprovidedApplyDefaultMode
-	switch unprovidedApplyDefaultRequestMemory {
-	case "off":
-		unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeOff
-	case "maxAllowed":
-		unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMaxAllowed
-	case "minAllowed":
-		unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeMinAllowed
-	default:
-		unprovidedApplyDefaultRequestMemorySource = UnprovidedApplyDefaultModeValue
-		cfg.UnprovidedApplyDefaultRequestMemoryValue = &unprovidedApplyDefaultRequestMemory
-	}
-	cfg.UnprovidedApplyDefaultRequestMemorySource = &unprovidedApplyDefaultRequestMemorySource
 
 	increaseRequestCpuAlgo := getAnnotation("increase-request-cpu-algo")
 	if increaseRequestCpuAlgo == "" {
@@ -499,19 +648,14 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 
 	increaseRequestCpuValue := getAnnotation("increase-request-cpu-value")
 	increaseRequestMemoryValue := getAnnotation("increase-request-memory-value")
-	if increaseRequestCpuValue == "" {
-		increaseRequestCpuValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
+	if increaseRequestCpuValue != "" {
+		cfg.IncreaseRequestCpuValue = &increaseRequestCpuValue
 	}
-	if increaseRequestMemoryValue == "" {
-		increaseRequestMemoryValue = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
+	if increaseRequestMemoryValue != "" {
+		cfg.IncreaseRequestMemoryValue = &increaseRequestMemoryValue
 	}
-	cfg.IncreaseRequestCpuValue = &increaseRequestCpuValue
-	cfg.IncreaseRequestMemoryValue = &increaseRequestMemoryValue
 
 	minLimitCpuStr := getAnnotation("min-limit-cpu")
-	if minLimitCpuStr == "" {
-		minLimitCpuStr = getEnv("OBLIK_DEFAULT_MIN_LIMIT_CPU", "")
-	}
 	if minLimitCpuStr != "" {
 		minLimitCpu, err := resource.ParseQuantity(minLimitCpuStr)
 		if err != nil {
@@ -522,9 +666,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	maxLimitCpuStr := getAnnotation("max-limit-cpu")
-	if maxLimitCpuStr == "" {
-		maxLimitCpuStr = getEnv("OBLIK_DEFAULT_MAX_LIMIT_CPU", "")
-	}
 	if maxLimitCpuStr != "" {
 		maxLimitCpu, err := resource.ParseQuantity(maxLimitCpuStr)
 		if err != nil {
@@ -535,9 +676,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	minLimitMemoryStr := getAnnotation("min-limit-memory")
-	if minLimitMemoryStr == "" {
-		minLimitMemoryStr = getEnv("OBLIK_DEFAULT_MIN_LIMIT_MEMORY", "")
-	}
 	if minLimitMemoryStr != "" {
 		minLimitMemory, err := resource.ParseQuantity(minLimitMemoryStr)
 		if err != nil {
@@ -548,9 +686,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	maxLimitMemoryStr := getAnnotation("max-limit-memory")
-	if maxLimitMemoryStr == "" {
-		maxLimitMemoryStr = getEnv("OBLIK_DEFAULT_MAX_LIMIT_MEMORY", "")
-	}
 	if maxLimitMemoryStr != "" {
 		maxLimitMemory, err := resource.ParseQuantity(maxLimitMemoryStr)
 		if err != nil {
@@ -561,9 +696,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	minRequestCpuStr := getAnnotation("min-request-cpu")
-	if minRequestCpuStr == "" {
-		minRequestCpuStr = getEnv("OBLIK_DEFAULT_MIN_REQUEST_CPU", "")
-	}
 	if minRequestCpuStr != "" {
 		minRequestCpu, err := resource.ParseQuantity(minRequestCpuStr)
 		if err != nil {
@@ -574,9 +706,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	maxRequestCpuStr := getAnnotation("max-request-cpu")
-	if maxRequestCpuStr == "" {
-		maxRequestCpuStr = getEnv("OBLIK_DEFAULT_MAX_REQUEST_CPU", "")
-	}
 	if maxRequestCpuStr != "" {
 		maxRequestCpu, err := resource.ParseQuantity(maxRequestCpuStr)
 		if err != nil {
@@ -587,9 +716,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	minRequestMemoryStr := getAnnotation("min-request-memory")
-	if minRequestMemoryStr == "" {
-		minRequestMemoryStr = getEnv("OBLIK_DEFAULT_MIN_REQUEST_MEMORY", "")
-	}
 	if minRequestMemoryStr != "" {
 		minRequestMemory, err := resource.ParseQuantity(minRequestMemoryStr)
 		if err != nil {
@@ -600,9 +726,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	maxRequestMemoryStr := getAnnotation("max-request-memory")
-	if maxRequestMemoryStr == "" {
-		maxRequestMemoryStr = getEnv("OBLIK_DEFAULT_MAX_REQUEST_MEMORY", "")
-	}
 	if maxRequestMemoryStr != "" {
 		maxRequestMemory, err := resource.ParseQuantity(maxRequestMemoryStr)
 		if err != nil {
