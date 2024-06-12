@@ -30,7 +30,11 @@ helm upgrade --install oblik . --namespace oblik
 
 ## Configuration
 
-The operator uses annotations on VPA objects to configure its behavior. Below are the supported annotations:
+To enable the Oblik operator on a VPA you need this **label** on your VPA object:
+
+- **`oblik.socialgouv.io/enabled`**: `"true"` or `"false"`. `"false"` by default, put it `"true"` to enable oblik on the VPA.
+
+The operator uses **annotations** on VPA objects to configure its behavior. Below are the supported annotations:
 
 - **`oblik.socialgouv.io/cron`**: Cron expression to schedule when the recommendations are applied. (default: `"0 2 * * *"`)
 - **`oblik.socialgouv.io/cron-add-random-max`**: Maximum random delay added to the cron schedule. (default: `"120m"`)
