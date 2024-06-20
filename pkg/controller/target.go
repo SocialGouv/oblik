@@ -173,10 +173,10 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	// force := true
-	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{
-		// FieldManager: FieldManager,
-		// Force:        &force,
+	force := true
+	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
+		FieldManager: FieldManager,
+		Force:        &force,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
