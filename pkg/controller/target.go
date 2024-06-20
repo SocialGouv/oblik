@@ -174,7 +174,7 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 	}
 
 	force := true
-	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{
+	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
 		FieldManager: FieldManager,
 		Force:        &force,
 	})
