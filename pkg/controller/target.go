@@ -310,7 +310,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					container.Resources.Requests[corev1.ResourceCPU] = newCPURequest
 				}
 
-				newCPULimit := calculateNewResourceValue(newCPURequest, vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+				newCPULimit := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
 				cpuLimit := *container.Resources.Limits.Cpu()
 				if vcfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMinLimitCpu(containerName)) == -1 {
 					newCPULimit = *vcfg.GetMinLimitCpu(containerName)
@@ -348,7 +348,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequest
 				}
 
-				newMemoryLimit := calculateNewResourceValue(newMemoryRequest, vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+				newMemoryLimit := calculateNewResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
 				memoryLimit := *container.Resources.Limits.Memory()
 				if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
 					newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
