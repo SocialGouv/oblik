@@ -160,7 +160,6 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 			Resources: cluster.Spec.Resources,
 		},
 	}
-	klog.Infof("debug cnpg cluster.Spec.Resources: %v", cluster.Spec.Resources)
 	updates := updateContainerResources(containers, vpa, vcfg)
 	cluster.Spec.Resources = containers[0].Resources
 
@@ -173,10 +172,6 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
-
-	klog.Infof("debug cnpg originalClusterJSON: %s", originalClusterJSON)
-	klog.Infof("debug cnpg updatedClusterJSON: %s", updatedClusterJSON)
-	klog.Infof("debug cnpg patch: %s", string(patchBytes))
 
 	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
 		FieldManager: FieldManager,
