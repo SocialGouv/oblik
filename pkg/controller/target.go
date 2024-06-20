@@ -17,7 +17,6 @@ import (
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -169,7 +168,7 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error marshalling updated cluster: %s", err.Error())
 	}
 
-	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(originalClusterJSON, updatedClusterJSON, v1.Cluster{})
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(originalClusterJSON, updatedClusterJSON, cnpgv1.Cluster{})
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
