@@ -173,6 +173,8 @@ func updateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
+	klog.Infof("debug cnpg patch: %s", string(patchBytes))
+
 	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
 		FieldManager: FieldManager,
 	})
