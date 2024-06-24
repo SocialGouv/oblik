@@ -48,6 +48,16 @@ func calculateResourceValue(currentValue resource.Quantity, algo CalculatorAlgo,
 	return newValue
 }
 
+func calculateCpuToMemory(cpu resource.Quantity) resource.Quantity {
+	// Convert CPU to milli-units to ensure proper calculation
+	cpuMilliValue := cpu.MilliValue()
+	// Convert CPU to bytes (1 CPU = 1 GB)
+	cpuToMemoryBytes := cpuMilliValue * 1_000_000 // 1 milliCPU = 1 MB = 1_000_000 bytes
+	// Create a new resource.Quantity representing the memory
+	totalMemory := *resource.NewQuantity(cpuToMemoryBytes, resource.BinarySI)
+	return totalMemory
+}
+
 func parseDuration(durationStr string, defaultDuration time.Duration) time.Duration {
 	if durationStr == "" {
 		return defaultDuration
