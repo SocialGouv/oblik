@@ -334,7 +334,13 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 			if containerRecommendation.Memory != nil {
 				memoryRequest := *container.Resources.Requests.Memory()
-				newMemoryRequest := calculateResourceValue(*containerRecommendation.Memory, vcfg.GetIncreaseRequestMemoryAlgo(containerName), vcfg.GetIncreaseRequestMemoryValue(containerName))
+				var newMemoryRequest resource.Quantity
+				if vcfg.GetMemoryLimitFromCpuEnabled(containerName) {
+					memoryFromCpu := calculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
+					newMemoryRequest = calculateResourceValue(memoryFromCpu, vcfg.GetMemoryRequestFromCpuAlgo(containerName), vcfg.GetMemoryRequestFromCpuValue(containerName))
+				} else {
+					newMemoryRequest = calculateResourceValue(*containerRecommendation.Memory, vcfg.GetIncreaseRequestMemoryAlgo(containerName), vcfg.GetIncreaseRequestMemoryValue(containerName))
+				}
 				if vcfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1 {
 					newMemoryRequest = *vcfg.GetMinRequestMemory(containerName)
 				}
@@ -356,7 +362,13 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				}
 
 				memoryLimit := *container.Resources.Limits.Memory()
-				newMemoryLimit := calculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+				var newMemoryLimit resource.Quantity
+				if vcfg.GetMemoryLimitFromCpuEnabled(containerName) {
+					memoryFromCpu := calculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
+					newMemoryLimit = calculateResourceValue(memoryFromCpu, vcfg.GetMemoryLimitFromCpuAlgo(containerName), vcfg.GetMemoryLimitFromCpuValue(containerName))
+				} else {
+					newMemoryLimit = calculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+				}
 				if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
 					newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
 				}

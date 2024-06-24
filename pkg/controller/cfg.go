@@ -486,6 +486,66 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitValue(containerName string) string
 	return getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_VALUE", "0")
 }
 
+func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuEnabled(containerName string) bool {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuEnabled != nil {
+		return *v.Containers[containerName].MemoryRequestFromCpuEnabled
+	}
+	if v.MemoryRequestFromCpuEnabled != nil {
+		return *v.MemoryRequestFromCpuEnabled
+	}
+	return false
+}
+
+func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuAlgo != nil {
+		return *v.Containers[containerName].MemoryRequestFromCpuAlgo
+	}
+	if v.MemoryRequestFromCpuAlgo != nil {
+		return *v.MemoryRequestFromCpuAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuValue != nil {
+		return *v.Containers[containerName].MemoryRequestFromCpuValue
+	}
+	if v.MemoryRequestFromCpuValue != nil {
+		return *v.MemoryRequestFromCpuValue
+	}
+	return getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_VALUE", "2")
+}
+
+func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuEnabled(containerName string) bool {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuEnabled != nil {
+		return *v.Containers[containerName].MemoryLimitFromCpuEnabled
+	}
+	if v.MemoryLimitFromCpuEnabled != nil {
+		return *v.MemoryLimitFromCpuEnabled
+	}
+	return false
+}
+
+func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuAlgo != nil {
+		return *v.Containers[containerName].MemoryLimitFromCpuAlgo
+	}
+	if v.MemoryLimitFromCpuAlgo != nil {
+		return *v.MemoryLimitFromCpuAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuValue != nil {
+		return *v.Containers[containerName].MemoryLimitFromCpuValue
+	}
+	if v.MemoryLimitFromCpuValue != nil {
+		return *v.MemoryLimitFromCpuValue
+	}
+	return getEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_VALUE", "2")
+}
+
 type LoadCfg struct {
 	Key                string
 	CronExpr           string
@@ -529,6 +589,13 @@ type LoadCfg struct {
 	MinDiffCpuLimitValue      *string
 	MinDiffMemoryLimitAlgo    *CalculatorAlgo
 	MinDiffMemoryLimitValue   *string
+
+	MemoryRequestFromCpuEnabled *bool
+	MemoryRequestFromCpuAlgo    *CalculatorAlgo
+	MemoryRequestFromCpuValue   *string
+	MemoryLimitFromCpuEnabled   *bool
+	MemoryLimitFromCpuAlgo      *CalculatorAlgo
+	MemoryLimitFromCpuValue     *string
 }
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
@@ -908,5 +975,34 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 	if minDiffMemoryLimitValue != "" {
 		cfg.MinDiffMemoryLimitValue = &minDiffMemoryLimitValue
+	}
+
+	memoryRequestFromCpuEnabled := getAnnotation("memory-request-from-cpu-enabled")
+	if memoryRequestFromCpuEnabled == "" {
+		memoryRequestFromCpuEnabled = getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ENABLED", "")
+	}
+	if memoryRequestFromCpuEnabled == "true" {
+		memoryRequestFromCpuEnabledBool := true
+		cfg.MemoryRequestFromCpuEnabled = &memoryRequestFromCpuEnabledBool
+	}
+	memoryRequestFromCpuAlgo := getAnnotation("memory-request-from-cpu-algo")
+	if memoryRequestFromCpuAlgo == "" {
+		memoryRequestFromCpuAlgo = getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ALGO", "ratio")
+	}
+	switch memoryRequestFromCpuAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MemoryRequestFromCpuAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MemoryRequestFromCpuAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", memoryRequestFromCpuAlgo)
+		algo := CalculatorAlgoRatio
+		cfg.MemoryRequestFromCpuAlgo = &algo
+	}
+	memoryRequestFromCpuValue := getAnnotation("memory-request-from-cpu-value")
+	if memoryRequestFromCpuValue != "" {
+		cfg.MemoryRequestFromCpuValue = &memoryRequestFromCpuValue
 	}
 }

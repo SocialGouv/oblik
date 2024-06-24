@@ -25,7 +25,7 @@ helm upgrade --install oblik . --namespace oblik
     - CronJob
     - postgresql.cnpg.io/Cluster (to make the VPA work on cnpg cluster see https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2155389267)
 - Customizable algorithms and values for increasing resource requests.
-- Mattermost webhook notification on resources updates
+- Mattermost webhook notification on resources updates (should also work with Slack but not actually tested)
 
 
 ## Configuration
@@ -68,6 +68,12 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/min-diff-cpu-limit-value`**: Value used to calculate the minimum cpu limit diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
 - **`oblik.socialgouv.io/min-diff-memory-limit-algo`**: Algorithm to calculate the minimum memory limit diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/min-diff-memory-limit-value`**: Value used to calculate the minimum memory limit diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
+- **`oblik.socialgouv.io/memory-request-from-cpu-enabled`**: Calcul memory request from cpu request instead of recommendation.
+- **`oblik.socialgouv.io/memory-limit-from-cpu-enabled`**: Calcul memory limit from cpu limit instead of recommendation.
+- **`oblik.socialgouv.io/memory-request-from-cpu-algo`**: Algorithm to calculate the memory request based on cpu request. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/memory-limit-from-cpu-algo`**: Algorithm to calculate the memory limit based on cpu limit. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/memory-request-from-cpu-value`**: Value used to calculate the memory request based on cpu request. Default is `2`.
+- **`oblik.socialgouv.io/memory-limit-from-cpu-value`**: Value used to calculate the memory limit based on cpu limit. Default is `2`.
 
 
 To target specific container, suffix the config annotation with name of the container, eg:
