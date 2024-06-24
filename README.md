@@ -60,6 +60,14 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/max-request-cpu`**: Value used to cap maximum CPU request (this is like an overriding for native VPA maxAllowed.cpu).
 - **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request. (this is like an overriding for native VPA minAllowed.memory)
 - **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request. (this is like an overriding for native VPA maxAllowed.memory)
+- **`oblik.socialgouv.io/min-diff-cpu-request-algo`**: Algorithm to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/min-diff-cpu-request-value`**: Value used to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
+- **`oblik.socialgouv.io/min-diff-memory-request-algo`**: Algorithm to calculate the minimum memory request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/min-diff-memory-request-value`**: Value used to calculate the minimum memory request diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
+- **`oblik.socialgouv.io/min-diff-cpu-limit-algo`**: Algorithm to calculate the minimum cpu limit diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/min-diff-cpu-limit-value`**: Value used to calculate the minimum cpu limit diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
+- **`oblik.socialgouv.io/min-diff-memory-limit-algo`**: Algorithm to calculate the minimum memory limit diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
+- **`oblik.socialgouv.io/min-diff-memory-limit-value`**: Value used to calculate the minimum memory limit diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
 
 
 To target specific container, suffix the config annotation with name of the container, eg:

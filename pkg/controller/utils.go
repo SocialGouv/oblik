@@ -17,7 +17,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func calculateNewResourceValue(currentValue resource.Quantity, algo CalculatorAlgo, valueStr string) resource.Quantity {
+func calculateResourceValue(currentValue resource.Quantity, algo CalculatorAlgo, valueStr string) resource.Quantity {
 	if valueStr == "" {
 		return currentValue
 	}

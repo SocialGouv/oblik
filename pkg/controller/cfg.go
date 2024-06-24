@@ -406,6 +406,86 @@ func (v *VpaWorkloadCfg) GetMaxRequestMemory(containerName string) *resource.Qua
 	return nil
 }
 
+func (v *VpaWorkloadCfg) GetMinDiffCpuRequestAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuRequestAlgo != nil {
+		return *v.Containers[containerName].MinDiffCpuRequestAlgo
+	}
+	if v.MinDiffCpuRequestAlgo != nil {
+		return *v.MinDiffCpuRequestAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffCpuRequestValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuRequestValue != nil {
+		return *v.Containers[containerName].MinDiffCpuRequestValue
+	}
+	if v.MinDiffCpuRequestValue != nil {
+		return *v.MinDiffCpuRequestValue
+	}
+	return getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_VALUE", "0")
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryRequestAlgo != nil {
+		return *v.Containers[containerName].MinDiffMemoryRequestAlgo
+	}
+	if v.MinDiffMemoryRequestAlgo != nil {
+		return *v.MinDiffMemoryRequestAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryRequestValue != nil {
+		return *v.Containers[containerName].MinDiffMemoryRequestValue
+	}
+	if v.MinDiffMemoryRequestValue != nil {
+		return *v.MinDiffMemoryRequestValue
+	}
+	return getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_VALUE", "0")
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffCpuLimitAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuLimitAlgo != nil {
+		return *v.Containers[containerName].MinDiffCpuLimitAlgo
+	}
+	if v.MinDiffCpuLimitAlgo != nil {
+		return *v.MinDiffCpuLimitAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffCpuLimitValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuLimitValue != nil {
+		return *v.Containers[containerName].MinDiffCpuLimitValue
+	}
+	if v.MinDiffCpuLimitValue != nil {
+		return *v.MinDiffCpuLimitValue
+	}
+	return getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_LIMIT_VALUE", "0")
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitAlgo(containerName string) CalculatorAlgo {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryLimitAlgo != nil {
+		return *v.Containers[containerName].MinDiffMemoryLimitAlgo
+	}
+	if v.MinDiffMemoryLimitAlgo != nil {
+		return *v.MinDiffMemoryLimitAlgo
+	}
+	return CalculatorAlgoRatio
+}
+
+func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitValue(containerName string) string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryLimitValue != nil {
+		return *v.Containers[containerName].MinDiffMemoryLimitValue
+	}
+	if v.MinDiffMemoryLimitValue != nil {
+		return *v.MinDiffMemoryLimitValue
+	}
+	return getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_VALUE", "0")
+}
+
 type LoadCfg struct {
 	Key                string
 	CronExpr           string
@@ -440,6 +520,15 @@ type LoadCfg struct {
 	MaxRequestCpu    *resource.Quantity
 	MinRequestMemory *resource.Quantity
 	MaxRequestMemory *resource.Quantity
+
+	MinDiffCpuRequestAlgo     *CalculatorAlgo
+	MinDiffCpuRequestValue    *string
+	MinDiffMemoryRequestAlgo  *CalculatorAlgo
+	MinDiffMemoryRequestValue *string
+	MinDiffCpuLimitAlgo       *CalculatorAlgo
+	MinDiffCpuLimitValue      *string
+	MinDiffMemoryLimitAlgo    *CalculatorAlgo
+	MinDiffMemoryLimitValue   *string
 }
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
@@ -733,5 +822,91 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		} else {
 			cfg.MaxRequestMemory = &maxRequestMemory
 		}
+	}
+
+	minDiffCpuRequestAlgo := getAnnotation("min-diff-cpu-request-algo")
+	if minDiffCpuRequestAlgo == "" {
+		minDiffCpuRequestAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO", "ratio")
+	}
+	switch minDiffCpuRequestAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffCpuRequestAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MinDiffCpuRequestAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuRequestAlgo)
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffCpuRequestAlgo = &algo
+	}
+
+	minDiffMemoryRequestAlgo := getAnnotation("min-diff-memory-request-algo")
+	if minDiffMemoryRequestAlgo == "" {
+		minDiffMemoryRequestAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_ALGO", "ratio")
+	}
+	switch minDiffMemoryRequestAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffMemoryRequestAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MinDiffMemoryRequestAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryRequestAlgo)
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffMemoryRequestAlgo = &algo
+	}
+
+	minDiffCpuRequestValue := getAnnotation("min-diff-cpu-request-value")
+	minDiffMemoryRequestValue := getAnnotation("min-diff-memory-request-value")
+	if minDiffCpuRequestValue != "" {
+		cfg.MinDiffMemoryRequestValue = &minDiffCpuRequestValue
+	}
+	if minDiffMemoryRequestValue != "" {
+		cfg.MinDiffMemoryRequestValue = &minDiffMemoryRequestValue
+	}
+
+	minDiffCpuLimitAlgo := getAnnotation("min-diff-cpu-limit-algo")
+	if minDiffCpuLimitAlgo == "" {
+		minDiffCpuLimitAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO", "ratio")
+	}
+	switch minDiffCpuLimitAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffCpuLimitAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MinDiffCpuLimitAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuLimitAlgo)
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffCpuLimitAlgo = &algo
+	}
+
+	minDiffMemoryLimitAlgo := getAnnotation("min-diff-memory-limit-algo")
+	if minDiffMemoryLimitAlgo == "" {
+		minDiffMemoryLimitAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_ALGO", "ratio")
+	}
+	switch minDiffMemoryLimitAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffMemoryLimitAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MinDiffMemoryLimitAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryLimitAlgo)
+		algo := CalculatorAlgoRatio
+		cfg.MinDiffMemoryLimitAlgo = &algo
+	}
+
+	minDiffCpuLimitValue := getAnnotation("min-diff-cpu-limit-value")
+	minDiffMemoryLimitValue := getAnnotation("min-diff-memory-limit-value")
+	if minDiffCpuLimitValue != "" {
+		cfg.MinDiffMemoryLimitValue = &minDiffCpuLimitValue
+	}
+	if minDiffMemoryLimitValue != "" {
+		cfg.MinDiffMemoryLimitValue = &minDiffMemoryLimitValue
 	}
 }
