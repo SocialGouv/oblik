@@ -209,11 +209,11 @@ func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *VpaW
 			}
 			switch vcfg.GetRequestMemoryApplyTarget(containerName) {
 			case ApplyTargetFrugal:
-				recommandation.Cpu = containerRecommendation.LowerBound.Memory()
+				recommandation.Memory = containerRecommendation.LowerBound.Memory()
 			case ApplyTargetBalanced:
-				recommandation.Cpu = containerRecommendation.Target.Memory()
+				recommandation.Memory = containerRecommendation.Target.Memory()
 			case ApplyTargetPeak:
-				recommandation.Cpu = containerRecommendation.UpperBound.Memory()
+				recommandation.Memory = containerRecommendation.UpperBound.Memory()
 			}
 			recommandations = append(recommandations, recommandation)
 		}
