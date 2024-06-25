@@ -600,6 +600,10 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuEnabled(containerName string) bool
 	if v.MemoryLimitFromCpuEnabled != nil {
 		return *v.MemoryLimitFromCpuEnabled
 	}
+	memoryLimitFromCpuEnabled := getEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_ENABLED", "")
+	if memoryLimitFromCpuEnabled == "true" {
+		return true
+	}
 	return false
 }
 
@@ -609,6 +613,17 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuAlgo(containerName string) Calcula
 	}
 	if v.MemoryLimitFromCpuAlgo != nil {
 		return *v.MemoryLimitFromCpuAlgo
+	}
+	memoryLimitFromCpuAlgo := getEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_ALGO", "")
+	if memoryLimitFromCpuAlgo != "" {
+		switch memoryLimitFromCpuAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", memoryLimitFromCpuAlgo)
+		}
 	}
 	return CalculatorAlgoRatio
 }
@@ -1049,5 +1064,26 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	memoryRequestFromCpuValue := getAnnotation("memory-request-from-cpu-value")
 	if memoryRequestFromCpuValue != "" {
 		cfg.MemoryRequestFromCpuValue = &memoryRequestFromCpuValue
+	}
+
+	memoryLimitFromCpuEnabled := getAnnotation("memory-limit-from-cpu-enabled")
+	if memoryLimitFromCpuEnabled == "true" {
+		memoryLimitFromCpuEnabledBool := true
+		cfg.MemoryLimitFromCpuEnabled = &memoryLimitFromCpuEnabledBool
+	}
+	memoryLimitFromCpuAlgo := getAnnotation("memory-limit-from-cpu-algo")
+	switch memoryLimitFromCpuAlgo {
+	case "ratio":
+		algo := CalculatorAlgoRatio
+		cfg.MemoryLimitFromCpuAlgo = &algo
+	case "margin":
+		algo := CalculatorAlgoMargin
+		cfg.MemoryLimitFromCpuAlgo = &algo
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", memoryLimitFromCpuAlgo)
+	}
+	memoryLimitFromCpuValue := getAnnotation("memory-limit-from-cpu-value")
+	if memoryLimitFromCpuValue != "" {
+		cfg.MemoryLimitFromCpuValue = &memoryLimitFromCpuValue
 	}
 }
