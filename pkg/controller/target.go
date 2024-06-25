@@ -191,15 +191,31 @@ func findContainerPolicy(vpaResource *vpa.VerticalPodAutoscaler, containerName s
 	return nil
 }
 
-func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler) []TargetRecommandation {
+func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []TargetRecommandation {
 	recommandations := []TargetRecommandation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
-			recommandations = append(recommandations, TargetRecommandation{
-				Cpu:           containerRecommendation.Target.Cpu(),
-				Memory:        containerRecommendation.Target.Memory(),
-				ContainerName: containerRecommendation.ContainerName,
-			})
+			containerName := containerRecommendation.ContainerName
+			recommandation := TargetRecommandation{
+				ContainerName: containerName,
+			}
+			switch vcfg.GetRequestCpuApplyTarget(containerName) {
+			case ApplyTargetFrugal:
+				recommandation.Cpu = containerRecommendation.LowerBound.Cpu()
+			case ApplyTargetBalanced:
+				recommandation.Cpu = containerRecommendation.Target.Cpu()
+			case ApplyTargetPeak:
+				recommandation.Cpu = containerRecommendation.UpperBound.Cpu()
+			}
+			switch vcfg.GetRequestMemoryApplyTarget(containerName) {
+			case ApplyTargetFrugal:
+				recommandation.Cpu = containerRecommendation.LowerBound.Memory()
+			case ApplyTargetBalanced:
+				recommandation.Cpu = containerRecommendation.Target.Memory()
+			case ApplyTargetPeak:
+				recommandation.Cpu = containerRecommendation.UpperBound.Memory()
+			}
+			recommandations = append(recommandations, recommandation)
 		}
 	}
 	return recommandations
@@ -412,7 +428,7 @@ func getUpdateTypeLabel(updateType UpdateType) string {
 }
 
 func updateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *VpaWorkloadCfg) []Update {
-	recommandations := getTargetRecommandations(vpaResource)
+	recommandations := getTargetRecommandations(vpaResource, vcfg)
 	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResource, vcfg)
 	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)
 	return updates

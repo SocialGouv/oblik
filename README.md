@@ -74,6 +74,9 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/memory-limit-from-cpu-algo`**: Algorithm to calculate the memory limit based on cpu limit. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/memory-request-from-cpu-value`**: Value used to calculate the memory request based on cpu request. Default is `2`.
 - **`oblik.socialgouv.io/memory-limit-from-cpu-value`**: Value used to calculate the memory limit based on cpu limit. Default is `2`.
+- **`oblik.socialgouv.io/request-apply-target`**: Select which recommendation to apply by default (overridable for cpu and memory specifically with the following annotations). Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-cpu-apply-target`**: Select which recommendation to apply for cpu. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-memory-apply-target`**: Select which recommendation to apply for memory. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
 
 
 To target specific container, suffix the config annotation with name of the container, eg:

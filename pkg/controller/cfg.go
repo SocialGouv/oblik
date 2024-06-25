@@ -35,6 +35,14 @@ const (
 	UnprovidedApplyDefaultModeValue
 )
 
+type ApplyTarget int
+
+const (
+	ApplyTargetFrugal ApplyTarget = iota
+	ApplyTargetBalanced
+	ApplyTargetPeak
+)
+
 type VpaContainerCfg struct {
 	Key           string
 	ContainerName string
@@ -638,6 +646,93 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuValue(containerName string) string
 	return getEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_VALUE", "2")
 }
 
+func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) ApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestApplyTarget != nil {
+		return *v.Containers[containerName].RequestApplyTarget
+	}
+	if v.RequestApplyTarget != nil {
+		return *v.RequestApplyTarget
+	}
+	requestApplyTarget := getEnv("OBLIK_DEFAULT_REQUEST_APPLY_TARGET", "")
+	if requestApplyTarget != "" {
+		switch requestApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return ApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return ApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return ApplyTargetPeak
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestApplyTarget)
+		}
+	}
+	return ApplyTargetBalanced
+}
+
+func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) ApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuApplyTarget != nil {
+		return *v.Containers[containerName].RequestCpuApplyTarget
+	}
+	if v.RequestCpuApplyTarget != nil {
+		return *v.RequestCpuApplyTarget
+	}
+	requestCpuApplyTarget := getEnv("OBLIK_DEFAULT_REQUEST_CPU_APPLY_TARGET", "")
+	if requestCpuApplyTarget != "" {
+		switch requestCpuApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return ApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return ApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return ApplyTargetPeak
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestCpuApplyTarget)
+		}
+	}
+	return v.GetRequestApplyTarget(containerName)
+}
+
+func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) ApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryApplyTarget != nil {
+		return *v.Containers[containerName].RequestMemoryApplyTarget
+	}
+	if v.RequestMemoryApplyTarget != nil {
+		return *v.RequestMemoryApplyTarget
+	}
+	requestMemoryApplyTarget := getEnv("OBLIK_DEFAULT_REQUEST_MEMORY_APPLY_TARGET", "")
+	if requestMemoryApplyTarget != "" {
+		switch requestMemoryApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return ApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return ApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return ApplyTargetPeak
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestMemoryApplyTarget)
+		}
+	}
+	return v.GetRequestApplyTarget(containerName)
+}
+
 type LoadCfg struct {
 	Key                string
 	CronExpr           string
@@ -688,6 +783,10 @@ type LoadCfg struct {
 	MemoryLimitFromCpuEnabled   *bool
 	MemoryLimitFromCpuAlgo      *CalculatorAlgo
 	MemoryLimitFromCpuValue     *string
+
+	RequestApplyTarget       *ApplyTarget
+	RequestCpuApplyTarget    *ApplyTarget
+	RequestMemoryApplyTarget *ApplyTarget
 }
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
@@ -1085,5 +1184,74 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	memoryLimitFromCpuValue := getAnnotation("memory-limit-from-cpu-value")
 	if memoryLimitFromCpuValue != "" {
 		cfg.MemoryLimitFromCpuValue = &memoryLimitFromCpuValue
+	}
+
+	requestApplyTarget := getAnnotation("request-apply-target")
+	if requestApplyTarget != "" {
+		switch requestApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := ApplyTargetFrugal
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := ApplyTargetBalanced
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := ApplyTargetPeak
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestApplyTarget)
+		}
+	}
+
+	requestCpuApplyTarget := getAnnotation("request-apply-target")
+	if requestCpuApplyTarget != "" {
+		switch requestCpuApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := ApplyTargetFrugal
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := ApplyTargetBalanced
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := ApplyTargetPeak
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestCpuApplyTarget)
+		}
+	}
+
+	requestMemoryApplyTarget := getAnnotation("request-memory-apply-target")
+	if requestMemoryApplyTarget != "" {
+		switch requestMemoryApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := ApplyTargetFrugal
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := ApplyTargetBalanced
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := ApplyTargetPeak
+			cfg.RequestMemoryApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", requestMemoryApplyTarget)
+		}
 	}
 }
