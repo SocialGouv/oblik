@@ -229,6 +229,17 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestCpuAlgo(containerName string) Calcula
 	if v.IncreaseRequestCpuAlgo != nil {
 		return *v.IncreaseRequestCpuAlgo
 	}
+	increaseRequestCpuAlgo := getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO", "")
+	if increaseRequestCpuAlgo != "" {
+		switch increaseRequestCpuAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", increaseRequestCpuAlgo)
+		}
+	}
 	return CalculatorAlgoRatio
 }
 
@@ -238,6 +249,17 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryAlgo(containerName string) Calc
 	}
 	if v.IncreaseRequestMemoryAlgo != nil {
 		return *v.IncreaseRequestMemoryAlgo
+	}
+	increaseRequestMemoryAlgo := getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO", "")
+	if increaseRequestMemoryAlgo != "" {
+		switch increaseRequestMemoryAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", increaseRequestMemoryAlgo)
+		}
 	}
 	return CalculatorAlgoRatio
 }
@@ -421,6 +443,17 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuRequestAlgo(containerName string) Calculat
 	if v.MinDiffCpuRequestAlgo != nil {
 		return *v.MinDiffCpuRequestAlgo
 	}
+	minDiffCpuRequestAlgo := getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO", "")
+	if minDiffCpuRequestAlgo != "" {
+		switch minDiffCpuRequestAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuRequestAlgo)
+		}
+	}
 	return CalculatorAlgoRatio
 }
 
@@ -440,6 +473,15 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestAlgo(containerName string) Calcu
 	}
 	if v.MinDiffMemoryRequestAlgo != nil {
 		return *v.MinDiffMemoryRequestAlgo
+	}
+	minDiffMemoryRequestAlgo := getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_ALGO", "ratio")
+	switch minDiffMemoryRequestAlgo {
+	case "ratio":
+		return CalculatorAlgoRatio
+	case "margin":
+		return CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryRequestAlgo)
 	}
 	return CalculatorAlgoRatio
 }
@@ -461,6 +503,17 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuLimitAlgo(containerName string) Calculator
 	if v.MinDiffCpuLimitAlgo != nil {
 		return *v.MinDiffCpuLimitAlgo
 	}
+	minDiffCpuLimitAlgo := getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_LIMIT_ALGO", "")
+	if minDiffCpuLimitAlgo != "" {
+		switch minDiffCpuLimitAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuLimitAlgo)
+		}
+	}
 	return CalculatorAlgoRatio
 }
 
@@ -480,6 +533,15 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitAlgo(containerName string) Calcula
 	}
 	if v.MinDiffMemoryLimitAlgo != nil {
 		return *v.MinDiffMemoryLimitAlgo
+	}
+	minDiffMemoryLimitAlgo := getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_ALGO", "")
+	switch minDiffMemoryLimitAlgo {
+	case "ratio":
+		return CalculatorAlgoRatio
+	case "margin":
+		return CalculatorAlgoMargin
+	default:
+		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryLimitAlgo)
 	}
 	return CalculatorAlgoRatio
 }
@@ -501,6 +563,10 @@ func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuEnabled(containerName string) bo
 	if v.MemoryRequestFromCpuEnabled != nil {
 		return *v.MemoryRequestFromCpuEnabled
 	}
+	memoryRequestFromCpuEnabled := getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ENABLED", "")
+	if memoryRequestFromCpuEnabled == "true" {
+		return true
+	}
 	return false
 }
 
@@ -510,6 +576,17 @@ func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuAlgo(containerName string) Calcu
 	}
 	if v.MemoryRequestFromCpuAlgo != nil {
 		return *v.MemoryRequestFromCpuAlgo
+	}
+	memoryRequestFromCpuAlgo := getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ALGO", "")
+	if memoryRequestFromCpuAlgo != "" {
+		switch memoryRequestFromCpuAlgo {
+		case "ratio":
+			return CalculatorAlgoRatio
+		case "margin":
+			return CalculatorAlgoMargin
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", memoryRequestFromCpuAlgo)
+		}
 	}
 	return CalculatorAlgoRatio
 }
@@ -781,37 +858,31 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	increaseRequestCpuAlgo := getAnnotation("increase-request-cpu-algo")
-	if increaseRequestCpuAlgo == "" {
-		increaseRequestCpuAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO", "ratio")
-	}
-	switch increaseRequestCpuAlgo {
-	case "ratio":
-		algo := CalculatorAlgoRatio
-		cfg.IncreaseRequestCpuAlgo = &algo
-	case "margin":
-		algo := CalculatorAlgoMargin
-		cfg.IncreaseRequestCpuAlgo = &algo
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", increaseRequestCpuAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.IncreaseRequestCpuAlgo = &algo
+	if increaseRequestCpuAlgo != "" {
+		switch increaseRequestCpuAlgo {
+		case "ratio":
+			algo := CalculatorAlgoRatio
+			cfg.IncreaseRequestCpuAlgo = &algo
+		case "margin":
+			algo := CalculatorAlgoMargin
+			cfg.IncreaseRequestCpuAlgo = &algo
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", increaseRequestCpuAlgo)
+		}
 	}
 
 	increaseRequestMemoryAlgo := getAnnotation("increase-request-memory-algo")
-	if increaseRequestMemoryAlgo == "" {
-		increaseRequestMemoryAlgo = getEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO", "ratio")
-	}
-	switch increaseRequestMemoryAlgo {
-	case "ratio":
-		algo := CalculatorAlgoRatio
-		cfg.IncreaseRequestMemoryAlgo = &algo
-	case "margin":
-		algo := CalculatorAlgoMargin
-		cfg.IncreaseRequestMemoryAlgo = &algo
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", increaseRequestMemoryAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.IncreaseRequestMemoryAlgo = &algo
+	if increaseRequestMemoryAlgo != "" {
+		switch increaseRequestMemoryAlgo {
+		case "ratio":
+			algo := CalculatorAlgoRatio
+			cfg.IncreaseRequestMemoryAlgo = &algo
+		case "margin":
+			algo := CalculatorAlgoMargin
+			cfg.IncreaseRequestMemoryAlgo = &algo
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", increaseRequestMemoryAlgo)
+		}
 	}
 
 	increaseRequestCpuValue := getAnnotation("increase-request-cpu-value")
@@ -904,26 +975,20 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	minDiffCpuRequestAlgo := getAnnotation("min-diff-cpu-request-algo")
-	if minDiffCpuRequestAlgo == "" {
-		minDiffCpuRequestAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO", "ratio")
-	}
-	switch minDiffCpuRequestAlgo {
-	case "ratio":
-		algo := CalculatorAlgoRatio
-		cfg.MinDiffCpuRequestAlgo = &algo
-	case "margin":
-		algo := CalculatorAlgoMargin
-		cfg.MinDiffCpuRequestAlgo = &algo
-	default:
-		klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuRequestAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.MinDiffCpuRequestAlgo = &algo
+	if minDiffCpuRequestAlgo != "" {
+		switch minDiffCpuRequestAlgo {
+		case "ratio":
+			algo := CalculatorAlgoRatio
+			cfg.MinDiffCpuRequestAlgo = &algo
+		case "margin":
+			algo := CalculatorAlgoMargin
+			cfg.MinDiffCpuRequestAlgo = &algo
+		default:
+			klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuRequestAlgo)
+		}
 	}
 
 	minDiffMemoryRequestAlgo := getAnnotation("min-diff-memory-request-algo")
-	if minDiffMemoryRequestAlgo == "" {
-		minDiffMemoryRequestAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_ALGO", "ratio")
-	}
 	switch minDiffMemoryRequestAlgo {
 	case "ratio":
 		algo := CalculatorAlgoRatio
@@ -933,8 +998,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		cfg.MinDiffMemoryRequestAlgo = &algo
 	default:
 		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryRequestAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.MinDiffMemoryRequestAlgo = &algo
 	}
 
 	minDiffCpuRequestValue := getAnnotation("min-diff-cpu-request-value")
@@ -947,9 +1010,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	minDiffCpuLimitAlgo := getAnnotation("min-diff-cpu-limit-algo")
-	if minDiffCpuLimitAlgo == "" {
-		minDiffCpuLimitAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO", "ratio")
-	}
 	switch minDiffCpuLimitAlgo {
 	case "ratio":
 		algo := CalculatorAlgoRatio
@@ -959,14 +1019,9 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		cfg.MinDiffCpuLimitAlgo = &algo
 	default:
 		klog.Warningf("Unknown calculator algorithm: %s", minDiffCpuLimitAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.MinDiffCpuLimitAlgo = &algo
 	}
 
 	minDiffMemoryLimitAlgo := getAnnotation("min-diff-memory-limit-algo")
-	if minDiffMemoryLimitAlgo == "" {
-		minDiffMemoryLimitAlgo = getEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_ALGO", "ratio")
-	}
 	switch minDiffMemoryLimitAlgo {
 	case "ratio":
 		algo := CalculatorAlgoRatio
@@ -976,8 +1031,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		cfg.MinDiffMemoryLimitAlgo = &algo
 	default:
 		klog.Warningf("Unknown calculator algorithm: %s", minDiffMemoryLimitAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.MinDiffMemoryLimitAlgo = &algo
 	}
 
 	minDiffCpuLimitValue := getAnnotation("min-diff-cpu-limit-value")
@@ -990,17 +1043,11 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	}
 
 	memoryRequestFromCpuEnabled := getAnnotation("memory-request-from-cpu-enabled")
-	if memoryRequestFromCpuEnabled == "" {
-		memoryRequestFromCpuEnabled = getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ENABLED", "")
-	}
 	if memoryRequestFromCpuEnabled == "true" {
 		memoryRequestFromCpuEnabledBool := true
 		cfg.MemoryRequestFromCpuEnabled = &memoryRequestFromCpuEnabledBool
 	}
 	memoryRequestFromCpuAlgo := getAnnotation("memory-request-from-cpu-algo")
-	if memoryRequestFromCpuAlgo == "" {
-		memoryRequestFromCpuAlgo = getEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ALGO", "ratio")
-	}
 	switch memoryRequestFromCpuAlgo {
 	case "ratio":
 		algo := CalculatorAlgoRatio
@@ -1010,8 +1057,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		cfg.MemoryRequestFromCpuAlgo = &algo
 	default:
 		klog.Warningf("Unknown calculator algorithm: %s", memoryRequestFromCpuAlgo)
-		algo := CalculatorAlgoRatio
-		cfg.MemoryRequestFromCpuAlgo = &algo
 	}
 	memoryRequestFromCpuValue := getAnnotation("memory-request-from-cpu-value")
 	if memoryRequestFromCpuValue != "" {
