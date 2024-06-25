@@ -35,6 +35,14 @@ const (
 	UnprovidedApplyDefaultModeValue
 )
 
+type ApplyTarget int
+
+const (
+	ApplyTargetFrugal ApplyTarget = iota
+	ApplyTargetBalanced
+	ApplyTargetPeak
+)
+
 type VpaContainerCfg struct {
 	Key           string
 	ContainerName string
@@ -596,6 +604,10 @@ type LoadCfg struct {
 	MemoryLimitFromCpuEnabled   *bool
 	MemoryLimitFromCpuAlgo      *CalculatorAlgo
 	MemoryLimitFromCpuValue     *string
+
+	RequestApplyTarget       *ApplyTarget
+	RequestCpuApplyTarget    *ApplyTarget
+	RequestMemoryApplyTarget *ApplyTarget
 }
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
@@ -1005,4 +1017,6 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	if memoryRequestFromCpuValue != "" {
 		cfg.MemoryRequestFromCpuValue = &memoryRequestFromCpuValue
 	}
+
+	requestApplyTarget := getAnnotation("request-apply-target")
 }
