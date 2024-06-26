@@ -128,7 +128,6 @@ func applyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dyn
 	}
 	if err != nil {
 		klog.Errorf("Failed to apply updates for %s: %s", vcfg.Key, err.Error())
-		return
 	}
 	reporting.ReportUpdated(update, vcfg)
 }
