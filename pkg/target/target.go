@@ -31,7 +31,7 @@ type TargetRecommandation struct {
 
 var FieldManager = "oblik-operator"
 
-func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*[]reporting.Update, error) {
+func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	deploymentName := targetRef.Name
@@ -40,25 +40,32 @@ func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return nil, fmt.Errorf("Error fetching deployment: %s", err.Error())
 	}
 
-	updates := updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			update.Type = reporting.ResultTypeFailed
+			update.Error = err
+			return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+		}
+		update.Type = reporting.ResultTypeSuccess
+	} else {
+		update.Type = reporting.ResultTypeDryRun
 	}
-	return &updates, nil
+	return update, nil
 }
 
-func UpdateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*[]reporting.Update, error) {
+func UpdateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	cronjobName := targetRef.Name
@@ -68,25 +75,32 @@ func UpdateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 		return nil, fmt.Errorf("Error fetching cronjob: %s", err.Error())
 	}
 
-	updates := updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			update.Type = reporting.ResultTypeFailed
+			update.Error = err
+			return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+		}
+		update.Type = reporting.ResultTypeSuccess
+	} else {
+		update.Type = reporting.ResultTypeDryRun
 	}
-	return &updates, nil
+	return update, nil
 }
 
-func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*[]reporting.Update, error) {
+func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	statefulSetName := targetRef.Name
@@ -96,25 +110,32 @@ func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return nil, fmt.Errorf("Error fetching stateful set: %s", err.Error())
 	}
 
-	updates := updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to statefulset: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			update.Type = reporting.ResultTypeFailed
+			update.Error = err
+			return nil, fmt.Errorf("Error applying patch to statefulset: %s", err.Error())
+		}
+		update.Type = reporting.ResultTypeSuccess
+	} else {
+		update.Type = reporting.ResultTypeDryRun
 	}
-	return &updates, nil
+	return update, nil
 }
 
-func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*[]reporting.Update, error) {
+func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	clusterName := targetRef.Name
@@ -147,7 +168,7 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 			Resources: cluster.Spec.Resources,
 		},
 	}
-	updates := updateContainerResources(containers, vpa, vcfg)
+	update := updateContainerResources(containers, vpa, vcfg)
 	cluster.Spec.Resources = containers[0].Resources
 
 	updatedClusterJSON, err := json.Marshal(cluster)
@@ -160,13 +181,20 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
-		FieldManager: FieldManager,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
+			FieldManager: FieldManager,
+		})
+		if err != nil {
+			update.Type = reporting.ResultTypeFailed
+			update.Error = err
+			return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
+		}
+		update.Type = reporting.ResultTypeSuccess
+	} else {
+		update.Type = reporting.ResultTypeDryRun
 	}
-	return &updates, nil
+	return update, nil
 }
 
 func findContainerPolicy(vpaResource *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
@@ -272,8 +300,11 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 	return recommandations
 }
 
-func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *config.VpaWorkloadCfg) []reporting.Update {
-	updates := []reporting.Update{}
+func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
+	changes := []reporting.Change{}
+	update := reporting.UpdateResult{
+		Key: vcfg.Key,
+	}
 
 	for index, container := range containers {
 		containerName := container.Name
@@ -303,7 +334,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					newCPURequest = cpuRequest
 				}
 				if vcfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
-					updates = append(updates, reporting.Update{
+					changes = append(changes, reporting.Change{
 						Old:           cpuRequest,
 						New:           newCPURequest,
 						Type:          reporting.UpdateTypeCpuRequest,
@@ -325,7 +356,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					newCPULimit = cpuLimit
 				}
 				if vcfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
-					updates = append(updates, reporting.Update{
+					changes = append(changes, reporting.Change{
 						Old:           cpuLimit,
 						New:           newCPULimit,
 						Type:          reporting.UpdateTypeCpuLimit,
@@ -355,7 +386,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					newMemoryRequest = memoryRequest
 				}
 				if vcfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
-					updates = append(updates, reporting.Update{
+					changes = append(changes, reporting.Change{
 						Old:           memoryRequest,
 						New:           newMemoryRequest,
 						Type:          reporting.UpdateTypeMemoryRequest,
@@ -383,7 +414,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					newMemoryLimit = memoryLimit
 				}
 				if vcfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
-					updates = append(updates, reporting.Update{
+					changes = append(changes, reporting.Change{
 						Old:           memoryLimit,
 						New:           newMemoryLimit,
 						Type:          reporting.UpdateTypeMemoryLimit,
@@ -397,14 +428,15 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 			break
 		}
 	}
-	return updates
+	update.Changes = changes
+	return &update
 }
 
-func updateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []reporting.Update {
+func updateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
 	recommandations := getTargetRecommandations(vpaResource, vcfg)
 	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResource, vcfg)
-	updates := applyRecommandationsToContainers(containers, recommandations, vcfg)
-	return updates
+	update := applyRecommandationsToContainers(containers, recommandations, vcfg)
+	return update
 }
 
 func createPatch(obj interface{}, apiVersion, kind string) ([]byte, error) {

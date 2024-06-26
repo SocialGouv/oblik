@@ -11,10 +11,62 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCfg {
+	key := fmt.Sprintf("%s/%s", vpaResource.Namespace, vpaResource.Name)
+	cfg := &VpaWorkloadCfg{
+		Key: key,
+		LoadCfg: &LoadCfg{
+			Key: key,
+		},
+		Containers: map[string]*VpaContainerCfg{},
+	}
+
+	annotations := getVpaAnnotations(vpaResource)
+	getAnnotation := func(key string) string {
+		return getAnnotationFromMap(key, annotations)
+	}
+
+	cronExpr := getAnnotation("cron")
+	if cronExpr == "" {
+		cronExpr = utils.GetEnv("OBLIK_DEFAULT_CRON", defaultCron)
+	}
+	cfg.CronExpr = cronExpr
+
+	cronAddRandomMax := getAnnotation("cron-add-random-max")
+	if cronAddRandomMax == "" {
+		cronAddRandomMax = utils.GetEnv("OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX", defaultCronAddRandomMax)
+	}
+	cfg.CronMaxRandomDelay = utils.ParseDuration(cronAddRandomMax, 120*time.Minute)
+
+	dryRunStr := getAnnotation("dry-run")
+	if dryRunStr == "" {
+		dryRunStr = utils.GetEnv("OBLIK_DEFAULT_DRY_RUN", "false")
+	}
+	if dryRunStr == "true" {
+		cfg.DryRun = true
+	}
+
+	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, "")
+
+	if vpaResource.Status.Recommendation != nil {
+		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
+			vpaContainerCfg := createVpaContainerCfg(vpaResource, containerRecommendation.ContainerName)
+			cfg.Containers[containerRecommendation.ContainerName] = vpaContainerCfg
+		}
+	}
+
+	return cfg
+}
+
 type VpaWorkloadCfg struct {
 	Key string
 	*LoadCfg
 	Containers map[string]*VpaContainerCfg
+	DryRun     bool
+}
+
+func (v *VpaWorkloadCfg) GetDryRun() bool {
+	return v.DryRun
 }
 
 func (v *VpaWorkloadCfg) GetRequestCPUApplyMode(containerName string) ApplyMode {
@@ -692,43 +744,4 @@ func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) Apply
 		}
 	}
 	return v.GetRequestApplyTarget(containerName)
-}
-
-func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCfg {
-	key := fmt.Sprintf("%s/%s", vpaResource.Namespace, vpaResource.Name)
-	cfg := &VpaWorkloadCfg{
-		Key: key,
-		LoadCfg: &LoadCfg{
-			Key: key,
-		},
-		Containers: map[string]*VpaContainerCfg{},
-	}
-
-	annotations := getVpaAnnotations(vpaResource)
-	getAnnotation := func(key string) string {
-		return getAnnotationFromMap(key, annotations)
-	}
-
-	cronExpr := getAnnotation("cron")
-	if cronExpr == "" {
-		cronExpr = utils.GetEnv("OBLIK_DEFAULT_CRON", defaultCron)
-	}
-	cfg.CronExpr = cronExpr
-
-	cronAddRandomMax := getAnnotation("cron-add-random-max")
-	if cronAddRandomMax == "" {
-		cronAddRandomMax = utils.GetEnv("OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX", defaultCronAddRandomMax)
-	}
-	cfg.CronMaxRandomDelay = utils.ParseDuration(cronAddRandomMax, 120*time.Minute)
-
-	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, "")
-
-	if vpaResource.Status.Recommendation != nil {
-		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
-			vpaContainerCfg := createVpaContainerCfg(vpaResource, containerRecommendation.ContainerName)
-			cfg.Containers[containerRecommendation.ContainerName] = vpaContainerCfg
-		}
-	}
-
-	return cfg
 }

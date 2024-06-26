@@ -11,7 +11,22 @@ const (
 	UpdateTypeMemoryLimit
 )
 
-type Update struct {
+type ResultType int
+
+const (
+	ResultTypeSuccess ResultType = iota
+	ResultTypeFailed
+	ResultTypeDryRun
+)
+
+type UpdateResult struct {
+	Changes []Change
+	Type    ResultType
+	Key     string
+	Error   error
+}
+
+type Change struct {
 	Old           resource.Quantity
 	New           resource.Quantity
 	Type          UpdateType
