@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/SocialGouv/oblik/pkg/config"
 	"github.com/SocialGouv/oblik/pkg/utils"
 	"k8s.io/klog/v2"
 )
@@ -16,19 +15,24 @@ type Payload struct {
 	Text string `json:"text"`
 }
 
-func sendUpdatesToMattermost(updates []Update, vcfg *config.VpaWorkloadCfg) {
-	if len(updates) == 0 {
+func sendUpdatesToMattermost(update *UpdateResult) {
+	if len(update.Changes) == 0 {
 		return
 	}
 
 	markdown := []string{}
 
 	var title string
-	if !vcfg.GetDryRun() {
-		title = fmt.Sprintf("▶️ Changes on %s", vcfg.Key)
-	} else {
-		title = fmt.Sprintf("👻 DRYRUN - Changes on %s", vcfg.Key)
+
+	switch update.Type {
+	case ResultTypeDryRun:
+		title = fmt.Sprintf("👻 Dry Run - Changes on %s", update.Key)
+	case ResultTypeFailed:
+		title = fmt.Sprintf("⚠️ Failure on %s", update.Key)
+	case ResultTypeSuccess:
+		title = fmt.Sprintf("▶️ Changes on %s", update.Key)
 	}
+
 	markdown = append(
 		markdown,
 		title,
@@ -36,11 +40,15 @@ func sendUpdatesToMattermost(updates []Update, vcfg *config.VpaWorkloadCfg) {
 		"|:-----|------|------|------|",
 	)
 
-	for _, update := range updates {
+	for _, update := range update.Changes {
 		typeLabel := GetUpdateTypeLabel(update.Type)
 		oldValueText := getResourceValueText(update.Type, update.Old)
 		newValueText := getResourceValueText(update.Type, update.New)
 		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+oldValueText+"|"+newValueText+"|")
+	}
+
+	if update.Type == ResultTypeFailed && update.Error != nil {
+		markdown = append(markdown, "---", fmt.Sprintf("Error: %s", update.Error.Error()))
 	}
 
 	if err := sendMattermostAlert(strings.Join(markdown, "\n")); err != nil {
