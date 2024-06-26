@@ -21,11 +21,21 @@ func sendUpdatesToMattermost(updates []Update, vcfg *config.VpaWorkloadCfg) {
 		return
 	}
 
-	markdown := []string{
-		fmt.Sprintf("Changes on %s", vcfg.Key),
+	markdown := []string{}
+
+	var title string
+	if !vcfg.GetDryRun() {
+		title = fmt.Sprintf("▶️ Changes on %s", vcfg.Key)
+	} else {
+		title = fmt.Sprintf("👻 DRYRUN - Changes on %s", vcfg.Key)
+	}
+	markdown = append(
+		markdown,
+		title,
 		"\n| Container Name | Change Type | Old Value | New Value |",
 		"|:-----|------|------|------|",
-	}
+	)
+
 	for _, update := range updates {
 		typeLabel := GetUpdateTypeLabel(update.Type)
 		oldValueText := getResourceValueText(update.Type, update.Old)

@@ -47,13 +47,15 @@ func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+		}
 	}
 	return &updates, nil
 }
@@ -75,13 +77,15 @@ func UpdateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.BatchV1().CronJobs(namespace).Patch(context.TODO(), cronjobName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error applying patch to deployment: %s", err.Error())
+		}
 	}
 	return &updates, nil
 }
@@ -103,13 +107,15 @@ func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	force := true
-	_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
-		FieldManager: FieldManager,
-		Force:        &force, // Force the apply to take ownership of the fields
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to statefulset: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		force := true
+		_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
+			FieldManager: FieldManager,
+			Force:        &force, // Force the apply to take ownership of the fields
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error applying patch to statefulset: %s", err.Error())
+		}
 	}
 	return &updates, nil
 }
@@ -160,11 +166,13 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
-		FieldManager: FieldManager,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
+	if !vcfg.GetDryRun() {
+		_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
+			FieldManager: FieldManager,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error applying patch to cluster: %s", err.Error())
+		}
 	}
 	return &updates, nil
 }

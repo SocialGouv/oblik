@@ -15,6 +15,11 @@ type VpaWorkloadCfg struct {
 	Key string
 	*LoadCfg
 	Containers map[string]*VpaContainerCfg
+	DryRun     bool
+}
+
+func (v *VpaWorkloadCfg) GetDryRun() bool {
+	return v.DryRun
 }
 
 func (v *VpaWorkloadCfg) GetRequestCPUApplyMode(containerName string) ApplyMode {
@@ -720,6 +725,14 @@ func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCf
 		cronAddRandomMax = utils.GetEnv("OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX", defaultCronAddRandomMax)
 	}
 	cfg.CronMaxRandomDelay = utils.ParseDuration(cronAddRandomMax, 120*time.Minute)
+
+	dryRunStr := getAnnotation("dry-run")
+	if dryRunStr == "" {
+		dryRunStr = utils.GetEnv("OBLIK_DEFAULT_DRY_RUN", "false")
+	}
+	if dryRunStr == "true" {
+		cfg.DryRun = true
+	}
 
 	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, "")
 
