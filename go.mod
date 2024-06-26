@@ -6,6 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/cloudnative-pg/cloudnative-pg v1.23.1
+	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/robfig/cron/v3 v3.0.1
 	k8s.io/api v0.30.1
 	k8s.io/apimachinery v0.30.1
@@ -20,7 +21,6 @@ require (
 	github.com/cloudnative-pg/cnpg-i v0.0.0-20240410134146-aa2f566849ce // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
-	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect

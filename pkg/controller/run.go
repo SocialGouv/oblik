@@ -2,20 +2,13 @@ package controller
 
 import (
 	"context"
-	"sync"
 
-	cron "github.com/robfig/cron/v3"
+	"github.com/SocialGouv/oblik/pkg/watcher"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
-)
-
-var (
-	cronScheduler = cron.New()
-	cronJobs      = make(map[string]cron.EntryID)
-	cronMutex     sync.Mutex
 )
 
 func Run() {
@@ -45,9 +38,9 @@ func Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cronScheduler.Start()
+	watcher.CronScheduler.Start()
 
-	go watchVPAs(ctx, clientset, dynamicClient, vpaClientset)
+	go watcher.WatchVPAs(ctx, clientset, dynamicClient, vpaClientset)
 
 	klog.Info("Starting VPA Operator...")
 	<-ctx.Done()

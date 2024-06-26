@@ -1,4 +1,4 @@
-package controller
+package reporting
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/utils"
 	"k8s.io/klog/v2"
 )
 
@@ -14,7 +16,7 @@ type Payload struct {
 	Text string `json:"text"`
 }
 
-func sendUpdatesToMattermost(updates []Update, vcfg *VpaWorkloadCfg) {
+func sendUpdatesToMattermost(updates []Update, vcfg *config.VpaWorkloadCfg) {
 	if len(updates) == 0 {
 		return
 	}
@@ -25,7 +27,7 @@ func sendUpdatesToMattermost(updates []Update, vcfg *VpaWorkloadCfg) {
 		"|:-----|------|------|------|",
 	}
 	for _, update := range updates {
-		typeLabel := getUpdateTypeLabel(update.Type)
+		typeLabel := GetUpdateTypeLabel(update.Type)
 		oldValueText := getResourceValueText(update.Type, update.Old)
 		newValueText := getResourceValueText(update.Type, update.New)
 		markdown = append(markdown, "|"+update.ContainerName+"|"+typeLabel+"|"+oldValueText+"|"+newValueText+"|")
@@ -37,7 +39,7 @@ func sendUpdatesToMattermost(updates []Update, vcfg *VpaWorkloadCfg) {
 }
 
 func sendMattermostAlert(message string) error {
-	webhookURL := getEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
+	webhookURL := utils.GetEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
 
 	payload := Payload{Text: message}
 
