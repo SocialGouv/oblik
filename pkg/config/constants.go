@@ -26,3 +26,11 @@ const (
 	ApplyTargetBalanced
 	ApplyTargetPeak
 )
+
+type ScaleDirection int
+
+const (
+	ScaleDirectionBoth ScaleDirection = iota
+	ScaleDirectionUp
+	ScaleDirectionDown
+)

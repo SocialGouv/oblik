@@ -747,3 +747,95 @@ func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) Apply
 	}
 	return v.GetRequestApplyTarget(containerName)
 }
+
+func (v *VpaWorkloadCfg) GetRequestCpuScaleDirection(containerName string) ScaleDirection {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuScaleDirection != nil {
+		return *v.Containers[containerName].RequestCpuScaleDirection
+	}
+	if v.RequestCpuScaleDirection != nil {
+		return *v.RequestCpuScaleDirection
+	}
+	requestCpuScaleDirection := utils.GetEnv("OBLIK_DEFAULT_REQUEST_CPU_SCALE_DIRECTION", "")
+	if requestCpuScaleDirection != "" {
+		switch requestCpuScaleDirection {
+		case "both":
+			return ScaleDirectionBoth
+		case "up":
+			return ScaleDirectionUp
+		case "down":
+			return ScaleDirectionDown
+		default:
+			klog.Warningf("Unknown scale-direction: %s", requestCpuScaleDirection)
+		}
+	}
+	return ScaleDirectionBoth
+}
+
+func (v *VpaWorkloadCfg) GetRequestMemoryScaleDirection(containerName string) ScaleDirection {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryScaleDirection != nil {
+		return *v.Containers[containerName].RequestMemoryScaleDirection
+	}
+	if v.RequestMemoryScaleDirection != nil {
+		return *v.RequestMemoryScaleDirection
+	}
+	requestMemoryScaleDirection := utils.GetEnv("OBLIK_DEFAULT_REQUEST_MEMORY_SCALE_DIRECTION", "")
+	if requestMemoryScaleDirection != "" {
+		switch requestMemoryScaleDirection {
+		case "both":
+			return ScaleDirectionBoth
+		case "up":
+			return ScaleDirectionUp
+		case "down":
+			return ScaleDirectionDown
+		default:
+			klog.Warningf("Unknown scale-direction: %s", requestMemoryScaleDirection)
+		}
+	}
+	return ScaleDirectionBoth
+}
+
+func (v *VpaWorkloadCfg) GetLimitCpuScaleDirection(containerName string) ScaleDirection {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCpuScaleDirection != nil {
+		return *v.Containers[containerName].LimitCpuScaleDirection
+	}
+	if v.LimitCpuScaleDirection != nil {
+		return *v.LimitCpuScaleDirection
+	}
+	limitCpuScaleDirection := utils.GetEnv("OBLIK_DEFAULT_LIMIT_CPU_SCALE_DIRECTION", "")
+	if limitCpuScaleDirection != "" {
+		switch limitCpuScaleDirection {
+		case "both":
+			return ScaleDirectionBoth
+		case "up":
+			return ScaleDirectionUp
+		case "down":
+			return ScaleDirectionDown
+		default:
+			klog.Warningf("Unknown scale-direction: %s", limitCpuScaleDirection)
+		}
+	}
+	return ScaleDirectionBoth
+}
+
+func (v *VpaWorkloadCfg) GetLimitMemoryScaleDirection(containerName string) ScaleDirection {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryScaleDirection != nil {
+		return *v.Containers[containerName].LimitMemoryScaleDirection
+	}
+	if v.LimitMemoryScaleDirection != nil {
+		return *v.LimitMemoryScaleDirection
+	}
+	limitMemoryScaleDirection := utils.GetEnv("OBLIK_DEFAULT_LIMIT_MEMORY_SCALE_DIRECTION", "")
+	if limitMemoryScaleDirection != "" {
+		switch limitMemoryScaleDirection {
+		case "both":
+			return ScaleDirectionBoth
+		case "up":
+			return ScaleDirectionUp
+		case "down":
+			return ScaleDirectionDown
+		default:
+			klog.Warningf("Unknown scale-direction: %s", limitMemoryScaleDirection)
+		}
+	}
+	return ScaleDirectionBoth
+}

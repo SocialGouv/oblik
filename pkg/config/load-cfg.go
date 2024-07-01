@@ -59,6 +59,11 @@ type LoadCfg struct {
 	RequestApplyTarget       *ApplyTarget
 	RequestCpuApplyTarget    *ApplyTarget
 	RequestMemoryApplyTarget *ApplyTarget
+
+	RequestCpuScaleDirection    *ScaleDirection
+	RequestMemoryScaleDirection *ScaleDirection
+	LimitCpuScaleDirection      *ScaleDirection
+	LimitMemoryScaleDirection   *ScaleDirection
 }
 
 func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, annotationSuffix string) {
@@ -470,6 +475,74 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 			cfg.RequestMemoryApplyTarget = &applyTarget
 		default:
 			klog.Warningf("Unknown apply-target: %s", requestMemoryApplyTarget)
+		}
+	}
+
+	requestCpuScaleDirection := getAnnotation("request-cpu-scale-direction")
+	if requestCpuScaleDirection != "" {
+		switch requestCpuScaleDirection {
+		case "both":
+			scaleDirection := ScaleDirectionBoth
+			cfg.RequestCpuScaleDirection = &scaleDirection
+		case "up":
+			scaleDirection := ScaleDirectionUp
+			cfg.RequestCpuScaleDirection = &scaleDirection
+		case "down":
+			scaleDirection := ScaleDirectionDown
+			cfg.RequestCpuScaleDirection = &scaleDirection
+		default:
+			klog.Warningf("Unknown scale-direction: %s", requestCpuScaleDirection)
+		}
+	}
+
+	requestMemoryScaleDirection := getAnnotation("request-memory-scale-direction")
+	if requestMemoryScaleDirection != "" {
+		switch requestMemoryScaleDirection {
+		case "both":
+			scaleDirection := ScaleDirectionBoth
+			cfg.RequestMemoryScaleDirection = &scaleDirection
+		case "up":
+			scaleDirection := ScaleDirectionUp
+			cfg.RequestMemoryScaleDirection = &scaleDirection
+		case "down":
+			scaleDirection := ScaleDirectionDown
+			cfg.RequestMemoryScaleDirection = &scaleDirection
+		default:
+			klog.Warningf("Unknown scale-direction: %s", requestMemoryScaleDirection)
+		}
+	}
+
+	limitCpuScaleDirection := getAnnotation("limit-cpu-scale-direction")
+	if limitCpuScaleDirection != "" {
+		switch limitCpuScaleDirection {
+		case "both":
+			scaleDirection := ScaleDirectionBoth
+			cfg.LimitCpuScaleDirection = &scaleDirection
+		case "up":
+			scaleDirection := ScaleDirectionUp
+			cfg.LimitCpuScaleDirection = &scaleDirection
+		case "down":
+			scaleDirection := ScaleDirectionDown
+			cfg.LimitCpuScaleDirection = &scaleDirection
+		default:
+			klog.Warningf("Unknown scale-direction: %s", limitCpuScaleDirection)
+		}
+	}
+
+	limitMemoryScaleDirection := getAnnotation("limit-memory-scale-direction")
+	if limitMemoryScaleDirection != "" {
+		switch limitMemoryScaleDirection {
+		case "both":
+			scaleDirection := ScaleDirectionBoth
+			cfg.LimitMemoryScaleDirection = &scaleDirection
+		case "up":
+			scaleDirection := ScaleDirectionUp
+			cfg.LimitMemoryScaleDirection = &scaleDirection
+		case "down":
+			scaleDirection := ScaleDirectionDown
+			cfg.LimitMemoryScaleDirection = &scaleDirection
+		default:
+			klog.Warningf("Unknown scale-direction: %s", limitMemoryScaleDirection)
 		}
 	}
 }
