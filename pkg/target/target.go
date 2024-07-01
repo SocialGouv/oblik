@@ -114,6 +114,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				if newCPURequest.Cmp(minDiffCpuRequest) == -1 {
 					newCPURequest = cpuRequest
 				}
+				if vcfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPURequest.Cmp(cpuRequest) == 1 {
+					newCPURequest = cpuRequest
+				}
+				if vcfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPURequest.Cmp(cpuRequest) == -1 {
+					newCPURequest = cpuRequest
+				}
 				if vcfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
 					changes = append(changes, reporting.Change{
 						Old:           cpuRequest,
@@ -134,6 +140,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				}
 				minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], vcfg.GetMinDiffCpuLimitAlgo(containerName), vcfg.GetMinDiffCpuLimitValue(containerName))
 				if newCPULimit.Cmp(minDiffCpuLimit) == -1 {
+					newCPULimit = cpuLimit
+				}
+				if vcfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPULimit.Cmp(cpuLimit) == 1 {
+					newCPULimit = cpuLimit
+				}
+				if vcfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPULimit.Cmp(cpuLimit) == -1 {
 					newCPULimit = cpuLimit
 				}
 				if vcfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
@@ -166,6 +178,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				if newMemoryRequest.Cmp(minDiffMemoryRequest) == -1 {
 					newMemoryRequest = memoryRequest
 				}
+				if vcfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryRequest.Cmp(memoryRequest) == 1 {
+					newMemoryRequest = memoryRequest
+				}
+				if vcfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryRequest.Cmp(memoryRequest) == -1 {
+					newMemoryRequest = memoryRequest
+				}
 				if vcfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
 					changes = append(changes, reporting.Change{
 						Old:           memoryRequest,
@@ -192,6 +210,12 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				}
 				minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], vcfg.GetMinDiffMemoryLimitAlgo(containerName), vcfg.GetMinDiffMemoryLimitValue(containerName))
 				if newMemoryLimit.Cmp(minDiffMemoryLimit) == -1 {
+					newMemoryLimit = memoryLimit
+				}
+				if vcfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryLimit.Cmp(memoryLimit) == 1 {
+					newMemoryLimit = memoryLimit
+				}
+				if vcfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryLimit.Cmp(memoryLimit) == -1 {
 					newMemoryLimit = memoryLimit
 				}
 				if vcfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {

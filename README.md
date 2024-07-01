@@ -77,6 +77,10 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/request-apply-target`**: Select which recommendation to apply by default (overridable for cpu and memory specifically with the following annotations). Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
 - **`oblik.socialgouv.io/request-cpu-apply-target`**: Select which recommendation to apply for cpu. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
 - **`oblik.socialgouv.io/request-memory-apply-target`**: Select which recommendation to apply for memory. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-cpu-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
+- **`oblik.socialgouv.io/request-memory-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
+- **`oblik.socialgouv.io/limit-cpu-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
+- **`oblik.socialgouv.io/limit-memory-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
 
 
 To target specific container, suffix the config annotation with name of the container, eg:
