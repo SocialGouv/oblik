@@ -416,40 +416,40 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 			fallthrough
 		case "frugal":
 			applyTarget := ApplyTargetFrugal
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestApplyTarget = &applyTarget
 		case "target":
 			fallthrough
 		case "balanced":
 			applyTarget := ApplyTargetBalanced
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestApplyTarget = &applyTarget
 		case "upperBound":
 			fallthrough
 		case "peak":
 			applyTarget := ApplyTargetPeak
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestApplyTarget = &applyTarget
 		default:
 			klog.Warningf("Unknown apply-target: %s", requestApplyTarget)
 		}
 	}
 
-	requestCpuApplyTarget := getAnnotation("request-apply-target")
+	requestCpuApplyTarget := getAnnotation("request-cpu-apply-target")
 	if requestCpuApplyTarget != "" {
 		switch requestCpuApplyTarget {
 		case "lowerBound":
 			fallthrough
 		case "frugal":
 			applyTarget := ApplyTargetFrugal
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestCpuApplyTarget = &applyTarget
 		case "target":
 			fallthrough
 		case "balanced":
 			applyTarget := ApplyTargetBalanced
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestCpuApplyTarget = &applyTarget
 		case "upperBound":
 			fallthrough
 		case "peak":
 			applyTarget := ApplyTargetPeak
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			cfg.RequestCpuApplyTarget = &applyTarget
 		default:
 			klog.Warningf("Unknown apply-target: %s", requestCpuApplyTarget)
 		}
