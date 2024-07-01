@@ -12,7 +12,7 @@ type TargetRecommandation struct {
 	ContainerName string
 }
 
-func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
+func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
 	recommandations := []TargetRecommandation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
@@ -34,6 +34,36 @@ func getTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *conf
 			case config.RequestApplyTargetBalanced:
 				recommandation.Memory = containerRecommendation.Target.Memory()
 			case config.RequestApplyTargetPeak:
+				recommandation.Memory = containerRecommendation.UpperBound.Memory()
+			}
+			recommandations = append(recommandations, recommandation)
+		}
+	}
+	return recommandations
+}
+
+func getLimitTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
+	recommandations := []TargetRecommandation{}
+	if vpaResource.Status.Recommendation != nil {
+		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
+			containerName := containerRecommendation.ContainerName
+			recommandation := TargetRecommandation{
+				ContainerName: containerName,
+			}
+			switch vcfg.GetLimitCpuApplyTarget(containerName) {
+			case config.LimitApplyTargetFrugal:
+				recommandation.Cpu = containerRecommendation.LowerBound.Cpu()
+			case config.LimitApplyTargetBalanced:
+				recommandation.Cpu = containerRecommendation.Target.Cpu()
+			case config.LimitApplyTargetPeak:
+				recommandation.Cpu = containerRecommendation.UpperBound.Cpu()
+			}
+			switch vcfg.GetLimitMemoryApplyTarget(containerName) {
+			case config.LimitApplyTargetFrugal:
+				recommandation.Memory = containerRecommendation.LowerBound.Memory()
+			case config.LimitApplyTargetBalanced:
+				recommandation.Memory = containerRecommendation.Target.Memory()
+			case config.LimitApplyTargetPeak:
 				recommandation.Memory = containerRecommendation.UpperBound.Memory()
 			}
 			recommandations = append(recommandations, recommandation)
