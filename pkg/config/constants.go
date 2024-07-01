@@ -19,12 +19,21 @@ const (
 	UnprovidedApplyDefaultModeValue
 )
 
-type ApplyTarget int
+type RequestApplyTarget int
 
 const (
-	ApplyTargetFrugal ApplyTarget = iota
-	ApplyTargetBalanced
-	ApplyTargetPeak
+	RequestApplyTargetFrugal RequestApplyTarget = iota
+	RequestApplyTargetBalanced
+	RequestApplyTargetPeak
+)
+
+type LimitApplyTarget int
+
+const (
+	LimitApplyTargetAuto LimitApplyTarget = iota
+	LimitApplyTargetFrugal
+	LimitApplyTargetBalanced
+	LimitApplyTargetPeak
 )
 
 type ScaleDirection int

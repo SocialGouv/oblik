@@ -81,7 +81,7 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 	return recommandations
 }
 
-func applyRecommandationsToContainers(containers []corev1.Container, recommandations []TargetRecommandation, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
+func applyRecommandationsToContainers(containers []corev1.Container, requestRecommandations []TargetRecommandation, limitRecommandations []TargetRecommandation, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
 	changes := []reporting.Change{}
 	update := reporting.UpdateResult{
 		Key: vcfg.Key,
@@ -89,7 +89,7 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 
 	for index, container := range containers {
 		containerName := container.Name
-		for _, containerRecommendation := range recommandations {
+		for _, containerRecommendation := range requestRecommandations {
 			if containerRecommendation.ContainerName != containerName {
 				continue
 			}
@@ -131,7 +131,19 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				}
 
 				cpuLimit := *container.Resources.Limits.Cpu()
-				newCPULimit := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+
+				var newCPULimit resource.Quantity
+				if vcfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
+					newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+				} else {
+					for _, limiContainerRecommendation := range limitRecommandations {
+						if limiContainerRecommendation.ContainerName != containerName {
+							continue
+						}
+						newCPULimit = *limiContainerRecommendation.Cpu
+					}
+				}
+
 				if vcfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMinLimitCpu(containerName)) == -1 {
 					newCPULimit = *vcfg.GetMinLimitCpu(containerName)
 				}
@@ -200,7 +212,16 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
 					newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, vcfg.GetMemoryLimitFromCpuAlgo(containerName), vcfg.GetMemoryLimitFromCpuValue(containerName))
 				} else {
-					newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+					if vcfg.GetLimitMemoryApplyTarget(containerName) == config.LimitApplyTargetAuto {
+						newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+					} else {
+						for _, limiContainerRecommendation := range limitRecommandations {
+							if limiContainerRecommendation.ContainerName != containerName {
+								continue
+							}
+							newMemoryLimit = *limiContainerRecommendation.Memory
+						}
+					}
 				}
 				if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
 					newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
@@ -238,9 +259,13 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 }
 
 func updateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
-	recommandations := getTargetRecommandations(vpaResource, vcfg)
-	recommandations = setUnprovidedDefaultRecommandations(containers, recommandations, vpaResource, vcfg)
-	update := applyRecommandationsToContainers(containers, recommandations, vcfg)
+	requestRecommandations := getRequestTargetRecommandations(vpaResource, vcfg)
+	requestRecommandations = setUnprovidedDefaultRecommandations(containers, requestRecommandations, vpaResource, vcfg)
+
+	limitRecommandations := getLimitTargetRecommandations(vpaResource, vcfg)
+	limitRecommandations = setUnprovidedDefaultRecommandations(containers, limitRecommandations, vpaResource, vcfg)
+
+	update := applyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, vcfg)
 	return update
 }
 

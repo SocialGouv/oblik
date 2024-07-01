@@ -56,9 +56,13 @@ type LoadCfg struct {
 	MemoryLimitFromCpuAlgo      *calculator.CalculatorAlgo
 	MemoryLimitFromCpuValue     *string
 
-	RequestApplyTarget       *ApplyTarget
-	RequestCpuApplyTarget    *ApplyTarget
-	RequestMemoryApplyTarget *ApplyTarget
+	RequestApplyTarget       *RequestApplyTarget
+	RequestCpuApplyTarget    *RequestApplyTarget
+	RequestMemoryApplyTarget *RequestApplyTarget
+
+	LimitApplyTarget       *LimitApplyTarget
+	LimitCpuApplyTarget    *LimitApplyTarget
+	LimitMemoryApplyTarget *LimitApplyTarget
 
 	RequestCpuScaleDirection    *ScaleDirection
 	RequestMemoryScaleDirection *ScaleDirection
@@ -415,43 +419,43 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			applyTarget := ApplyTargetFrugal
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetFrugal
+			cfg.RequestApplyTarget = &applyTarget
 		case "target":
 			fallthrough
 		case "balanced":
-			applyTarget := ApplyTargetBalanced
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetBalanced
+			cfg.RequestApplyTarget = &applyTarget
 		case "upperBound":
 			fallthrough
 		case "peak":
-			applyTarget := ApplyTargetPeak
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetPeak
+			cfg.RequestApplyTarget = &applyTarget
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestApplyTarget)
 		}
 	}
 
-	requestCpuApplyTarget := getAnnotation("request-apply-target")
+	requestCpuApplyTarget := getAnnotation("request-cpu-apply-target")
 	if requestCpuApplyTarget != "" {
 		switch requestCpuApplyTarget {
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			applyTarget := ApplyTargetFrugal
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetFrugal
+			cfg.RequestCpuApplyTarget = &applyTarget
 		case "target":
 			fallthrough
 		case "balanced":
-			applyTarget := ApplyTargetBalanced
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetBalanced
+			cfg.RequestCpuApplyTarget = &applyTarget
 		case "upperBound":
 			fallthrough
 		case "peak":
-			applyTarget := ApplyTargetPeak
-			cfg.RequestMemoryApplyTarget = &applyTarget
+			applyTarget := RequestApplyTargetPeak
+			cfg.RequestCpuApplyTarget = &applyTarget
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestCpuApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestCpuApplyTarget)
 		}
 	}
 
@@ -461,20 +465,89 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			applyTarget := ApplyTargetFrugal
+			applyTarget := RequestApplyTargetFrugal
 			cfg.RequestMemoryApplyTarget = &applyTarget
 		case "target":
 			fallthrough
 		case "balanced":
-			applyTarget := ApplyTargetBalanced
+			applyTarget := RequestApplyTargetBalanced
 			cfg.RequestMemoryApplyTarget = &applyTarget
 		case "upperBound":
 			fallthrough
 		case "peak":
-			applyTarget := ApplyTargetPeak
+			applyTarget := RequestApplyTargetPeak
 			cfg.RequestMemoryApplyTarget = &applyTarget
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestMemoryApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestMemoryApplyTarget)
+		}
+	}
+
+	limitApplyTarget := getAnnotation("limit-apply-target")
+	if limitApplyTarget != "" {
+		switch limitApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := LimitApplyTargetFrugal
+			cfg.LimitApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := LimitApplyTargetBalanced
+			cfg.LimitApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := LimitApplyTargetPeak
+			cfg.LimitApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", limitApplyTarget)
+		}
+	}
+
+	limitCpuApplyTarget := getAnnotation("limit-cpu-apply-target")
+	if limitCpuApplyTarget != "" {
+		switch limitCpuApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := LimitApplyTargetFrugal
+			cfg.LimitCpuApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := LimitApplyTargetBalanced
+			cfg.LimitCpuApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := LimitApplyTargetPeak
+			cfg.LimitCpuApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", limitCpuApplyTarget)
+		}
+	}
+
+	limitMemoryApplyTarget := getAnnotation("limit-memory-apply-target")
+	if limitMemoryApplyTarget != "" {
+		switch limitMemoryApplyTarget {
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			applyTarget := LimitApplyTargetFrugal
+			cfg.LimitMemoryApplyTarget = &applyTarget
+		case "target":
+			fallthrough
+		case "balanced":
+			applyTarget := LimitApplyTargetBalanced
+			cfg.LimitMemoryApplyTarget = &applyTarget
+		case "upperBound":
+			fallthrough
+		case "peak":
+			applyTarget := LimitApplyTargetPeak
+			cfg.LimitMemoryApplyTarget = &applyTarget
+		default:
+			klog.Warningf("Unknown apply-target: %s", limitMemoryApplyTarget)
 		}
 	}
 
