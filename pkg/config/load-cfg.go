@@ -1,8 +1,6 @@
 package config
 
 import (
-	"time"
-
 	"github.com/SocialGouv/oblik/pkg/calculator"
 	"k8s.io/apimachinery/pkg/api/resource"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -10,9 +8,7 @@ import (
 )
 
 type LoadCfg struct {
-	Key                string
-	CronExpr           string
-	CronMaxRandomDelay time.Duration
+	Key string
 
 	RequestCPUApplyMode    *ApplyMode
 	RequestMemoryApplyMode *ApplyMode
