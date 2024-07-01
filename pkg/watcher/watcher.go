@@ -116,6 +116,8 @@ func applyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dyn
 		update, err = target.UpdateDeployment(clientset, vpa, vcfg)
 	case "StatefulSet":
 		update, err = target.UpdateStatefulSet(clientset, vpa, vcfg)
+	case "DaemonSet":
+		update, err = target.UpdateDaemonSet(clientset, vpa, vcfg)
 	case "CronJob":
 		update, err = target.UpdateCronJob(clientset, vpa, vcfg)
 	case "Cluster":
