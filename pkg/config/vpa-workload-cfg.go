@@ -59,10 +59,12 @@ func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCf
 }
 
 type VpaWorkloadCfg struct {
-	Key string
+	Key                string
+	CronExpr           string
+	CronMaxRandomDelay time.Duration
+	DryRun             bool
+	Containers         map[string]*VpaContainerCfg
 	*LoadCfg
-	Containers map[string]*VpaContainerCfg
-	DryRun     bool
 }
 
 func (v *VpaWorkloadCfg) GetDryRun() bool {
