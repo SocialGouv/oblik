@@ -661,7 +661,7 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuValue(containerName string) string
 	return utils.GetEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_VALUE", "2")
 }
 
-func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) ApplyTarget {
+func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestApplyTarget != nil {
 		return *v.Containers[containerName].RequestApplyTarget
 	}
@@ -674,23 +674,23 @@ func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) ApplyTarget
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			return ApplyTargetFrugal
+			return RequestApplyTargetFrugal
 		case "target":
 			fallthrough
 		case "balanced":
-			return ApplyTargetBalanced
+			return RequestApplyTargetBalanced
 		case "upperBound":
 			fallthrough
 		case "peak":
-			return ApplyTargetPeak
+			return RequestApplyTargetPeak
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestApplyTarget)
 		}
 	}
-	return ApplyTargetBalanced
+	return RequestApplyTargetBalanced
 }
 
-func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) ApplyTarget {
+func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuApplyTarget != nil {
 		return *v.Containers[containerName].RequestCpuApplyTarget
 	}
@@ -703,23 +703,23 @@ func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) ApplyTar
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			return ApplyTargetFrugal
+			return RequestApplyTargetFrugal
 		case "target":
 			fallthrough
 		case "balanced":
-			return ApplyTargetBalanced
+			return RequestApplyTargetBalanced
 		case "upperBound":
 			fallthrough
 		case "peak":
-			return ApplyTargetPeak
+			return RequestApplyTargetPeak
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestCpuApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestCpuApplyTarget)
 		}
 	}
 	return v.GetRequestApplyTarget(containerName)
 }
 
-func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) ApplyTarget {
+func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryApplyTarget != nil {
 		return *v.Containers[containerName].RequestMemoryApplyTarget
 	}
@@ -732,20 +732,113 @@ func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) Apply
 		case "lowerBound":
 			fallthrough
 		case "frugal":
-			return ApplyTargetFrugal
+			return RequestApplyTargetFrugal
 		case "target":
 			fallthrough
 		case "balanced":
-			return ApplyTargetBalanced
+			return RequestApplyTargetBalanced
 		case "upperBound":
 			fallthrough
 		case "peak":
-			return ApplyTargetPeak
+			return RequestApplyTargetPeak
 		default:
-			klog.Warningf("Unknown apply-target: %s", requestMemoryApplyTarget)
+			klog.Warningf("Unknown request-apply-target: %s", requestMemoryApplyTarget)
 		}
 	}
 	return v.GetRequestApplyTarget(containerName)
+}
+
+func (v *VpaWorkloadCfg) GetLimitApplyTarget(containerName string) LimitApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitApplyTarget != nil {
+		return *v.Containers[containerName].LimitApplyTarget
+	}
+	if v.LimitApplyTarget != nil {
+		return *v.LimitApplyTarget
+	}
+	limitApplyTarget := utils.GetEnv("OBLIK_DEFAULT_LIMIT_APPLY_TARGET", "")
+	if limitApplyTarget != "" {
+		switch limitApplyTarget {
+		case "auto":
+			return LimitApplyTargetAuto
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return LimitApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return LimitApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return LimitApplyTargetPeak
+		default:
+			klog.Warningf("Unknown limit-apply-target: %s", limitApplyTarget)
+		}
+	}
+	return LimitApplyTargetAuto
+}
+
+func (v *VpaWorkloadCfg) GetLimitCpuApplyTarget(containerName string) LimitApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCpuApplyTarget != nil {
+		return *v.Containers[containerName].LimitCpuApplyTarget
+	}
+	if v.LimitCpuApplyTarget != nil {
+		return *v.LimitCpuApplyTarget
+	}
+	limitCpuApplyTarget := utils.GetEnv("OBLIK_DEFAULT_LIMIT_CPU_APPLY_TARGET", "")
+	if limitCpuApplyTarget != "" {
+		switch limitCpuApplyTarget {
+		case "auto":
+			return LimitApplyTargetAuto
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return LimitApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return LimitApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return LimitApplyTargetPeak
+		default:
+			klog.Warningf("Unknown limit-apply-target: %s", limitCpuApplyTarget)
+		}
+	}
+	return LimitApplyTargetAuto
+}
+
+func (v *VpaWorkloadCfg) GetLimitMemoryApplyTarget(containerName string) LimitApplyTarget {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryApplyTarget != nil {
+		return *v.Containers[containerName].LimitMemoryApplyTarget
+	}
+	if v.LimitMemoryApplyTarget != nil {
+		return *v.LimitMemoryApplyTarget
+	}
+	limitMemoryApplyTarget := utils.GetEnv("OBLIK_DEFAULT_LIMIT_MEMORY_APPLY_TARGET", "")
+	if limitMemoryApplyTarget != "" {
+		switch limitMemoryApplyTarget {
+		case "auto":
+			return LimitApplyTargetAuto
+		case "lowerBound":
+			fallthrough
+		case "frugal":
+			return LimitApplyTargetFrugal
+		case "target":
+			fallthrough
+		case "balanced":
+			return LimitApplyTargetBalanced
+		case "upperBound":
+			fallthrough
+		case "peak":
+			return LimitApplyTargetPeak
+		default:
+			klog.Warningf("Unknown limit-apply-target: %s", limitMemoryApplyTarget)
+		}
+	}
+	return LimitApplyTargetAuto
 }
 
 func (v *VpaWorkloadCfg) GetRequestCpuScaleDirection(containerName string) ScaleDirection {

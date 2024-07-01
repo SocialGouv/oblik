@@ -74,9 +74,12 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/memory-limit-from-cpu-algo`**: Algorithm to calculate the memory limit based on cpu limit. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/memory-request-from-cpu-value`**: Value used to calculate the memory request based on cpu request. Default is `2`.
 - **`oblik.socialgouv.io/memory-limit-from-cpu-value`**: Value used to calculate the memory limit based on cpu limit. Default is `2`.
-- **`oblik.socialgouv.io/request-apply-target`**: Select which recommendation to apply by default (overridable for cpu and memory specifically with the following annotations). Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
-- **`oblik.socialgouv.io/request-cpu-apply-target`**: Select which recommendation to apply for cpu. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
-- **`oblik.socialgouv.io/request-memory-apply-target`**: Select which recommendation to apply for memory. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-apply-target`**: Select which recommendation to apply by default on request (overridable for cpu and memory specifically with the following annotations). Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-cpu-apply-target`**: Select which recommendation to apply for cpu request. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/request-memory-apply-target`**: Select which recommendation to apply for memory request. Options: `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/limit-apply-target`**: Select which recommendation to apply by default on limit(overridable for cpu and memory specifically with the following annotations). Options: `auto` (default, the limit will be calculated from request), `frugal` (aka lowerBound), `balanced` (aka target), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/limit-cpu-apply-target`**: Select which recommendation to apply for cpu. Options: `auto` (default, the limit will be calculated from request), `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
+- **`oblik.socialgouv.io/limit-memory-apply-target`**: Select which recommendation to apply for memory. Options: `auto` (default, the limit will be calculated from request), `frugal` (aka lowerBound), `balanced` (aka target, default), `peak` (aka `upperBound`).
 - **`oblik.socialgouv.io/request-cpu-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
 - **`oblik.socialgouv.io/request-memory-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.
 - **`oblik.socialgouv.io/limit-cpu-scale-direction`**: Select scaling allowed direction. Options: `both` (default), `up`, `down`.

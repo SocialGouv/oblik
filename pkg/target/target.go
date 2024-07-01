@@ -131,7 +131,14 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 				}
 
 				cpuLimit := *container.Resources.Limits.Cpu()
-				newCPULimit := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+
+				var newCPULimit resource.Quantity
+				if vcfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
+					newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+				} else {
+					// TODO
+				}
+
 				if vcfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMinLimitCpu(containerName)) == -1 {
 					newCPULimit = *vcfg.GetMinLimitCpu(containerName)
 				}
@@ -200,7 +207,11 @@ func applyRecommandationsToContainers(containers []corev1.Container, recommandat
 					memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
 					newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, vcfg.GetMemoryLimitFromCpuAlgo(containerName), vcfg.GetMemoryLimitFromCpuValue(containerName))
 				} else {
-					newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+					if vcfg.GetLimitMemoryApplyTarget(containerName) == config.LimitApplyTargetAuto {
+						newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+					} else {
+						// TODO
+					}
 				}
 				if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
 					newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
