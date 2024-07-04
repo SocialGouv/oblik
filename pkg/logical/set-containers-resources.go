@@ -57,6 +57,11 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 	if vcfg.GetMaxLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMaxLimitCpu(containerName)) == 1 {
 		newCPULimit = *vcfg.GetMaxLimitCpu(containerName)
 	}
+
+	if newCPULimit.Cmp(container.Resources.Requests[corev1.ResourceCPU]) == -1 {
+		newCPULimit = container.Resources.Requests[corev1.ResourceCPU]
+	}
+
 	minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], vcfg.GetMinDiffCpuLimitAlgo(containerName), vcfg.GetMinDiffCpuLimitValue(containerName))
 	if newCPULimit.Cmp(minDiffCpuLimit) == -1 {
 		newCPULimit = cpuLimit
@@ -137,6 +142,11 @@ func setContainerMemoryLimit(container *corev1.Container, containerRequestRecomm
 	if vcfg.GetMaxLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMaxLimitMemory(containerName)) == 1 {
 		newMemoryLimit = *vcfg.GetMaxLimitMemory(containerName)
 	}
+
+	if newMemoryLimit.Cmp(container.Resources.Requests[corev1.ResourceMemory]) == -1 {
+		newMemoryLimit = container.Resources.Requests[corev1.ResourceMemory]
+	}
+
 	minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], vcfg.GetMinDiffMemoryLimitAlgo(containerName), vcfg.GetMinDiffMemoryLimitValue(containerName))
 	if newMemoryLimit.Cmp(minDiffMemoryLimit) == -1 {
 		newMemoryLimit = memoryLimit
