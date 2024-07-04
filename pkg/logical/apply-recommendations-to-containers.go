@@ -42,13 +42,13 @@ func applyRecommandationsToContainers(containers []corev1.Container, requestReco
 		containerRef := &container
 
 		if containerRequestRecommendation.Cpu != nil {
-			setContainerCpuRequest(containerRef, containerRequestRecommendation, changes, vcfg)
-			setContainerCpuLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
+			changes = setContainerCpuRequest(containerRef, containerRequestRecommendation, changes, vcfg)
+			changes = setContainerCpuLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
 		}
 
 		if containerRequestRecommendation.Memory != nil {
-			setContainerMemoryRequest(containerRef, containerRequestRecommendation, changes, vcfg)
-			setContainerMemoryLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
+			changes = setContainerMemoryRequest(containerRef, containerRequestRecommendation, changes, vcfg)
+			changes = setContainerMemoryLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
 
 		}
 		containers[index] = *containerRef
