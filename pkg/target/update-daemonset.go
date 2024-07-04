@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,7 +22,7 @@ func UpdateDaemonSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutosc
 		return nil, fmt.Errorf("Error fetching daemonset: %s", err.Error())
 	}
 
-	update := updateContainerResources(daemonset.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(daemonset.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(daemonset, "apps/v1", "DaemonSet")
 	if err != nil {

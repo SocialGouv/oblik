@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +23,7 @@ func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return nil, fmt.Errorf("Error fetching stateful set: %s", err.Error())
 	}
 
-	update := updateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,7 +22,7 @@ func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return nil, fmt.Errorf("Error fetching deployment: %s", err.Error())
 	}
 
-	update := updateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {

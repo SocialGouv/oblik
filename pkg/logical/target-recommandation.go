@@ -1,4 +1,4 @@
-package target
+package logical
 
 import (
 	"github.com/SocialGouv/oblik/pkg/config"

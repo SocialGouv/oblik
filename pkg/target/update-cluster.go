@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	jsonpatch "github.com/evanphx/json-patch/v5"
@@ -50,7 +51,7 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 			Resources: cluster.Spec.Resources,
 		},
 	}
-	update := updateContainerResources(containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(containers, vpa, vcfg)
 	cluster.Spec.Resources = containers[0].Resources
 
 	updatedClusterJSON, err := json.Marshal(cluster)

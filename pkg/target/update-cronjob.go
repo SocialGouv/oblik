@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +23,7 @@ func UpdateCronJob(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscal
 		return nil, fmt.Errorf("Error fetching cronjob: %s", err.Error())
 	}
 
-	update := updateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers, vpa, vcfg)
 
 	patchData, err := createPatch(cronjob, "batch/v1", "CronJob")
 	if err != nil {
