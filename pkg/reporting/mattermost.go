@@ -59,6 +59,10 @@ func sendUpdatesToMattermost(update *UpdateResult) {
 func sendMattermostAlert(message string) error {
 	webhookURL := utils.GetEnv("OBLIK_MATTERMOST_WEBHOOK_URL", "")
 
+	if webhookURL == "" {
+		return nil
+	}
+
 	payload := Payload{Text: message}
 
 	payloadJSON, err := json.Marshal(payload)

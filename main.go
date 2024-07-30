@@ -1,28 +1,27 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/SocialGouv/oblik/pkg/cli"
 	"github.com/SocialGouv/oblik/pkg/controller"
+	"github.com/spf13/viper"
+	"k8s.io/klog/v2"
 )
 
 func main() {
-	go func() {
-		handleSignals()
-	}()
-	controller.Run()
-}
+	klog.InitFlags(nil)
 
-func handleSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-	log.Println("Received termination signal, shutting down gracefully...")
+	var rootCmd = controller.NewCommand()
 
-	// Perform cleanup
+	rootCmd.AddCommand(cli.NewCommand())
 
-	os.Exit(0)
+	viper.AutomaticEnv()
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 }
