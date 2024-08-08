@@ -1,6 +1,6 @@
 package config
 
-type Annotatable interface {
+type Annotable interface {
 	GetAnnotations() map[string]string
 	GetNamespace() string
 	GetName() string

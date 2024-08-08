@@ -10,7 +10,7 @@ type ContainerConfig struct {
 	*LoadCfg
 }
 
-func createContainerConfig(annotable Annotatable, containerName string) *ContainerConfig {
+func createContainerConfig(annotable Annotable, containerName string) *ContainerConfig {
 	key := fmt.Sprintf("%s/%s", annotable.GetNamespace(), annotable.GetName())
 	cfg := &ContainerConfig{
 		Key:           key,

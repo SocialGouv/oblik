@@ -69,7 +69,7 @@ type LoadCfg struct {
 	LimitMemoryScaleDirection   *ScaleDirection
 }
 
-func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotatable, annotationSuffix string) {
+func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotable, annotationSuffix string) {
 
 	annotations := getAnnotations(annotable)
 
