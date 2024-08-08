@@ -17,6 +17,10 @@ type Configurable struct {
 	Object interface{}
 }
 
+func (co *Configurable) Get() interface{} {
+	return co.Object
+}
+
 func (co *Configurable) GetAnnotations() map[string]string {
 	switch obj := co.Object.(type) {
 	case metav1.Object:

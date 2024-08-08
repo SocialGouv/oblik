@@ -159,9 +159,61 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 	logical.ApplyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, scfg)
 
 	switch obj.GetKind() {
-	// TODO complete cases with container updates
+	case "Deployment":
+		deployment := configurable.Get().(*appsv1.Deployment)
+		deployment.Spec.Template.Spec.Containers = containers
+		updated, err := runtime.DefaultUnstructuredConverter.ToUnstructured(deployment)
+		if err != nil {
+			return fmt.Errorf("Could not convert updated Deployment back to unstructured: %v", err)
+		}
+		obj.Object = updated
+	case "StatefulSet":
+		statefulSet := configurable.Get().(*appsv1.StatefulSet)
+		statefulSet.Spec.Template.Spec.Containers = containers
+		updated, err := runtime.DefaultUnstructuredConverter.ToUnstructured(statefulSet)
+		if err != nil {
+			return fmt.Errorf("Could not convert updated StatefulSet back to unstructured: %v", err)
+		}
+		obj.Object = updated
+	case "DaemonSet":
+		daemonSet := configurable.Get().(*appsv1.DaemonSet)
+		daemonSet.Spec.Template.Spec.Containers = containers
+		updated, err := runtime.DefaultUnstructuredConverter.ToUnstructured(daemonSet)
+		if err != nil {
+			return fmt.Errorf("Could not convert updated DaemonSet back to unstructured: %v", err)
+		}
+		obj.Object = updated
+	case "CronJob":
+		cronJob := configurable.Get().(*batchv1.CronJob)
+		cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = containers
+		updated, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cronJob)
+		if err != nil {
+			return fmt.Errorf("Could not convert updated CronJob back to unstructured: %v", err)
+		}
+		obj.Object = updated
 	case "Cluster":
-		// cluster.Spec.Resources = containers[0].Resources // on cluster we emulated a container for simplicity
+		cnpgCluster := configurable.Get().(*cnpgv1.Cluster)
+		cnpgCluster.Spec.Resources = containers[0].Resources
+		updated, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cnpgCluster)
+		if err != nil {
+			return fmt.Errorf("Could not convert updated Cluster back to unstructured: %v", err)
+		}
+		obj.Object = updated
+	}
+
+	mutatedRaw, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("Could not marshal mutated object: %v", err)
+	}
+
+	admissionReview.Response = &admissionv1.AdmissionResponse{
+		UID:     admissionRequest.UID,
+		Allowed: true,
+		Patch:   mutatedRaw,
+		PatchType: func() *admissionv1.PatchType {
+			pt := admissionv1.PatchTypeJSONPatch
+			return &pt
+		}(),
 	}
 
 	respBytes, err := json.Marshal(admissionReview)
