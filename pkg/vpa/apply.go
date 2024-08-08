@@ -12,22 +12,22 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func ApplyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) error {
+func ApplyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) error {
 	targetRef := vpa.Spec.TargetRef
 	var update *reporting.UpdateResult
 	var err error
 	switch targetRef.Kind {
 	case "Deployment":
-		update, err = target.UpdateDeployment(clientset, vpa, vcfg)
+		update, err = target.UpdateDeployment(clientset, vpa, scfg)
 	case "StatefulSet":
-		update, err = target.UpdateStatefulSet(clientset, vpa, vcfg)
+		update, err = target.UpdateStatefulSet(clientset, vpa, scfg)
 	case "DaemonSet":
-		update, err = target.UpdateDaemonSet(clientset, vpa, vcfg)
+		update, err = target.UpdateDaemonSet(clientset, vpa, scfg)
 	case "CronJob":
-		update, err = target.UpdateCronJob(clientset, vpa, vcfg)
+		update, err = target.UpdateCronJob(clientset, vpa, scfg)
 	case "Cluster":
 		if targetRef.APIVersion == "postgresql.cnpg.io/v1" {
-			update, err = target.UpdateCluster(dynamicClient, vpa, vcfg)
+			update, err = target.UpdateCluster(dynamicClient, vpa, scfg)
 		} else {
 			err := fmt.Errorf("Unsupported Cluster kind from apiVersion: %s", targetRef.APIVersion)
 			klog.Warning(err)
@@ -35,8 +35,8 @@ func ApplyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dyn
 		}
 	}
 	if err != nil {
-		klog.Errorf("Failed to apply updates for %s: %s", vcfg.Key, err.Error())
+		klog.Errorf("Failed to apply updates for %s: %s", scfg.Key, err.Error())
 	}
-	reporting.ReportUpdated(update, vcfg)
+	reporting.ReportUpdated(update, scfg)
 	return err
 }

@@ -2,3 +2,7 @@ image:
   repository: ghcr.io/socialgouv/oblik
   tag: 
   pullPolicy: 
+
+webhook:
+  enabled: true
+  failurePolicy: Fail # Fail or Ignore

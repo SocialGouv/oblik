@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
+func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	deploymentName := targetRef.Name
@@ -22,14 +22,14 @@ func UpdateDeployment(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutos
 		return nil, fmt.Errorf("Error fetching deployment: %s", err.Error())
 	}
 
-	update := logical.UpdateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(deployment.Spec.Template.Spec.Containers, vpa, scfg)
 
 	patchData, err := createPatch(deployment, "apps/v1", "Deployment")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	if !vcfg.GetDryRun() {
+	if !scfg.GetDryRun() {
 		force := true
 		_, err = clientset.AppsV1().Deployments(namespace).Patch(context.TODO(), deploymentName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 			FieldManager: FieldManager,

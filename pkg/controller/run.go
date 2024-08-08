@@ -5,6 +5,7 @@ import (
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/watcher"
+	"github.com/SocialGouv/oblik/pkg/webhook"
 	"k8s.io/klog/v2"
 )
 
@@ -17,6 +18,7 @@ func Run() {
 	watcher.CronScheduler.Start()
 
 	go watcher.WatchVPAs(ctx, kubeClients.Clientset, kubeClients.DynamicClient, kubeClients.VpaClientset)
+	go webhook.Server(ctx, kubeClients)
 
 	klog.Info("Starting VPA Operator...")
 	<-ctx.Done()

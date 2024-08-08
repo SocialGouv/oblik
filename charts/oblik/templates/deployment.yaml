@@ -23,4 +23,13 @@ spec:
           {{ else }}
           imagePullPolicy: Always
           {{ end }}
-          
+          ports:
+            - containerPort: 9443
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-certs

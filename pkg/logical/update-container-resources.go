@@ -7,13 +7,13 @@ import (
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
-func UpdateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
-	requestRecommandations := getRequestTargetRecommandations(vpaResource, vcfg)
-	requestRecommandations = setUnprovidedDefaultRecommandations(containers, requestRecommandations, vpaResource, vcfg)
+func UpdateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) *reporting.UpdateResult {
+	requestRecommandations := getRequestTargetRecommandations(vpaResource, scfg)
+	requestRecommandations = setUnprovidedDefaultRecommandations(containers, requestRecommandations, vpaResource, scfg)
 
-	limitRecommandations := getLimitTargetRecommandations(vpaResource, vcfg)
-	limitRecommandations = setUnprovidedDefaultRecommandations(containers, limitRecommandations, vpaResource, vcfg)
+	limitRecommandations := getLimitTargetRecommandations(vpaResource, scfg)
+	limitRecommandations = setUnprovidedDefaultRecommandations(containers, limitRecommandations, vpaResource, scfg)
 
-	update := applyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, vcfg)
+	update := ApplyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, scfg)
 	return update
 }

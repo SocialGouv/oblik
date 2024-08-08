@@ -8,7 +8,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
+func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommandation {
 	for _, container := range containers {
 		containerName := container.Name
 		var found bool
@@ -23,42 +23,42 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 			containerRecommandation := TargetRecommandation{
 				ContainerName: containerName,
 			}
-			switch vcfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
+			switch scfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
 			case config.UnprovidedApplyDefaultModeMinAllowed:
 				minCpu := findContainerPolicy(vpaResource, containerName).MinAllowed.Cpu()
-				if vcfg.GetMinRequestCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*vcfg.GetMinRequestCpu(containerName)) == -1) {
-					minCpu = vcfg.GetMinRequestCpu(containerName)
+				if scfg.GetMinRequestCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*scfg.GetMinRequestCpu(containerName)) == -1) {
+					minCpu = scfg.GetMinRequestCpu(containerName)
 				}
 				containerRecommandation.Cpu = minCpu
 			case config.UnprovidedApplyDefaultModeMaxAllowed:
 				maxCpu := findContainerPolicy(vpaResource, containerName).MaxAllowed.Cpu()
-				if vcfg.GetMaxRequestCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*vcfg.GetMaxRequestCpu(containerName)) == 1) {
-					maxCpu = vcfg.GetMaxRequestCpu(containerName)
+				if scfg.GetMaxRequestCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*scfg.GetMaxRequestCpu(containerName)) == 1) {
+					maxCpu = scfg.GetMaxRequestCpu(containerName)
 				}
 				containerRecommandation.Cpu = maxCpu
 			case config.UnprovidedApplyDefaultModeValue:
-				cpu, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName))
+				cpu, err := resource.ParseQuantity(scfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName))
 				if err != nil {
 					klog.Warningf("Set unprovided CPU resources, value parsing error: %s", err.Error())
 					break
 				}
 				containerRecommandation.Cpu = &cpu
 			}
-			switch vcfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
+			switch scfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
 			case config.UnprovidedApplyDefaultModeMinAllowed:
 				minMemory := findContainerPolicy(vpaResource, containerName).MinAllowed.Memory()
-				if vcfg.GetMinRequestMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1) {
-					minMemory = vcfg.GetMinRequestMemory(containerName)
+				if scfg.GetMinRequestMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*scfg.GetMinRequestMemory(containerName)) == -1) {
+					minMemory = scfg.GetMinRequestMemory(containerName)
 				}
 				containerRecommandation.Memory = minMemory
 			case config.UnprovidedApplyDefaultModeMaxAllowed:
 				maxMemory := findContainerPolicy(vpaResource, containerName).MaxAllowed.Memory()
-				if vcfg.GetMaxRequestMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*vcfg.GetMaxRequestMemory(containerName)) == 1) {
-					maxMemory = vcfg.GetMaxRequestMemory(containerName)
+				if scfg.GetMaxRequestMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*scfg.GetMaxRequestMemory(containerName)) == 1) {
+					maxMemory = scfg.GetMaxRequestMemory(containerName)
 				}
 				containerRecommandation.Memory = maxMemory
 			case config.UnprovidedApplyDefaultModeValue:
-				memory, err := resource.ParseQuantity(vcfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName))
+				memory, err := resource.ParseQuantity(scfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName))
 				if err != nil {
 					klog.Warningf("Set unprovided Memory resources, value parsing error: %s", err.Error())
 					break
