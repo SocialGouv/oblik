@@ -1,8 +1,9 @@
+{{- $caCert := "" }}
 {{ if .Values.webhook.enabled }}
 ---
 {{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "webhook-certs" }}
 {{- if $existingSecret }}
-{{- $caCert := $existingSecret.data.ca }}
+{{- $caCert = $existingSecret.data.ca }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -10,8 +11,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   ca: {{ $caCert }}
-  cert.pem: {{ $existingSecret.data.cert.pem }}
-  key.pem: {{ $existingSecret.data.key.pem }}
+  cert.pem: {{ index $existingSecret.data "cert.pem" }}
+  key.pem: {{ index $existingSecret.data "key.pem" }}
 {{- else }}
 {{- $caPrefix := printf "%s-ca" .Release.Name }}
 {{- $ca := genCA $caPrefix 3650 }}
@@ -27,7 +28,7 @@ data:
   ca: {{ b64enc $ca.Cert }}
   cert.pem: {{ b64enc $cert.Cert }}
   key.pem: {{ b64enc $cert.Key }}
-{{- $caCert := b64enc $ca.Cert }}
+{{- $caCert = b64enc $ca.Cert }}
 {{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1

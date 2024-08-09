@@ -6,3 +6,10 @@ image:
 webhook:
   enabled: true
   failurePolicy: Fail # Fail or Ignore
+
+env: {}
+
+existingSecret: 
+
+resources: {}
+
