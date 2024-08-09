@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
+func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	statefulSetName := targetRef.Name
@@ -23,14 +23,14 @@ func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 		return nil, fmt.Errorf("Error fetching stateful set: %s", err.Error())
 	}
 
-	update := logical.UpdateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(statefulSet.Spec.Template.Spec.Containers, vpa, scfg)
 
 	patchData, err := createPatch(statefulSet, "apps/v1", "StatefulSet")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	if !vcfg.GetDryRun() {
+	if !scfg.GetDryRun() {
 		force := true
 		_, err = clientset.AppsV1().StatefulSets(namespace).Patch(context.TODO(), statefulSetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 			FieldManager: FieldManager,

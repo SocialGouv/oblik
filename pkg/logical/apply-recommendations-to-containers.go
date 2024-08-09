@@ -6,10 +6,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func applyRecommandationsToContainers(containers []corev1.Container, requestRecommandations []TargetRecommandation, limitRecommandations []TargetRecommandation, vcfg *config.VpaWorkloadCfg) *reporting.UpdateResult {
+func ApplyRecommandationsToContainers(containers []corev1.Container, requestRecommandations []TargetRecommandation, limitRecommandations []TargetRecommandation, scfg *config.StrategyConfig) *reporting.UpdateResult {
 	changes := []reporting.Change{}
 	update := reporting.UpdateResult{
-		Key: vcfg.Key,
+		Key: scfg.Key,
 	}
 
 	for index, container := range containers {
@@ -42,13 +42,13 @@ func applyRecommandationsToContainers(containers []corev1.Container, requestReco
 		containerRef := &container
 
 		if containerRequestRecommendation.Cpu != nil {
-			changes = setContainerCpuRequest(containerRef, containerRequestRecommendation, changes, vcfg)
-			changes = setContainerCpuLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
+			changes = setContainerCpuRequest(containerRef, containerRequestRecommendation, changes, scfg)
+			changes = setContainerCpuLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, scfg)
 		}
 
 		if containerRequestRecommendation.Memory != nil {
-			changes = setContainerMemoryRequest(containerRef, containerRequestRecommendation, changes, vcfg)
-			changes = setContainerMemoryLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, vcfg)
+			changes = setContainerMemoryRequest(containerRef, containerRequestRecommendation, changes, scfg)
+			changes = setContainerMemoryLimit(containerRef, containerRequestRecommendation, containerLimitRecommendation, changes, scfg)
 
 		}
 		containers[index] = *containerRef

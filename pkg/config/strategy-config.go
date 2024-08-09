@@ -7,21 +7,20 @@ import (
 	"github.com/SocialGouv/oblik/pkg/calculator"
 	"github.com/SocialGouv/oblik/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/resource"
-	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
 
-func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCfg {
-	key := fmt.Sprintf("%s/%s", vpaResource.Namespace, vpaResource.Name)
-	cfg := &VpaWorkloadCfg{
+func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
+	key := fmt.Sprintf("%s/%s", configurable.GetNamespace(), configurable.GetName())
+	cfg := &StrategyConfig{
 		Key: key,
 		LoadCfg: &LoadCfg{
 			Key: key,
 		},
-		Containers: map[string]*VpaContainerCfg{},
+		Containers: map[string]*ContainerConfig{},
 	}
 
-	annotations := getVpaAnnotations(vpaResource)
+	annotations := getAnnotations(configurable)
 	getAnnotation := func(key string) string {
 		return getAnnotationFromMap(key, annotations)
 	}
@@ -46,32 +45,31 @@ func CreateVpaWorkloadCfg(vpaResource *vpa.VerticalPodAutoscaler) *VpaWorkloadCf
 		cfg.DryRun = true
 	}
 
-	loadVpaCommonCfg(cfg.LoadCfg, vpaResource, "")
+	loadAnnotableCommonCfg(cfg.LoadCfg, configurable, "")
 
-	if vpaResource.Status.Recommendation != nil {
-		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
-			vpaContainerCfg := createVpaContainerCfg(vpaResource, containerRecommendation.ContainerName)
-			cfg.Containers[containerRecommendation.ContainerName] = vpaContainerCfg
-		}
+	containerNames := configurable.GetContainerNames()
+	for _, containerName := range containerNames {
+		containerConfig := createContainerConfig(configurable, containerName)
+		cfg.Containers[containerName] = containerConfig
 	}
 
 	return cfg
 }
 
-type VpaWorkloadCfg struct {
+type StrategyConfig struct {
 	Key                string
 	CronExpr           string
 	CronMaxRandomDelay time.Duration
 	DryRun             bool
-	Containers         map[string]*VpaContainerCfg
+	Containers         map[string]*ContainerConfig
 	*LoadCfg
 }
 
-func (v *VpaWorkloadCfg) GetDryRun() bool {
+func (v *StrategyConfig) GetDryRun() bool {
 	return v.DryRun
 }
 
-func (v *VpaWorkloadCfg) GetRequestCPUApplyMode(containerName string) ApplyMode {
+func (v *StrategyConfig) GetRequestCPUApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCPUApplyMode != nil {
 		return *v.Containers[containerName].RequestCPUApplyMode
 	}
@@ -81,7 +79,7 @@ func (v *VpaWorkloadCfg) GetRequestCPUApplyMode(containerName string) ApplyMode 
 	return ApplyModeEnforce
 }
 
-func (v *VpaWorkloadCfg) GetRequestMemoryApplyMode(containerName string) ApplyMode {
+func (v *StrategyConfig) GetRequestMemoryApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryApplyMode != nil {
 		return *v.Containers[containerName].RequestMemoryApplyMode
 	}
@@ -91,7 +89,7 @@ func (v *VpaWorkloadCfg) GetRequestMemoryApplyMode(containerName string) ApplyMo
 	return ApplyModeEnforce
 }
 
-func (v *VpaWorkloadCfg) GetLimitCPUApplyMode(containerName string) ApplyMode {
+func (v *StrategyConfig) GetLimitCPUApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUApplyMode != nil {
 		return *v.Containers[containerName].LimitCPUApplyMode
 	}
@@ -101,7 +99,7 @@ func (v *VpaWorkloadCfg) GetLimitCPUApplyMode(containerName string) ApplyMode {
 	return ApplyModeEnforce
 }
 
-func (v *VpaWorkloadCfg) GetLimitMemoryApplyMode(containerName string) ApplyMode {
+func (v *StrategyConfig) GetLimitMemoryApplyMode(containerName string) ApplyMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryApplyMode != nil {
 		return *v.Containers[containerName].LimitMemoryApplyMode
 	}
@@ -111,7 +109,7 @@ func (v *VpaWorkloadCfg) GetLimitMemoryApplyMode(containerName string) ApplyMode
 	return ApplyModeEnforce
 }
 
-func (v *VpaWorkloadCfg) GetLimitCPUCalculatorAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetLimitCPUCalculatorAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUCalculatorAlgo != nil {
 		return *v.Containers[containerName].LimitCPUCalculatorAlgo
 	}
@@ -132,7 +130,7 @@ func (v *VpaWorkloadCfg) GetLimitCPUCalculatorAlgo(containerName string) calcula
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetLimitMemoryCalculatorAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryCalculatorAlgo != nil {
 		return *v.Containers[containerName].LimitMemoryCalculatorAlgo
 	}
@@ -153,7 +151,7 @@ func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorAlgo(containerName string) calc
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorValue(containerName string) string {
+func (v *StrategyConfig) GetLimitMemoryCalculatorValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryCalculatorValue != nil {
 		return *v.Containers[containerName].LimitMemoryCalculatorValue
 	}
@@ -163,7 +161,7 @@ func (v *VpaWorkloadCfg) GetLimitMemoryCalculatorValue(containerName string) str
 	return utils.GetEnv("OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE", "1")
 }
 
-func (v *VpaWorkloadCfg) GetLimitCPUCalculatorValue(containerName string) string {
+func (v *StrategyConfig) GetLimitCPUCalculatorValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCPUCalculatorValue != nil {
 		return *v.Containers[containerName].LimitCPUCalculatorValue
 	}
@@ -173,7 +171,7 @@ func (v *VpaWorkloadCfg) GetLimitCPUCalculatorValue(containerName string) string
 	return utils.GetEnv("OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE", "1")
 }
 
-func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUSource(containerName string) UnprovidedApplyDefaultMode {
+func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestCPUSource(containerName string) UnprovidedApplyDefaultMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestCPUSource != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestCPUSource
 	}
@@ -196,7 +194,7 @@ func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUSource(containerName
 	}
 }
 
-func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUValue(containerName string) string {
+func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestCPUValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestCPUValue != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestCPUValue
 	}
@@ -206,7 +204,7 @@ func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestCPUValue(containerName 
 	return ""
 }
 
-func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemorySource(containerName string) UnprovidedApplyDefaultMode {
+func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestMemorySource(containerName string) UnprovidedApplyDefaultMode {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestMemorySource != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestMemorySource
 	}
@@ -229,7 +227,7 @@ func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemorySource(containerN
 	}
 }
 
-func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemoryValue(containerName string) string {
+func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestMemoryValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].UnprovidedApplyDefaultRequestMemoryValue != nil {
 		return *v.Containers[containerName].UnprovidedApplyDefaultRequestMemoryValue
 	}
@@ -239,7 +237,7 @@ func (v *VpaWorkloadCfg) GetUnprovidedApplyDefaultRequestMemoryValue(containerNa
 	return ""
 }
 
-func (v *VpaWorkloadCfg) GetIncreaseRequestCpuAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetIncreaseRequestCpuAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestCpuAlgo != nil {
 		return *v.Containers[containerName].IncreaseRequestCpuAlgo
 	}
@@ -260,7 +258,7 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestCpuAlgo(containerName string) calcula
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetIncreaseRequestMemoryAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestMemoryAlgo != nil {
 		return *v.Containers[containerName].IncreaseRequestMemoryAlgo
 	}
@@ -281,7 +279,7 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryAlgo(containerName string) calc
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetIncreaseRequestCpuValue(containerName string) string {
+func (v *StrategyConfig) GetIncreaseRequestCpuValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestCpuValue != nil {
 		return *v.Containers[containerName].IncreaseRequestCpuValue
 	}
@@ -291,7 +289,7 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestCpuValue(containerName string) string
 	return utils.GetEnv("OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE", "1")
 }
 
-func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryValue(containerName string) string {
+func (v *StrategyConfig) GetIncreaseRequestMemoryValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].IncreaseRequestMemoryValue != nil {
 		return *v.Containers[containerName].IncreaseRequestMemoryValue
 	}
@@ -301,7 +299,7 @@ func (v *VpaWorkloadCfg) GetIncreaseRequestMemoryValue(containerName string) str
 	return utils.GetEnv("OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE", "1")
 }
 
-func (v *VpaWorkloadCfg) GetMinLimitCpu(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMinLimitCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinLimitCpu != nil {
 		return v.Containers[containerName].MinLimitCpu
 	}
@@ -320,7 +318,7 @@ func (v *VpaWorkloadCfg) GetMinLimitCpu(containerName string) *resource.Quantity
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMaxLimitCpu(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMaxLimitCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxLimitCpu != nil {
 		return v.Containers[containerName].MaxLimitCpu
 	}
@@ -339,7 +337,7 @@ func (v *VpaWorkloadCfg) GetMaxLimitCpu(containerName string) *resource.Quantity
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMinLimitMemory(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMinLimitMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinLimitMemory != nil {
 		return v.Containers[containerName].MinLimitMemory
 	}
@@ -358,7 +356,7 @@ func (v *VpaWorkloadCfg) GetMinLimitMemory(containerName string) *resource.Quant
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMaxLimitMemory(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMaxLimitMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxLimitMemory != nil {
 		return v.Containers[containerName].MaxLimitMemory
 	}
@@ -377,7 +375,7 @@ func (v *VpaWorkloadCfg) GetMaxLimitMemory(containerName string) *resource.Quant
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMinRequestCpu(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMinRequestCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestCpu != nil {
 		return v.Containers[containerName].MinRequestCpu
 	}
@@ -396,7 +394,7 @@ func (v *VpaWorkloadCfg) GetMinRequestCpu(containerName string) *resource.Quanti
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMaxRequestCpu(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMaxRequestCpu(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestCpu != nil {
 		return v.Containers[containerName].MaxRequestCpu
 	}
@@ -415,7 +413,7 @@ func (v *VpaWorkloadCfg) GetMaxRequestCpu(containerName string) *resource.Quanti
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMinRequestMemory(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMinRequestMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinRequestMemory != nil {
 		return v.Containers[containerName].MinRequestMemory
 	}
@@ -434,7 +432,7 @@ func (v *VpaWorkloadCfg) GetMinRequestMemory(containerName string) *resource.Qua
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMaxRequestMemory(containerName string) *resource.Quantity {
+func (v *StrategyConfig) GetMaxRequestMemory(containerName string) *resource.Quantity {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MaxRequestMemory != nil {
 		return v.Containers[containerName].MaxRequestMemory
 	}
@@ -453,7 +451,7 @@ func (v *VpaWorkloadCfg) GetMaxRequestMemory(containerName string) *resource.Qua
 	return nil
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffCpuRequestAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMinDiffCpuRequestAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuRequestAlgo != nil {
 		return *v.Containers[containerName].MinDiffCpuRequestAlgo
 	}
@@ -474,7 +472,7 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuRequestAlgo(containerName string) calculat
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffCpuRequestValue(containerName string) string {
+func (v *StrategyConfig) GetMinDiffCpuRequestValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuRequestValue != nil {
 		return *v.Containers[containerName].MinDiffCpuRequestValue
 	}
@@ -484,7 +482,7 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuRequestValue(containerName string) string 
 	return utils.GetEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_VALUE", "0")
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMinDiffMemoryRequestAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryRequestAlgo != nil {
 		return *v.Containers[containerName].MinDiffMemoryRequestAlgo
 	}
@@ -505,7 +503,7 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestAlgo(containerName string) calcu
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestValue(containerName string) string {
+func (v *StrategyConfig) GetMinDiffMemoryRequestValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryRequestValue != nil {
 		return *v.Containers[containerName].MinDiffMemoryRequestValue
 	}
@@ -515,7 +513,7 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryRequestValue(containerName string) stri
 	return utils.GetEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_VALUE", "0")
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffCpuLimitAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMinDiffCpuLimitAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuLimitAlgo != nil {
 		return *v.Containers[containerName].MinDiffCpuLimitAlgo
 	}
@@ -536,7 +534,7 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuLimitAlgo(containerName string) calculator
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffCpuLimitValue(containerName string) string {
+func (v *StrategyConfig) GetMinDiffCpuLimitValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuLimitValue != nil {
 		return *v.Containers[containerName].MinDiffCpuLimitValue
 	}
@@ -546,7 +544,7 @@ func (v *VpaWorkloadCfg) GetMinDiffCpuLimitValue(containerName string) string {
 	return utils.GetEnv("OBLIK_DEFAULT_MIN_DIFF_CPU_LIMIT_VALUE", "0")
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMinDiffMemoryLimitAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryLimitAlgo != nil {
 		return *v.Containers[containerName].MinDiffMemoryLimitAlgo
 	}
@@ -567,7 +565,7 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitAlgo(containerName string) calcula
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitValue(containerName string) string {
+func (v *StrategyConfig) GetMinDiffMemoryLimitValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffMemoryLimitValue != nil {
 		return *v.Containers[containerName].MinDiffMemoryLimitValue
 	}
@@ -577,7 +575,7 @@ func (v *VpaWorkloadCfg) GetMinDiffMemoryLimitValue(containerName string) string
 	return utils.GetEnv("OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_VALUE", "0")
 }
 
-func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuEnabled(containerName string) bool {
+func (v *StrategyConfig) GetMemoryRequestFromCpuEnabled(containerName string) bool {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuEnabled != nil {
 		return *v.Containers[containerName].MemoryRequestFromCpuEnabled
 	}
@@ -588,7 +586,7 @@ func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuEnabled(containerName string) bo
 	return memoryRequestFromCpuEnabled == "true"
 }
 
-func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMemoryRequestFromCpuAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuAlgo != nil {
 		return *v.Containers[containerName].MemoryRequestFromCpuAlgo
 	}
@@ -609,7 +607,7 @@ func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuAlgo(containerName string) calcu
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuValue(containerName string) string {
+func (v *StrategyConfig) GetMemoryRequestFromCpuValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryRequestFromCpuValue != nil {
 		return *v.Containers[containerName].MemoryRequestFromCpuValue
 	}
@@ -619,7 +617,7 @@ func (v *VpaWorkloadCfg) GetMemoryRequestFromCpuValue(containerName string) stri
 	return utils.GetEnv("OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_VALUE", "2")
 }
 
-func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuEnabled(containerName string) bool {
+func (v *StrategyConfig) GetMemoryLimitFromCpuEnabled(containerName string) bool {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuEnabled != nil {
 		return *v.Containers[containerName].MemoryLimitFromCpuEnabled
 	}
@@ -630,7 +628,7 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuEnabled(containerName string) bool
 	return memoryLimitFromCpuEnabled == "true"
 }
 
-func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuAlgo(containerName string) calculator.CalculatorAlgo {
+func (v *StrategyConfig) GetMemoryLimitFromCpuAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuAlgo != nil {
 		return *v.Containers[containerName].MemoryLimitFromCpuAlgo
 	}
@@ -651,7 +649,7 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuAlgo(containerName string) calcula
 	return calculator.CalculatorAlgoRatio
 }
 
-func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuValue(containerName string) string {
+func (v *StrategyConfig) GetMemoryLimitFromCpuValue(containerName string) string {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MemoryLimitFromCpuValue != nil {
 		return *v.Containers[containerName].MemoryLimitFromCpuValue
 	}
@@ -661,7 +659,7 @@ func (v *VpaWorkloadCfg) GetMemoryLimitFromCpuValue(containerName string) string
 	return utils.GetEnv("OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_VALUE", "2")
 }
 
-func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) RequestApplyTarget {
+func (v *StrategyConfig) GetRequestApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestApplyTarget != nil {
 		return *v.Containers[containerName].RequestApplyTarget
 	}
@@ -690,7 +688,7 @@ func (v *VpaWorkloadCfg) GetRequestApplyTarget(containerName string) RequestAppl
 	return RequestApplyTargetBalanced
 }
 
-func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) RequestApplyTarget {
+func (v *StrategyConfig) GetRequestCpuApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuApplyTarget != nil {
 		return *v.Containers[containerName].RequestCpuApplyTarget
 	}
@@ -719,7 +717,7 @@ func (v *VpaWorkloadCfg) GetRequestCpuApplyTarget(containerName string) RequestA
 	return v.GetRequestApplyTarget(containerName)
 }
 
-func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) RequestApplyTarget {
+func (v *StrategyConfig) GetRequestMemoryApplyTarget(containerName string) RequestApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryApplyTarget != nil {
 		return *v.Containers[containerName].RequestMemoryApplyTarget
 	}
@@ -748,7 +746,7 @@ func (v *VpaWorkloadCfg) GetRequestMemoryApplyTarget(containerName string) Reque
 	return v.GetRequestApplyTarget(containerName)
 }
 
-func (v *VpaWorkloadCfg) GetLimitApplyTarget(containerName string) LimitApplyTarget {
+func (v *StrategyConfig) GetLimitApplyTarget(containerName string) LimitApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitApplyTarget != nil {
 		return *v.Containers[containerName].LimitApplyTarget
 	}
@@ -779,7 +777,7 @@ func (v *VpaWorkloadCfg) GetLimitApplyTarget(containerName string) LimitApplyTar
 	return LimitApplyTargetAuto
 }
 
-func (v *VpaWorkloadCfg) GetLimitCpuApplyTarget(containerName string) LimitApplyTarget {
+func (v *StrategyConfig) GetLimitCpuApplyTarget(containerName string) LimitApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCpuApplyTarget != nil {
 		return *v.Containers[containerName].LimitCpuApplyTarget
 	}
@@ -810,7 +808,7 @@ func (v *VpaWorkloadCfg) GetLimitCpuApplyTarget(containerName string) LimitApply
 	return LimitApplyTargetAuto
 }
 
-func (v *VpaWorkloadCfg) GetLimitMemoryApplyTarget(containerName string) LimitApplyTarget {
+func (v *StrategyConfig) GetLimitMemoryApplyTarget(containerName string) LimitApplyTarget {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryApplyTarget != nil {
 		return *v.Containers[containerName].LimitMemoryApplyTarget
 	}
@@ -841,7 +839,7 @@ func (v *VpaWorkloadCfg) GetLimitMemoryApplyTarget(containerName string) LimitAp
 	return LimitApplyTargetAuto
 }
 
-func (v *VpaWorkloadCfg) GetRequestCpuScaleDirection(containerName string) ScaleDirection {
+func (v *StrategyConfig) GetRequestCpuScaleDirection(containerName string) ScaleDirection {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuScaleDirection != nil {
 		return *v.Containers[containerName].RequestCpuScaleDirection
 	}
@@ -864,7 +862,7 @@ func (v *VpaWorkloadCfg) GetRequestCpuScaleDirection(containerName string) Scale
 	return ScaleDirectionBoth
 }
 
-func (v *VpaWorkloadCfg) GetRequestMemoryScaleDirection(containerName string) ScaleDirection {
+func (v *StrategyConfig) GetRequestMemoryScaleDirection(containerName string) ScaleDirection {
 	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryScaleDirection != nil {
 		return *v.Containers[containerName].RequestMemoryScaleDirection
 	}
@@ -887,7 +885,7 @@ func (v *VpaWorkloadCfg) GetRequestMemoryScaleDirection(containerName string) Sc
 	return ScaleDirectionBoth
 }
 
-func (v *VpaWorkloadCfg) GetLimitCpuScaleDirection(containerName string) ScaleDirection {
+func (v *StrategyConfig) GetLimitCpuScaleDirection(containerName string) ScaleDirection {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCpuScaleDirection != nil {
 		return *v.Containers[containerName].LimitCpuScaleDirection
 	}
@@ -910,7 +908,7 @@ func (v *VpaWorkloadCfg) GetLimitCpuScaleDirection(containerName string) ScaleDi
 	return ScaleDirectionBoth
 }
 
-func (v *VpaWorkloadCfg) GetLimitMemoryScaleDirection(containerName string) ScaleDirection {
+func (v *StrategyConfig) GetLimitMemoryScaleDirection(containerName string) ScaleDirection {
 	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryScaleDirection != nil {
 		return *v.Containers[containerName].LimitMemoryScaleDirection
 	}

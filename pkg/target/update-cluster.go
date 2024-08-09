@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
+func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	clusterName := targetRef.Name
@@ -51,7 +51,7 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 			Resources: cluster.Spec.Resources,
 		},
 	}
-	update := logical.UpdateContainerResources(containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(containers, vpa, scfg)
 	cluster.Spec.Resources = containers[0].Resources
 
 	updatedClusterJSON, err := json.Marshal(cluster)
@@ -64,7 +64,7 @@ func UpdateCluster(dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAut
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	if !vcfg.GetDryRun() {
+	if !scfg.GetDryRun() {
 		_, err = dynamicClient.Resource(gvr).Namespace(namespace).Patch(context.TODO(), clusterName, types.MergePatchType, patchBytes, metav1.PatchOptions{
 			FieldManager: FieldManager,
 		})

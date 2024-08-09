@@ -79,25 +79,26 @@ func handleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 	scheduleVPA(clientset, dynamicClient, vpa)
 }
 
-func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpa *vpa.VerticalPodAutoscaler) {
+func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaResource *vpa.VerticalPodAutoscaler) {
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
-	vcfg := config.CreateVpaWorkloadCfg(vpa)
+	configurable := config.CreateConfigurable(vpaResource)
+	scfg := config.CreateStrategyConfig(configurable)
 
-	key := vcfg.Key
+	key := scfg.Key
 
-	klog.Infof("Scheduling VPA recommendations for %s with cron: %s", key, vcfg.CronExpr)
+	klog.Infof("Scheduling VPA recommendations for %s with cron: %s", key, scfg.CronExpr)
 
 	if entryID, exists := cronJobs[key]; exists {
 		CronScheduler.Remove(entryID)
 	}
 
-	entryID, err := CronScheduler.AddFunc(vcfg.CronExpr, func() {
-		randomDelay := time.Duration(rand.Int63n(vcfg.CronMaxRandomDelay.Nanoseconds()))
+	entryID, err := CronScheduler.AddFunc(scfg.CronExpr, func() {
+		randomDelay := time.Duration(rand.Int63n(scfg.CronMaxRandomDelay.Nanoseconds()))
 		time.Sleep(randomDelay)
-		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, vcfg.CronExpr)
-		ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpa, vcfg)
+		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, scfg.CronExpr)
+		ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpaResource, scfg)
 	})
 	if err != nil {
 		klog.Errorf("Error scheduling cron job: %s", err.Error())

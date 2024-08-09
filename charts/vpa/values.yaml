@@ -1,0 +1,44 @@
+versionTag: &versionTag 1.1.2
+updateEnabled: false
+
+genVpa:
+  enabled: true
+
+recommender:
+  image:
+    repository: registry.k8s.io/autoscaling/vpa-recommender
+    tag: *versionTag
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 200m
+      memory: 1000Mi
+    requests:
+      cpu: 50m
+      memory: 500Mi
+
+admissionController:
+  image:
+    repository: registry.k8s.io/autoscaling/vpa-admission-controller
+    tag: *versionTag
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 200m
+      memory: 500Mi
+    requests:
+      cpu: 50m
+      memory: 200Mi
+
+updater:
+  image:
+    repository: registry.k8s.io/autoscaling/vpa-updater
+    tag: *versionTag
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 200m
+      memory: 1000Mi
+    requests:
+      cpu: 50m
+      memory: 500Mi

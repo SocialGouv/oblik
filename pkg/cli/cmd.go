@@ -116,8 +116,9 @@ func listAllVPAs(vpaClient *vpaclientset.Clientset, selector string) []vpa.Verti
 	return vpaList.Items
 }
 
-func processVPA(kubeClients *client.KubeClients, vpa *vpa.VerticalPodAutoscaler) error {
-	klog.Infof("Processing VPA: %s/%s\n", vpa.Namespace, vpa.Name)
-	vcfg := config.CreateVpaWorkloadCfg(vpa)
-	return ovpa.ApplyVPARecommendations(kubeClients.Clientset, kubeClients.DynamicClient, vpa, vcfg)
+func processVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAutoscaler) error {
+	klog.Infof("Processing VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
+	configurable := config.CreateConfigurable(vpaResource)
+	scfg := config.CreateStrategyConfig(configurable)
+	return ovpa.ApplyVPARecommendations(kubeClients.Clientset, kubeClients.DynamicClient, vpaResource, scfg)
 }

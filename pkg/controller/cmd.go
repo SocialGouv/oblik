@@ -1,12 +1,12 @@
 package controller
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"k8s.io/klog/v2"
 )
 
 func NewCommand() *cobra.Command {
@@ -28,7 +28,7 @@ func handleSignals() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	log.Println("Received termination signal, shutting down gracefully...")
+	klog.Info("Received termination signal, shutting down gracefully...")
 
 	// Perform cleanup
 

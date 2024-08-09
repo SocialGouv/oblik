@@ -23,4 +23,27 @@ spec:
           {{ else }}
           imagePullPolicy: Always
           {{ end }}
-          
+          ports:
+            - containerPort: 9443
+          env:
+          {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{ if .Values.existingSecret }}
+          envFrom:
+            - secretRef:
+                  name: {{.Values.existingSecret }}
+          {{ end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-certs
