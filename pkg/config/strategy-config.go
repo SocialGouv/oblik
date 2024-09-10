@@ -201,7 +201,21 @@ func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestCPUValue(containerName 
 	if v.UnprovidedApplyDefaultRequestCPUValue != nil {
 		return *v.UnprovidedApplyDefaultRequestCPUValue
 	}
-	return ""
+	value := utils.GetEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU", "")
+	switch value {
+	case "off":
+		return ""
+	case "max":
+		fallthrough
+	case "maxAllowed":
+		return ""
+	case "min":
+		fallthrough
+	case "minAllowed":
+		return ""
+	default:
+		return value
+	}
 }
 
 func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestMemorySource(containerName string) UnprovidedApplyDefaultMode {
@@ -234,7 +248,21 @@ func (v *StrategyConfig) GetUnprovidedApplyDefaultRequestMemoryValue(containerNa
 	if v.UnprovidedApplyDefaultRequestMemoryValue != nil {
 		return *v.UnprovidedApplyDefaultRequestMemoryValue
 	}
-	return ""
+	value := utils.GetEnv("OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY", "")
+	switch value {
+	case "off":
+		return ""
+	case "max":
+		fallthrough
+	case "maxAllowed":
+		return ""
+	case "min":
+		fallthrough
+	case "minAllowed":
+		return ""
+	default:
+		return value
+	}
 }
 
 func (v *StrategyConfig) GetIncreaseRequestCpuAlgo(containerName string) calculator.CalculatorAlgo {

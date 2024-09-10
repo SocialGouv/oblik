@@ -48,10 +48,25 @@ webhooks:
     admissionReviewVersions:
       - v1
     rules:
-      - operations: [ "CREATE" ]
-        apiGroups: [ "" ]
-        apiVersions: [ "v1" ]
-        resources: [ "deployments", "statefulsets", "cronjobs" ]
+      - apiGroups:
+        - "apps"
+        apiVersions:
+        - v1
+        operations:
+        - CREATE
+        resources:
+        - deployments
+        - statefulsets
+        scope: '*'
+      - apiGroups:
+        - "batch"
+        apiVersions:
+        - v1
+        operations:
+        - CREATE
+        resources:
+        - cronjobs
+        scope: '*'
       - operations: [ "CREATE" ]
         apiGroups: [ "postgresql.cnpg.io" ]
         apiVersions: [ "v1" ]

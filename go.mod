@@ -6,6 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/cloudnative-pg/cloudnative-pg v1.23.1
+	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/robfig/cron/v3 v3.0.1

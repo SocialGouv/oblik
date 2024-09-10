@@ -13,3 +13,4 @@ existingSecret:
 
 resources: {}
 
+annotations: {}

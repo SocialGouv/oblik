@@ -8,6 +8,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -63,7 +64,6 @@ func TestWebhook(t *testing.T) {
 	if err == nil {
 		time.Sleep(10 * time.Second) // Wait for the namespace to be deleted
 	}
-
 	createNamespace(t, clientset, testNamespace)
 	defer deleteNamespace(t, clientset, testNamespace)
 
@@ -103,9 +103,11 @@ func TestWebhook(t *testing.T) {
 		},
 		check: func(obj metav1.Object) bool {
 			deployment := obj.(*appsv1.Deployment)
-			resources := deployment.Spec.Template.Spec.Containers[0].Resources
-			fmt.Printf("Deployment resources: %v\n", resources)
-			return true
+			res := deployment.Spec.Template.Spec.Containers[0].Resources
+			// fmt.Printf("Deployment resources: %v\n", res)
+			defaultCPU, _ := resource.ParseQuantity("100m")
+			defaultMemory, _ := resource.ParseQuantity("262144k")
+			return defaultCPU.Cmp(*res.Requests.Cpu()) == 0 && defaultMemory.Cmp(*res.Requests.Memory()) == 0
 		},
 	}
 

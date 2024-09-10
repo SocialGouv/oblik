@@ -8,7 +8,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func setUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommandation {
+func SetUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, scfg *config.StrategyConfig, vpaResource *vpa.VerticalPodAutoscaler) []TargetRecommandation {
 	for _, container := range containers {
 		containerName := container.Name
 		var found bool
@@ -37,9 +37,10 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 				}
 				containerRecommandation.Cpu = maxCpu
 			case config.UnprovidedApplyDefaultModeValue:
-				cpu, err := resource.ParseQuantity(scfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName))
+				value := scfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName)
+				cpu, err := resource.ParseQuantity(value)
 				if err != nil {
-					klog.Warningf("Set unprovided CPU resources, value parsing error: %s", err.Error())
+					klog.Warningf("Set unprovided CPU resources, value parsing error: %s. Value was: %s", err.Error(), value)
 					break
 				}
 				containerRecommandation.Cpu = &cpu
@@ -58,9 +59,10 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 				}
 				containerRecommandation.Memory = maxMemory
 			case config.UnprovidedApplyDefaultModeValue:
-				memory, err := resource.ParseQuantity(scfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName))
+				value := scfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName)
+				memory, err := resource.ParseQuantity(value)
 				if err != nil {
-					klog.Warningf("Set unprovided Memory resources, value parsing error: %s", err.Error())
+					klog.Warningf("Set unprovided Memory resources, value parsing error: %s. Value was: %s", err.Error(), value)
 					break
 				}
 				containerRecommandation.Memory = &memory
@@ -73,6 +75,9 @@ func setUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 }
 
 func findContainerPolicy(vpaResource *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {
+	if vpaResource == nil {
+		return nil
+	}
 	for _, containerPolicy := range vpaResource.Spec.ResourcePolicy.ContainerPolicies {
 		if containerPolicy.ContainerName == containerName || containerPolicy.ContainerName == "*" {
 			return &containerPolicy
