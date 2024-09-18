@@ -33,7 +33,7 @@ func getResourceValueText(updateType UpdateType, value resource.Quantity) string
 }
 
 func ReportUpdated(update *UpdateResult, scfg *config.StrategyConfig) {
-	if len(update.Changes) == 0 {
+	if update == nil || len(update.Changes) == 0 {
 		return
 	}
 	klog.Infof("Updated: %s", scfg.Key)

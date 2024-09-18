@@ -18,6 +18,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -156,6 +157,10 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 	}
 
 	scfg := config.CreateStrategyConfig(configurable)
+	if !scfg.WebhookEnabled {
+		allowRequest(writer, admissionReview.Request.UID)
+		return nil
+	}
 	requestRecommandations := []logical.TargetRecommandation{}
 	limitRecommandations := []logical.TargetRecommandation{}
 	requestRecommandations = logical.SetUnprovidedDefaultRecommandations(containers, requestRecommandations, scfg, nil)
@@ -241,11 +246,16 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 
 func allowRequest(writer http.ResponseWriter, uid types.UID) {
 	admissionReview := admissionv1.AdmissionReview{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "admission.k8s.io/v1",
+			Kind:       "AdmissionReview",
+		},
 		Response: &admissionv1.AdmissionResponse{
 			UID:     uid,
 			Allowed: true,
 		},
 	}
+
 	respBytes, err := json.Marshal(admissionReview)
 	if err != nil {
 		klog.Errorf("Could not marshal allow response: %v", err)

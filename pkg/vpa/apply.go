@@ -33,6 +33,10 @@ func ApplyVPARecommendations(clientset *kubernetes.Clientset, dynamicClient *dyn
 			klog.Warning(err)
 			return err
 		}
+	default:
+		err := fmt.Errorf("Unsupported apiVersion/kind: %s/%s", targetRef.APIVersion, targetRef.Kind)
+		klog.Warning(err)
+		return err
 	}
 	if err != nil {
 		klog.Errorf("Failed to apply updates for %s: %s", scfg.Key, err.Error())

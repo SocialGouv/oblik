@@ -1,0 +1,291 @@
+test_cases:
+  # - name: TestOffRecommendations
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/request-cpu-apply-mode: "off"
+  #     oblik.socialgouv.io/request-memory-apply-mode: "off"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   shouldntUpdate: true
+
+  # - name: TestApplyDefaultCPURequest
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/unprovided-apply-default-request-cpu: "100m"
+  #   original:
+  #     requests:
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "200m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "200m"
+  #       memory: "262144k"
+
+  - name: TestApplyDefaultMemoryRequest
+    annotations:
+      oblik.socialgouv.io/enabled: "true"
+      oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/unprovided-apply-default-request-memory: "262144k"
+    original:
+      requests:
+        cpu: "100m"
+      limits:
+        cpu: "100m"
+        memory: "512Mi"
+    expected:
+      requests:
+        cpu: "100m"
+        memory: "262144k"
+      limits:
+        cpu: "100m"
+        memory: "262144k"
+
+  # - name: TestIncreaseCPURequestRatio
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/increase-request-cpu-algo: "ratio"
+  #     oblik.socialgouv.io/increase-request-cpu-value: "1.5"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "38m"  # 25m (VPA recommendation) * 1.5 = 37.5m (rounded to 38m)
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestIncreaseMemoryRequestMargin
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/increase-request-memory-algo: "margin"
+  #     oblik.socialgouv.io/increase-request-memory-value: "64Mi"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "320Mi"  # 262144k + 64Mi
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestCapMaxCPURequest
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/max-request-cpu: "30m"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "25m"  # VPA recommendation is 25m, which is below max cap of 30m
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestCapMinMemoryLimit
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/min-limit-memory: "512Mi"
+  #     oblik.socialgouv.io/limit-memory-apply-mode: "enforce"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "512Mi"  # Enforced minimum memory limit
+
+  # - name: TestScalingDirectionUpOnly
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/request-cpu-scale-direction: "up"
+  #   original:
+  #     requests:
+  #       cpu: "20m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "25m"  # Increased from 20m to VPA recommendation 25m
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestLimitCPUCalculatorMargin
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/limit-cpu-apply-mode: "enforce"
+  #     oblik.socialgouv.io/limit-cpu-calculator-algo: "margin"
+  #     oblik.socialgouv.io/limit-cpu-calculator-value: "50m"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "75m"  # 25m (VPA recommendation) + 50m margin
+  #       memory: "262144k"
+
+  # - name: TestMemoryRequestFromCPUEnabled
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/memory-request-from-cpu-enabled: "true"
+  #     oblik.socialgouv.io/memory-request-from-cpu-algo: "ratio"
+  #     oblik.socialgouv.io/memory-request-from-cpu-value: "2"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "200Mi"  # Calculated based on CPU request (assuming 1m CPU = 1Mi memory)
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestLimitApplyTargetPeak
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/limit-cpu-apply-mode: "enforce"
+  #     oblik.socialgouv.io/limit-cpu-apply-target: "peak"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "50m"  # Assuming peak (upperBound) recommendation is 50m
+  #       memory: "262144k"
+
+  # - name: TestMinDiffCPURequest
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/min-diff-cpu-request-algo: "margin"
+  #     oblik.socialgouv.io/min-diff-cpu-request-value: "20m"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "25m"  # Difference is 75m, which is greater than min-diff of 20m
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestRequestApplyTargetFrugal
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/request-cpu-apply-mode: "enforce"
+  #     oblik.socialgouv.io/request-cpu-apply-target: "frugal"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "20m"  # Assuming frugal (lowerBound) recommendation is 20m
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+
+  # - name: TestContainerSpecificAnnotations
+  #   annotations:
+  #     oblik.socialgouv.io/enabled: "true"
+  #     oblik.socialgouv.io/webhook-enabled: "false"
+  #     oblik.socialgouv.io/min-limit-memory.main: "512Mi"
+  #     oblik.socialgouv.io/limit-memory-apply-mode: "enforce"
+  #   original:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #   expected:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "262144k"
+  #     limits:
+  #       cpu: "100m"
+  #       memory: "512Mi"  # Applied to container "main"

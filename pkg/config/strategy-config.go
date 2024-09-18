@@ -45,6 +45,14 @@ func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
 		cfg.DryRun = true
 	}
 
+	webhookEnabled := getAnnotation("webhook-enabled")
+	if webhookEnabled == "" {
+		webhookEnabled = utils.GetEnv("OBLIK_DEFAULT_WEBHOOK_ENABLED", "true")
+	}
+	if webhookEnabled == "true" {
+		cfg.WebhookEnabled = true
+	}
+
 	loadAnnotableCommonCfg(cfg.LoadCfg, configurable, "")
 
 	containerNames := configurable.GetContainerNames()
@@ -61,6 +69,7 @@ type StrategyConfig struct {
 	CronExpr           string
 	CronMaxRandomDelay time.Duration
 	DryRun             bool
+	WebhookEnabled     bool
 	Containers         map[string]*ContainerConfig
 	*LoadCfg
 }
