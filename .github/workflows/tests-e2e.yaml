@@ -1,4 +1,7 @@
 name: ✔️ Tests E2E
+concurrency:
+  cancel-in-progress: true
+  group: tests-e2e-${{ github.ref_name }}
 
 on:
   push:
