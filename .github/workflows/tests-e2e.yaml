@@ -28,7 +28,7 @@ jobs:
 
 
     - name: Install Kind
-      uses: bakito/kind-with-registry-action@main
+      uses: devthefuture-org/kind-with-registry-action@main
       with:
         kind_version:    v0.23.0
         kubectl_version: v1.30.0
