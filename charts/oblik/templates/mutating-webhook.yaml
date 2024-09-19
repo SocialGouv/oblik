@@ -1,0 +1,75 @@
+{{- $caCert := "" }}
+{{ if .Values.webhook.enabled }}
+---
+{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "webhook-certs" }}
+{{- if $existingSecret }}
+{{- $caCert = $existingSecret.data.ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-certs
+  namespace: {{ .Release.Namespace }}
+data:
+  ca: {{ $caCert }}
+  cert.pem: {{ index $existingSecret.data "cert.pem" }}
+  key.pem: {{ index $existingSecret.data "key.pem" }}
+{{- else }}
+{{- $caPrefix := printf "%s-ca" .Release.Name }}
+{{- $ca := genCA $caPrefix 3650 }}
+{{- $cn := .Release.Name }}
+{{- $altName1 := printf "%s.%s.svc" "oblik-webhook" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1) 3650 $ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-certs
+  namespace: {{ .Release.Namespace }}
+data:
+  ca: {{ b64enc $ca.Cert }}
+  cert.pem: {{ b64enc $cert.Cert }}
+  key.pem: {{ b64enc $cert.Key }}
+{{- $caCert = b64enc $ca.Cert }}
+{{- end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: oblik
+webhooks:
+  - name: oblik.socialgouv.io
+    clientConfig:
+      service:
+        name: oblik-webhook
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate"
+      caBundle: {{ $caCert }}
+    failurePolicy:  {{ .Values.webhook.failurePolicy }}
+    sideEffects: None
+    admissionReviewVersions:
+      - v1
+    rules:
+      - apiGroups:
+        - "apps"
+        apiVersions:
+        - v1
+        operations:
+        - CREATE
+        resources:
+        - deployments
+        - statefulsets
+        scope: '*'
+      - apiGroups:
+        - "batch"
+        apiVersions:
+        - v1
+        operations:
+        - CREATE
+        resources:
+        - cronjobs
+        scope: '*'
+      - operations: [ "CREATE" ]
+        apiGroups: [ "postgresql.cnpg.io" ]
+        apiVersions: [ "v1" ]
+        resources: [ "clusters" ]
+---
+{{ end }}

@@ -8,27 +8,27 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, vcfg *config.VpaWorkloadCfg) []reporting.Change {
+func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuRequest := *container.Resources.Requests.Cpu()
-	newCPURequest := calculator.CalculateResourceValue(*containerRequestRecommendation.Cpu, vcfg.GetIncreaseRequestCpuAlgo(containerName), vcfg.GetIncreaseRequestCpuValue(containerName))
-	if vcfg.GetMinRequestCpu(containerName) != nil && newCPURequest.Cmp(*vcfg.GetMinRequestCpu(containerName)) == -1 {
-		newCPURequest = *vcfg.GetMinRequestCpu(containerName)
+	newCPURequest := calculator.CalculateResourceValue(*containerRequestRecommendation.Cpu, scfg.GetIncreaseRequestCpuAlgo(containerName), scfg.GetIncreaseRequestCpuValue(containerName))
+	if scfg.GetMinRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinRequestCpu(containerName)) == -1 {
+		newCPURequest = *scfg.GetMinRequestCpu(containerName)
 	}
-	if vcfg.GetMaxRequestCpu(containerName) != nil && newCPURequest.Cmp(*vcfg.GetMaxRequestCpu(containerName)) == 1 {
-		newCPURequest = *vcfg.GetMaxRequestCpu(containerName)
+	if scfg.GetMaxRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMaxRequestCpu(containerName)) == 1 {
+		newCPURequest = *scfg.GetMaxRequestCpu(containerName)
 	}
-	minDiffCpuRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetMinDiffCpuRequestAlgo(containerName), vcfg.GetMinDiffCpuRequestValue(containerName))
+	minDiffCpuRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetMinDiffCpuRequestAlgo(containerName), scfg.GetMinDiffCpuRequestValue(containerName))
 	if newCPURequest.Cmp(minDiffCpuRequest) == -1 {
 		newCPURequest = cpuRequest
 	}
-	if vcfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPURequest.Cmp(cpuRequest) == 1 {
+	if scfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPURequest.Cmp(cpuRequest) == 1 {
 		newCPURequest = cpuRequest
 	}
-	if vcfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPURequest.Cmp(cpuRequest) == -1 {
+	if scfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPURequest.Cmp(cpuRequest) == -1 {
 		newCPURequest = cpuRequest
 	}
-	if vcfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
+	if scfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
 		changes = append(changes, reporting.Change{
 			Old:           cpuRequest,
 			New:           newCPURequest,
@@ -40,39 +40,39 @@ func setContainerCpuRequest(container *corev1.Container, containerRequestRecomme
 	return changes
 }
 
-func setContainerCpuLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, vcfg *config.VpaWorkloadCfg) []reporting.Change {
+func setContainerCpuLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuLimit := *container.Resources.Limits.Cpu()
 
 	var newCPULimit resource.Quantity
-	if vcfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
-		newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], vcfg.GetLimitCPUCalculatorAlgo(containerName), vcfg.GetLimitCPUCalculatorValue(containerName))
+	if scfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
+		newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetLimitCPUCalculatorAlgo(containerName), scfg.GetLimitCPUCalculatorValue(containerName))
 	} else {
 		newCPULimit = *containerLimitRecommendation.Cpu
 	}
 
-	if vcfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMinLimitCpu(containerName)) == -1 {
-		newCPULimit = *vcfg.GetMinLimitCpu(containerName)
+	if scfg.GetMinLimitCpu(containerName) != nil && newCPULimit.Cmp(*scfg.GetMinLimitCpu(containerName)) == -1 {
+		newCPULimit = *scfg.GetMinLimitCpu(containerName)
 	}
-	if vcfg.GetMaxLimitCpu(containerName) != nil && newCPULimit.Cmp(*vcfg.GetMaxLimitCpu(containerName)) == 1 {
-		newCPULimit = *vcfg.GetMaxLimitCpu(containerName)
+	if scfg.GetMaxLimitCpu(containerName) != nil && newCPULimit.Cmp(*scfg.GetMaxLimitCpu(containerName)) == 1 {
+		newCPULimit = *scfg.GetMaxLimitCpu(containerName)
 	}
 
 	if newCPULimit.Cmp(container.Resources.Requests[corev1.ResourceCPU]) == -1 {
 		newCPULimit = container.Resources.Requests[corev1.ResourceCPU]
 	}
 
-	minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], vcfg.GetMinDiffCpuLimitAlgo(containerName), vcfg.GetMinDiffCpuLimitValue(containerName))
+	minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], scfg.GetMinDiffCpuLimitAlgo(containerName), scfg.GetMinDiffCpuLimitValue(containerName))
 	if newCPULimit.Cmp(minDiffCpuLimit) == -1 {
 		newCPULimit = cpuLimit
 	}
-	if vcfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPULimit.Cmp(cpuLimit) == 1 {
+	if scfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionDown && newCPULimit.Cmp(cpuLimit) == 1 {
 		newCPULimit = cpuLimit
 	}
-	if vcfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPULimit.Cmp(cpuLimit) == -1 {
+	if scfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPULimit.Cmp(cpuLimit) == -1 {
 		newCPULimit = cpuLimit
 	}
-	if vcfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
+	if scfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
 		changes = append(changes, reporting.Change{
 			Old:           cpuLimit,
 			New:           newCPULimit,
@@ -84,33 +84,33 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 	return changes
 }
 
-func setContainerMemoryRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, vcfg *config.VpaWorkloadCfg) []reporting.Change {
+func setContainerMemoryRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryRequest := *container.Resources.Requests.Memory()
 	var newMemoryRequest resource.Quantity
-	if vcfg.GetMemoryLimitFromCpuEnabled(containerName) {
+	if scfg.GetMemoryRequestFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
-		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, vcfg.GetMemoryRequestFromCpuAlgo(containerName), vcfg.GetMemoryRequestFromCpuValue(containerName))
+		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryRequestFromCpuAlgo(containerName), scfg.GetMemoryRequestFromCpuValue(containerName))
 	} else {
-		newMemoryRequest = calculator.CalculateResourceValue(*containerRequestRecommendation.Memory, vcfg.GetIncreaseRequestMemoryAlgo(containerName), vcfg.GetIncreaseRequestMemoryValue(containerName))
+		newMemoryRequest = calculator.CalculateResourceValue(*containerRequestRecommendation.Memory, scfg.GetIncreaseRequestMemoryAlgo(containerName), scfg.GetIncreaseRequestMemoryValue(containerName))
 	}
-	if vcfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*vcfg.GetMinRequestMemory(containerName)) == -1 {
-		newMemoryRequest = *vcfg.GetMinRequestMemory(containerName)
+	if scfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMinRequestMemory(containerName)) == -1 {
+		newMemoryRequest = *scfg.GetMinRequestMemory(containerName)
 	}
-	if vcfg.GetMaxRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*vcfg.GetMaxRequestMemory(containerName)) == 1 {
-		newMemoryRequest = *vcfg.GetMaxRequestMemory(containerName)
+	if scfg.GetMaxRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMaxRequestMemory(containerName)) == 1 {
+		newMemoryRequest = *scfg.GetMaxRequestMemory(containerName)
 	}
-	minDiffMemoryRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetMinDiffMemoryRequestAlgo(containerName), vcfg.GetMinDiffMemoryRequestValue(containerName))
+	minDiffMemoryRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetMinDiffMemoryRequestAlgo(containerName), scfg.GetMinDiffMemoryRequestValue(containerName))
 	if newMemoryRequest.Cmp(minDiffMemoryRequest) == -1 {
 		newMemoryRequest = memoryRequest
 	}
-	if vcfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryRequest.Cmp(memoryRequest) == 1 {
+	if scfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryRequest.Cmp(memoryRequest) == 1 {
 		newMemoryRequest = memoryRequest
 	}
-	if vcfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryRequest.Cmp(memoryRequest) == -1 {
+	if scfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryRequest.Cmp(memoryRequest) == -1 {
 		newMemoryRequest = memoryRequest
 	}
-	if vcfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
+	if scfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
 		changes = append(changes, reporting.Change{
 			Old:           memoryRequest,
 			New:           newMemoryRequest,
@@ -122,42 +122,42 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 	return changes
 }
 
-func setContainerMemoryLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, vcfg *config.VpaWorkloadCfg) []reporting.Change {
+func setContainerMemoryLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryLimit := *container.Resources.Limits.Memory()
 	var newMemoryLimit resource.Quantity
-	if vcfg.GetMemoryLimitFromCpuEnabled(containerName) {
+	if scfg.GetMemoryLimitFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
-		newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, vcfg.GetMemoryLimitFromCpuAlgo(containerName), vcfg.GetMemoryLimitFromCpuValue(containerName))
+		newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryLimitFromCpuAlgo(containerName), scfg.GetMemoryLimitFromCpuValue(containerName))
 	} else {
-		if vcfg.GetLimitMemoryApplyTarget(containerName) == config.LimitApplyTargetAuto {
-			newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], vcfg.GetLimitMemoryCalculatorAlgo(containerName), vcfg.GetLimitMemoryCalculatorValue(containerName))
+		if scfg.GetLimitMemoryApplyTarget(containerName) == config.LimitApplyTargetAuto {
+			newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetLimitMemoryCalculatorAlgo(containerName), scfg.GetLimitMemoryCalculatorValue(containerName))
 		} else {
 			newMemoryLimit = *containerLimitRecommendation.Memory
 		}
 	}
-	if vcfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMinLimitMemory(containerName)) == -1 {
-		newMemoryLimit = *vcfg.GetMinLimitMemory(containerName)
+	if scfg.GetMinLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*scfg.GetMinLimitMemory(containerName)) == -1 {
+		newMemoryLimit = *scfg.GetMinLimitMemory(containerName)
 	}
-	if vcfg.GetMaxLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*vcfg.GetMaxLimitMemory(containerName)) == 1 {
-		newMemoryLimit = *vcfg.GetMaxLimitMemory(containerName)
+	if scfg.GetMaxLimitMemory(containerName) != nil && newMemoryLimit.Cmp(*scfg.GetMaxLimitMemory(containerName)) == 1 {
+		newMemoryLimit = *scfg.GetMaxLimitMemory(containerName)
 	}
 
 	if newMemoryLimit.Cmp(container.Resources.Requests[corev1.ResourceMemory]) == -1 {
 		newMemoryLimit = container.Resources.Requests[corev1.ResourceMemory]
 	}
 
-	minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], vcfg.GetMinDiffMemoryLimitAlgo(containerName), vcfg.GetMinDiffMemoryLimitValue(containerName))
+	minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], scfg.GetMinDiffMemoryLimitAlgo(containerName), scfg.GetMinDiffMemoryLimitValue(containerName))
 	if newMemoryLimit.Cmp(minDiffMemoryLimit) == -1 {
 		newMemoryLimit = memoryLimit
 	}
-	if vcfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryLimit.Cmp(memoryLimit) == 1 {
+	if scfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionDown && newMemoryLimit.Cmp(memoryLimit) == 1 {
 		newMemoryLimit = memoryLimit
 	}
-	if vcfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryLimit.Cmp(memoryLimit) == -1 {
+	if scfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryLimit.Cmp(memoryLimit) == -1 {
 		newMemoryLimit = memoryLimit
 	}
-	if vcfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
+	if scfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
 		changes = append(changes, reporting.Change{
 			Old:           memoryLimit,
 			New:           newMemoryLimit,

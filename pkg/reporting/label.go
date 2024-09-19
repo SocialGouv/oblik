@@ -32,16 +32,16 @@ func getResourceValueText(updateType UpdateType, value resource.Quantity) string
 	}
 }
 
-func ReportUpdated(update *UpdateResult, vcfg *config.VpaWorkloadCfg) {
-	if len(update.Changes) == 0 {
+func ReportUpdated(update *UpdateResult, scfg *config.StrategyConfig) {
+	if update == nil || len(update.Changes) == 0 {
 		return
 	}
-	klog.Infof("Updated: %s", vcfg.Key)
+	klog.Infof("Updated: %s", scfg.Key)
 	for _, update := range update.Changes {
 		typeLabel := GetUpdateTypeLabel(update.Type)
 		oldValueText := getResourceValueText(update.Type, update.Old)
 		newValueText := getResourceValueText(update.Type, update.New)
-		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, newValueText, oldValueText, vcfg.Key, update.ContainerName)
+		klog.Infof("Setting %s to %s (previously %s) for %s container: %s", typeLabel, newValueText, oldValueText, scfg.Key, update.ContainerName)
 	}
 	sendUpdatesToMattermost(update)
 }

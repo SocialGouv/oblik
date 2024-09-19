@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oblik-webhook
+  labels: {}
+  annotations: {}
+spec:
+  ports:
+    - name: https
+      port: 443
+      targetPort: 9443
+  selector:
+    app: oblik
+  type: ClusterIP
+  

@@ -3,7 +3,6 @@ package config
 import (
 	"github.com/SocialGouv/oblik/pkg/calculator"
 	"k8s.io/apimachinery/pkg/api/resource"
-	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -70,9 +69,9 @@ type LoadCfg struct {
 	LimitMemoryScaleDirection   *ScaleDirection
 }
 
-func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, annotationSuffix string) {
+func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotable, annotationSuffix string) {
 
-	annotations := getVpaAnnotations(vpaResource)
+	annotations := getAnnotations(annotable)
 
 	getAnnotation := func(key string) string {
 		if annotationSuffix != "" {
@@ -324,7 +323,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	minDiffCpuRequestValue := getAnnotation("min-diff-cpu-request-value")
 	minDiffMemoryRequestValue := getAnnotation("min-diff-memory-request-value")
 	if minDiffCpuRequestValue != "" {
-		cfg.MinDiffMemoryRequestValue = &minDiffCpuRequestValue
+		cfg.MinDiffCpuRequestValue = &minDiffCpuRequestValue
 	}
 	if minDiffMemoryRequestValue != "" {
 		cfg.MinDiffMemoryRequestValue = &minDiffMemoryRequestValue
@@ -361,7 +360,7 @@ func loadVpaCommonCfg(cfg *LoadCfg, vpaResource *vpa.VerticalPodAutoscaler, anno
 	minDiffCpuLimitValue := getAnnotation("min-diff-cpu-limit-value")
 	minDiffMemoryLimitValue := getAnnotation("min-diff-memory-limit-value")
 	if minDiffCpuLimitValue != "" {
-		cfg.MinDiffMemoryLimitValue = &minDiffCpuLimitValue
+		cfg.MinDiffCpuLimitValue = &minDiffCpuLimitValue
 	}
 	if minDiffMemoryLimitValue != "" {
 		cfg.MinDiffMemoryLimitValue = &minDiffMemoryLimitValue

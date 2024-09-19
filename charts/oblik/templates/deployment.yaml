@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: oblik
+  annotations: {{ .Values.annotations | toYaml | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -11,16 +12,40 @@ spec:
     metadata:
       labels:
         app: oblik
+      annotations: {{ .Values.annotations | toYaml | nindent 8 }}
     spec:
       serviceAccountName: oblik-operator
       containers:
         - name: oblik
           image: "{{ .Values.image.repository }}:{{ or .Values.image.tag "latest" }}"
           {{ if .Values.image.pullPolicy }}
-          imagePullPolicy: "{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
           {{ else if .Values.image.tag }}
           imagePullPolicy: IfNotPresent
           {{ else }}
           imagePullPolicy: Always
           {{ end }}
-          
+          ports:
+            - containerPort: 9443
+          env:
+          {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{ if .Values.existingSecret }}
+          envFrom:
+            - secretRef:
+                  name: {{.Values.existingSecret }}
+          {{ end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-certs

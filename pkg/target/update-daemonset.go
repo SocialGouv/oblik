@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func UpdateDaemonSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) (*reporting.UpdateResult, error) {
+func UpdateDaemonSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) (*reporting.UpdateResult, error) {
 	namespace := vpa.Namespace
 	targetRef := vpa.Spec.TargetRef
 	daemonsetName := targetRef.Name
@@ -22,14 +22,14 @@ func UpdateDaemonSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAutosc
 		return nil, fmt.Errorf("Error fetching daemonset: %s", err.Error())
 	}
 
-	update := logical.UpdateContainerResources(daemonset.Spec.Template.Spec.Containers, vpa, vcfg)
+	update := logical.UpdateContainerResources(daemonset.Spec.Template.Spec.Containers, vpa, scfg)
 
 	patchData, err := createPatch(daemonset, "apps/v1", "DaemonSet")
 	if err != nil {
 		return nil, fmt.Errorf("Error creating patch: %s", err.Error())
 	}
 
-	if !vcfg.GetDryRun() {
+	if !scfg.GetDryRun() {
 		force := true
 		_, err = clientset.AppsV1().DaemonSets(namespace).Patch(context.TODO(), daemonsetName, types.ApplyPatchType, patchData, metav1.PatchOptions{
 			FieldManager: FieldManager,

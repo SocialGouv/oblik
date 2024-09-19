@@ -12,7 +12,7 @@ type TargetRecommandation struct {
 	ContainerName string
 }
 
-func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
+func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommandation {
 	recommandations := []TargetRecommandation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
@@ -20,7 +20,7 @@ func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcf
 			recommandation := TargetRecommandation{
 				ContainerName: containerName,
 			}
-			switch vcfg.GetRequestCpuApplyTarget(containerName) {
+			switch scfg.GetRequestCpuApplyTarget(containerName) {
 			case config.RequestApplyTargetFrugal:
 				recommandation.Cpu = containerRecommendation.LowerBound.Cpu()
 			case config.RequestApplyTargetBalanced:
@@ -28,7 +28,7 @@ func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcf
 			case config.RequestApplyTargetPeak:
 				recommandation.Cpu = containerRecommendation.UpperBound.Cpu()
 			}
-			switch vcfg.GetRequestMemoryApplyTarget(containerName) {
+			switch scfg.GetRequestMemoryApplyTarget(containerName) {
 			case config.RequestApplyTargetFrugal:
 				recommandation.Memory = containerRecommendation.LowerBound.Memory()
 			case config.RequestApplyTargetBalanced:
@@ -42,7 +42,7 @@ func getRequestTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcf
 	return recommandations
 }
 
-func getLimitTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg *config.VpaWorkloadCfg) []TargetRecommandation {
+func getLimitTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommandation {
 	recommandations := []TargetRecommandation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
@@ -50,7 +50,7 @@ func getLimitTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg 
 			recommandation := TargetRecommandation{
 				ContainerName: containerName,
 			}
-			switch vcfg.GetLimitCpuApplyTarget(containerName) {
+			switch scfg.GetLimitCpuApplyTarget(containerName) {
 			case config.LimitApplyTargetFrugal:
 				recommandation.Cpu = containerRecommendation.LowerBound.Cpu()
 			case config.LimitApplyTargetBalanced:
@@ -58,7 +58,7 @@ func getLimitTargetRecommandations(vpaResource *vpa.VerticalPodAutoscaler, vcfg 
 			case config.LimitApplyTargetPeak:
 				recommandation.Cpu = containerRecommendation.UpperBound.Cpu()
 			}
-			switch vcfg.GetLimitMemoryApplyTarget(containerName) {
+			switch scfg.GetLimitMemoryApplyTarget(containerName) {
 			case config.LimitApplyTargetFrugal:
 				recommandation.Memory = containerRecommendation.LowerBound.Memory()
 			case config.LimitApplyTargetBalanced:
