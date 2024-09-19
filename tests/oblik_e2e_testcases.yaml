@@ -59,26 +59,26 @@ test_cases:
         cpu: 100m
         memory: 250Mi
 
-  # - name: TestIncreaseCPURequestRatio
-  #   annotations:
-  #     oblik.socialgouv.io/enabled: "true"
-  #     oblik.socialgouv.io/webhook-enabled: "false"
-  #     oblik.socialgouv.io/increase-request-cpu-algo: "ratio"
-  #     oblik.socialgouv.io/increase-request-cpu-value: "1.5"
-  #   original:
-  #     requests:
-  #       cpu: 100m
-  #       memory: 250Mi
-  #     limits:
-  #       cpu: 100m
-  #       memory: 250Mi
-  #   expected:
-  #     requests:
-  #       cpu: 150m
-  #       memory: 250Mi
-  #     limits:
-  #       cpu: 150m
-  #       memory: 250Mi
+  - name: TestIncreaseCPURequestRatio
+    annotations:
+      oblik.socialgouv.io/enabled: "true"
+      oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/increase-request-cpu-algo: "ratio"
+      oblik.socialgouv.io/increase-request-cpu-value: "1.5"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 250Mi
+      limits:
+        cpu: 150m
+        memory: 250Mi
 
   - name: TestIncreaseMemoryRequestMargin
     annotations:
