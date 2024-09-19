@@ -66,6 +66,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 							Name:      "busybox",
 							Image:     "busybox:latest",
 							Resources: otc.original,
+							Command:   []string{"tail", "-f", "/dev/null"},
 						},
 					},
 				},
