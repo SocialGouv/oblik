@@ -41,7 +41,6 @@ jobs:
     - name: Run E2E tests
       shell: bash
       run: |
-        # ./tests/e2e.sh
         set -eo errexit
         export KUBECONFIG="${HOME}/.kube/config"
         ./tests/install-dependencies.sh
