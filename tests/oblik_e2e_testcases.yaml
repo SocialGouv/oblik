@@ -235,7 +235,7 @@ test_cases:
     annotations:
       oblik.socialgouv.io/enabled: "true"
       oblik.socialgouv.io/webhook-enabled: "false"
-      oblik.socialgouv.io/min-limit-memory.nginx: 512Mi
+      oblik.socialgouv.io/min-limit-memory.busybox: 512Mi
       oblik.socialgouv.io/min-limit-memory.fake: 768Mi
       oblik.socialgouv.io/limit-memory-apply-mode: "enforce"
     original:
