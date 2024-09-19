@@ -35,8 +35,6 @@ func TestOblikFeatures(t *testing.T) {
 			t.Logf("Finished test: %s", otc.name)
 		})
 	}
-
-	t.Logf("All tests completed")
 }
 
 func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *kubernetes.Clientset, otc OblikTestCase) {
