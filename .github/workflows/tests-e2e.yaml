@@ -32,11 +32,11 @@ jobs:
     - name: Install Kind
       uses: devthefuture-org/kind-with-registry-action@main
       with:
-        kind_version:    v0.23.0
+        kind_version:    v0.24.0
         kubectl_version: v1.30.0
         ingress_enabled: false
         registry_image:  registry:2
-        node_image:      kindest/node:v1.27.3
+        node_image:      kindest/node:v1.30.0
 
     - name: Run E2E tests
       shell: bash
