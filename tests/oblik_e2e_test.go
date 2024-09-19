@@ -27,7 +27,7 @@ func TestOblikFeatures(t *testing.T) {
 	for _, otc := range e2eOblikTests {
 		otc := otc // capture range variable
 		t.Run(otc.name, func(t *testing.T) {
-			t.Logf("Starting test: %s", otc.name)
+			t.Logf("Starting test: %s", colorize(otc.name, Cyan))
 			t.Parallel()
 			subCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Minute)
 			defer cancel()

@@ -323,7 +323,7 @@ func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotable, annotationSuffix 
 	minDiffCpuRequestValue := getAnnotation("min-diff-cpu-request-value")
 	minDiffMemoryRequestValue := getAnnotation("min-diff-memory-request-value")
 	if minDiffCpuRequestValue != "" {
-		cfg.MinDiffMemoryRequestValue = &minDiffCpuRequestValue
+		cfg.MinDiffCpuRequestValue = &minDiffCpuRequestValue
 	}
 	if minDiffMemoryRequestValue != "" {
 		cfg.MinDiffMemoryRequestValue = &minDiffMemoryRequestValue
@@ -360,7 +360,7 @@ func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotable, annotationSuffix 
 	minDiffCpuLimitValue := getAnnotation("min-diff-cpu-limit-value")
 	minDiffMemoryLimitValue := getAnnotation("min-diff-memory-limit-value")
 	if minDiffCpuLimitValue != "" {
-		cfg.MinDiffMemoryLimitValue = &minDiffCpuLimitValue
+		cfg.MinDiffCpuLimitValue = &minDiffCpuLimitValue
 	}
 	if minDiffMemoryLimitValue != "" {
 		cfg.MinDiffMemoryLimitValue = &minDiffMemoryLimitValue

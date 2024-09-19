@@ -88,7 +88,7 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 	containerName := container.Name
 	memoryRequest := *container.Resources.Requests.Memory()
 	var newMemoryRequest resource.Quantity
-	if scfg.GetMemoryLimitFromCpuEnabled(containerName) {
+	if scfg.GetMemoryRequestFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
 		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryRequestFromCpuAlgo(containerName), scfg.GetMemoryRequestFromCpuValue(containerName))
 	} else {
