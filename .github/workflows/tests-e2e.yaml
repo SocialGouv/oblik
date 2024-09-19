@@ -36,23 +36,12 @@ jobs:
         registry_image:  registry:2
         node_image:      kindest/node:v1.27.3
 
-    # - name: Install kubectl
-    #   uses: azure/setup-kubectl@v3
-    #   with:
-    #     version: 'v1.26.0'
-
-    # - name: Install Kind
-    #   run: |
-    #     curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.17.0/kind-linux-amd64
-    #     chmod +x ./kind
-    #     sudo mv ./kind /usr/local/bin/kind
-
     - name: Run E2E tests
       shell: bash
       run: |
         # ./tests/e2e.sh
         set -eo errexit
         export KUBECONFIG="${HOME}/.kube/config"
-        $(dirname $0)/install-dependencies.sh
-        $(dirname $0)/deploy-oblik.sh
-        $(dirname $0)/test-oblik.sh $@
+        ./tests/install-dependencies.sh
+        ./tests/deploy-oblik.sh
+        ./tests/test-oblik.sh $@
