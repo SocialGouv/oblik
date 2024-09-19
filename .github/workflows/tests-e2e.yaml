@@ -45,4 +45,4 @@ jobs:
         export KUBECONFIG="${HOME}/.kube/config"
         ./tests/install-dependencies.sh
         ./tests/deploy-oblik.sh
-        ./tests/test-oblik.sh $@
+        ./tests/test-oblik.sh -v
