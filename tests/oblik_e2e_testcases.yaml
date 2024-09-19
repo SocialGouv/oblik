@@ -64,7 +64,7 @@ test_cases:
       oblik.socialgouv.io/enabled: "true"
       oblik.socialgouv.io/webhook-enabled: "false"
       oblik.socialgouv.io/increase-request-cpu-algo: "ratio"
-      oblik.socialgouv.io/increase-request-cpu-value: "1.5"
+      oblik.socialgouv.io/increase-request-cpu-value: "1.1"
     original:
       requests:
         cpu: 100m
@@ -74,10 +74,10 @@ test_cases:
         memory: 250Mi
     expected:
       requests:
-        cpu: 150m
+        cpu: 110m
         memory: 250Mi
       limits:
-        cpu: 150m
+        cpu: 110m
         memory: 250Mi
 
   - name: TestIncreaseMemoryRequestMargin
