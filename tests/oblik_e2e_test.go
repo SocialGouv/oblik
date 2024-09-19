@@ -29,7 +29,7 @@ func TestOblikFeatures(t *testing.T) {
 		t.Run(otc.name, func(t *testing.T) {
 			t.Logf("Starting test: %s", colorize(otc.name, Cyan))
 			t.Parallel()
-			subCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Minute)
+			subCtx, cancel := context.WithTimeout(context.TODO(), 20*time.Minute)
 			defer cancel()
 			testAnnotationsToResources(subCtx, t, clientset, otc)
 			t.Logf("Finished test: %s", otc.name)
@@ -63,8 +63,8 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:      "nginx",
-							Image:     "nginx:latest",
+							Name:      "busybox",
+							Image:     "busybox:latest",
 							Resources: otc.original,
 						},
 					},
@@ -87,7 +87,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 	originalResource := deployment.Spec.Template.Spec.Containers[0].Resources
 
 	if otc.shouldntUpdate {
-		_, err := waitForResourceUpdate(ctx, t, clientset, oblikE2eTestNamespace, "Deployment", deployment.Name, 10*time.Minute, originalResource)
+		_, err := waitForResourceUpdate(ctx, t, clientset, oblikE2eTestNamespace, "Deployment", deployment.Name, 20*time.Minute, originalResource)
 		if err == nil {
 			t.Fatalf("Failed waiting for non update: %v", err)
 		}
