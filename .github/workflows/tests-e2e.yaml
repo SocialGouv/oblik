@@ -29,7 +29,6 @@ jobs:
       with:
         version: v3.11.1
 
-
     - name: Install Kind
       uses: devthefuture-org/kind-with-registry-action@main
       with:
