@@ -42,7 +42,7 @@ func TestOblikFeatures(t *testing.T) {
 		found = true
 		t.Run(otc.name, func(t *testing.T) {
 			t.Logf("Starting test: %s", colorize(otc.name, Cyan))
-			t.Parallel()
+			// t.Parallel()
 			subCtx, cancel := context.WithTimeout(context.TODO(), 20*time.Minute)
 			defer cancel()
 			testAnnotationsToResources(subCtx, t, testClientset, vpaClientset, otc)
