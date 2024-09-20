@@ -488,6 +488,82 @@ func (v *StrategyConfig) GetMaxRequestMemory(containerName string) *resource.Qua
 	return nil
 }
 
+func (v *StrategyConfig) GetMinAllowedRecommendationCpu(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinAllowedRecommendationCpu != nil {
+		return v.Containers[containerName].MinAllowedRecommendationCpu
+	}
+	if v.MinAllowedRecommendationCpu != nil {
+		return v.MinAllowedRecommendationCpu
+	}
+	MinAllowedRecommendationCpuStr := utils.GetEnv("OBLIK_DEFAULT_MIN_ALLOWED_RECOMMENDATION_CPU", "25m")
+	if MinAllowedRecommendationCpuStr != "" {
+		MinAllowedRecommendationCpu, err := resource.ParseQuantity(MinAllowedRecommendationCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-allowed-recommendation-cpu: %s, error: %s", MinAllowedRecommendationCpuStr, err.Error())
+		} else {
+			return &MinAllowedRecommendationCpu
+		}
+	}
+	return nil
+}
+
+func (v *StrategyConfig) GetMaxAllowedRecommendationCpu(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MaxAllowedRecommendationCpu != nil {
+		return v.Containers[containerName].MaxAllowedRecommendationCpu
+	}
+	if v.MaxAllowedRecommendationCpu != nil {
+		return v.MaxAllowedRecommendationCpu
+	}
+	MaxAllowedRecommendationCpuStr := utils.GetEnv("OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_CPU", "")
+	if MaxAllowedRecommendationCpuStr != "" {
+		MaxAllowedRecommendationCpu, err := resource.ParseQuantity(MaxAllowedRecommendationCpuStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-allowed-recommendation-cpu: %s, error: %s", MaxAllowedRecommendationCpuStr, err.Error())
+		} else {
+			return &MaxAllowedRecommendationCpu
+		}
+	}
+	return nil
+}
+
+func (v *StrategyConfig) GetMinAllowedRecommendationMemory(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MinAllowedRecommendationMemory != nil {
+		return v.Containers[containerName].MinAllowedRecommendationMemory
+	}
+	if v.MinAllowedRecommendationMemory != nil {
+		return v.MinAllowedRecommendationMemory
+	}
+	MinAllowedRecommendationMemoryStr := utils.GetEnv("OBLIK_DEFAULT_MIN_ALLOWED_RECOMMENDATION_MEMORY", "250Mi")
+	if MinAllowedRecommendationMemoryStr != "" {
+		MinAllowedRecommendationMemory, err := resource.ParseQuantity(MinAllowedRecommendationMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing min-allowed-recommendation-memory: %s, error: %s", MinAllowedRecommendationMemoryStr, err.Error())
+		} else {
+			return &MinAllowedRecommendationMemory
+		}
+	}
+	return nil
+}
+
+func (v *StrategyConfig) GetMaxAllowedRecommendationMemory(containerName string) *resource.Quantity {
+	if v.Containers[containerName] != nil && v.Containers[containerName].MaxAllowedRecommendationMemory != nil {
+		return v.Containers[containerName].MaxAllowedRecommendationMemory
+	}
+	if v.MaxAllowedRecommendationMemory != nil {
+		return v.MaxAllowedRecommendationMemory
+	}
+	MaxAllowedRecommendationMemoryStr := utils.GetEnv("OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_MEMORY", "25m")
+	if MaxAllowedRecommendationMemoryStr != "" {
+		MaxAllowedRecommendationMemory, err := resource.ParseQuantity(MaxAllowedRecommendationMemoryStr)
+		if err != nil {
+			klog.Warningf("Error parsing max-allowed-recommendation-memory: %s, error: %s", MaxAllowedRecommendationMemoryStr, err.Error())
+		} else {
+			return &MaxAllowedRecommendationMemory
+		}
+	}
+	return nil
+}
+
 func (v *StrategyConfig) GetMinDiffCpuRequestAlgo(containerName string) calculator.CalculatorAlgo {
 	if v.Containers[containerName] != nil && v.Containers[containerName].MinDiffCpuRequestAlgo != nil {
 		return *v.Containers[containerName].MinDiffCpuRequestAlgo

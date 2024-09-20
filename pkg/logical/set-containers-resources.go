@@ -11,13 +11,24 @@ import (
 func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuRequest := *container.Resources.Requests.Cpu()
-	newCPURequest := calculator.CalculateResourceValue(*containerRequestRecommendation.Cpu, scfg.GetIncreaseRequestCpuAlgo(containerName), scfg.GetIncreaseRequestCpuValue(containerName))
+
+	newCPURequest := *containerRequestRecommendation.Cpu
+	if scfg.GetMinAllowedRecommendationCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinAllowedRecommendationCpu(containerName)) == -1 {
+		newCPURequest = *scfg.GetMinAllowedRecommendationCpu(containerName)
+	}
+	if scfg.GetMaxAllowedRecommendationCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMaxAllowedRecommendationCpu(containerName)) == 1 {
+		newCPURequest = *scfg.GetMaxAllowedRecommendationCpu(containerName)
+	}
+
+	newCPURequest = calculator.CalculateResourceValue(newCPURequest, scfg.GetIncreaseRequestCpuAlgo(containerName), scfg.GetIncreaseRequestCpuValue(containerName))
+
 	if scfg.GetMinRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinRequestCpu(containerName)) == -1 {
 		newCPURequest = *scfg.GetMinRequestCpu(containerName)
 	}
 	if scfg.GetMaxRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMaxRequestCpu(containerName)) == 1 {
 		newCPURequest = *scfg.GetMaxRequestCpu(containerName)
 	}
+
 	minDiffCpuRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetMinDiffCpuRequestAlgo(containerName), scfg.GetMinDiffCpuRequestValue(containerName))
 	if newCPURequest.Cmp(minDiffCpuRequest) == -1 {
 		newCPURequest = cpuRequest
@@ -92,7 +103,14 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
 		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryRequestFromCpuAlgo(containerName), scfg.GetMemoryRequestFromCpuValue(containerName))
 	} else {
-		newMemoryRequest = calculator.CalculateResourceValue(*containerRequestRecommendation.Memory, scfg.GetIncreaseRequestMemoryAlgo(containerName), scfg.GetIncreaseRequestMemoryValue(containerName))
+		newMemoryRequest = *containerRequestRecommendation.Memory
+		if scfg.GetMinAllowedRecommendationMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMinAllowedRecommendationMemory(containerName)) == -1 {
+			newMemoryRequest = *scfg.GetMinAllowedRecommendationMemory(containerName)
+		}
+		if scfg.GetMaxAllowedRecommendationMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMaxAllowedRecommendationMemory(containerName)) == 1 {
+			newMemoryRequest = *scfg.GetMaxAllowedRecommendationMemory(containerName)
+		}
+		newMemoryRequest = calculator.CalculateResourceValue(newMemoryRequest, scfg.GetIncreaseRequestMemoryAlgo(containerName), scfg.GetIncreaseRequestMemoryValue(containerName))
 	}
 	if scfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMinRequestMemory(containerName)) == -1 {
 		newMemoryRequest = *scfg.GetMinRequestMemory(containerName)

@@ -58,8 +58,12 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/max-limit-memory`**: Value used to cap maximum memory limit.
 - **`oblik.socialgouv.io/min-request-cpu`**: Value used to cap minimum CPU request (this is like an overriding for native VPA minAllowed.cpu).
 - **`oblik.socialgouv.io/max-request-cpu`**: Value used to cap maximum CPU request (this is like an overriding for native VPA maxAllowed.cpu).
-- **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request. (this is like an overriding for native VPA minAllowed.memory)
-- **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request. (this is like an overriding for native VPA maxAllowed.memory)
+- **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request.
+- **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request.
+- **`oblik.socialgouv.io/min-allowed-recommendation-cpu`**: Value used to cap minimum CPU limit of the recommendation (this is like an overriding for native VPA minAllowed.cpu).
+- **`oblik.socialgouv.io/max-allowed-recommendation-cpu`**: Value used to cap maximum CPU limit (this is like an overriding for native VPA maxAllowed.cpu).
+- **`oblik.socialgouv.io/min-allowed-recommendation-memory`**: Value used to cap minimum memory limit. (this is like an overriding for native VPA minAllowed.memory)
+- **`oblik.socialgouv.io/max-allowed-recommendation-memory`**: Value used to cap maximum memory limit. (this is like an overriding for native VPA maxAllowed.memory)
 - **`oblik.socialgouv.io/min-diff-cpu-request-algo`**: Algorithm to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/min-diff-cpu-request-value`**: Value used to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
 - **`oblik.socialgouv.io/min-diff-memory-request-algo`**: Algorithm to calculate the minimum memory request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
