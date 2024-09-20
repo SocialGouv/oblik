@@ -3,12 +3,18 @@ set -eo errexit
 
 export KUBECONFIG="${HOME}/.kube/config"
 
+export OBLIK_TEST_HA=${OBLIK_TEST_HA:-""}
+if [ -z "$OBLIK_TEST_HA" ]; then
+  REPLICAS=1
+else
+  REPLICAS=3
+fi
 
 docker build --tag localhost:5001/oblik:test .
 docker push localhost:5001/oblik:test
 
 helm upgrade --install --create-namespace --namespace oblik \
-  --set replicas=1 \
+  --set replicas=$REPLICAS \
   --set image.repository=localhost:5001/oblik \
   --set image.tag=test \
   --set image.pullPolicy=Always \
