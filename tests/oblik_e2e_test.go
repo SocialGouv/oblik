@@ -5,6 +5,7 @@ import (
 	"flag"
 	"math/rand"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -103,8 +104,14 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		}
 	}()
 
+	// Create a channel to signal when VPA creation is complete
+	vpaCreated := make(chan struct{})
+
 	// Create VPA asynchronously with random delay
-	go func() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	t.Run("CreateVPA", func(t *testing.T) {
+		defer wg.Done()
 		delay := time.Duration(rand.Intn(21)) * time.Second
 		t.Logf("Delaying VPA creation for %v", delay)
 		time.Sleep(delay)
@@ -116,7 +123,16 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			return
 		}
 		t.Logf("VPA created after delay")
-	}()
+		close(vpaCreated)
+	})
+
+	// Wait for VPA creation to complete
+	select {
+	case <-vpaCreated:
+		t.Log("VPA creation completed")
+	case <-ctx.Done():
+		t.Fatal("Context cancelled before VPA creation completed")
+	}
 
 	originalResource := deployment.Spec.Template.Spec.Containers[0].Resources
 
@@ -136,6 +152,9 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			t.Error("Resources update does not match expectations")
 		}
 	}
+
+	// Wait for the VPA creation goroutine to finish
+	wg.Wait()
 }
 
 func generateVPA(name string, annotations map[string]string) *vpa_types.VerticalPodAutoscaler {
