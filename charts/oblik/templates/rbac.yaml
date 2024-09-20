@@ -45,3 +45,25 @@ roleRef:
   name: oblik-operator
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oblik-operator-events-role
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oblik-operator-events-binding
+subjects:
+  - kind: ServiceAccount
+    name: oblik-operator
+    namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: Role
+  name: oblik-operator-events-role
+  apiGroup: rbac.authorization.k8s.io
+---

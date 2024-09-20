@@ -34,4 +34,4 @@ setup-test-env:
 
 test:
 	./tests/deploy-oblik.sh
-	./tests/test-oblik.sh
+	./tests/test-oblik.sh $(ARGS)

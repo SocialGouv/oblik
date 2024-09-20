@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
 	"strings"
-
 	"testing"
 	"time"
 
@@ -15,7 +15,10 @@ import (
 
 const oblikE2eTestNamespace = "oblik-e2e-test"
 
+var testCaseName = flag.String("test-case", "", "Specific test case to run")
+
 func TestOblikFeatures(t *testing.T) {
+	flag.Parse()
 	t.Logf("Starting TestOblikFeatures")
 
 	clientset, err := setupTestEnvironment(t, oblikE2eTestNamespace)
@@ -24,8 +27,14 @@ func TestOblikFeatures(t *testing.T) {
 	}
 	t.Logf("Test environment setup complete")
 
+	var found bool
 	for _, otc := range e2eOblikTests {
 		otc := otc // capture range variable
+		if *testCaseName != "" && otc.name != *testCaseName {
+			continue // Skip tests that don't match the specified test case
+		}
+
+		found = true
 		t.Run(otc.name, func(t *testing.T) {
 			t.Logf("Starting test: %s", colorize(otc.name, Cyan))
 			t.Parallel()
@@ -35,10 +44,14 @@ func TestOblikFeatures(t *testing.T) {
 			t.Logf("Finished test: %s", otc.name)
 		})
 	}
+
+	if !found {
+		t.Logf("No test case found for name: %s", *testCaseName)
+	}
+
 }
 
 func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *kubernetes.Clientset, otc OblikTestCase) {
-
 	appName := strings.ToLower(otc.name)
 	labelSelector := map[string]string{"app": appName}
 
@@ -101,5 +114,4 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			t.Error("Resources update does not match expectations")
 		}
 	}
-
 }

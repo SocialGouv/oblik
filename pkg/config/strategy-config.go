@@ -552,7 +552,7 @@ func (v *StrategyConfig) GetMaxAllowedRecommendationMemory(containerName string)
 	if v.MaxAllowedRecommendationMemory != nil {
 		return v.MaxAllowedRecommendationMemory
 	}
-	MaxAllowedRecommendationMemoryStr := utils.GetEnv("OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_MEMORY", "25m")
+	MaxAllowedRecommendationMemoryStr := utils.GetEnv("OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_MEMORY", "")
 	if MaxAllowedRecommendationMemoryStr != "" {
 		MaxAllowedRecommendationMemory, err := resource.ParseQuantity(MaxAllowedRecommendationMemoryStr)
 		if err != nil {

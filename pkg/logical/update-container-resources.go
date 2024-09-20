@@ -8,12 +8,12 @@ import (
 )
 
 func UpdateContainerResources(containers []corev1.Container, vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) *reporting.UpdateResult {
-	requestRecommandations := getRequestTargetRecommandations(vpaResource, scfg)
-	requestRecommandations = SetUnprovidedDefaultRecommandations(containers, requestRecommandations, scfg, vpaResource)
+	requestRecommendations := getRequestTargetRecommendations(vpaResource, scfg)
+	requestRecommendations = SetUnprovidedDefaultRecommendations(containers, requestRecommendations, scfg, vpaResource)
 
-	limitRecommandations := getLimitTargetRecommandations(vpaResource, scfg)
-	limitRecommandations = SetUnprovidedDefaultRecommandations(containers, limitRecommandations, scfg, vpaResource)
+	limitRecommendations := getLimitTargetRecommendations(vpaResource, scfg)
+	limitRecommendations = SetUnprovidedDefaultRecommendations(containers, limitRecommendations, scfg, vpaResource)
 
-	update := ApplyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, scfg)
+	update := ApplyRecommendationsToContainers(containers, requestRecommendations, limitRecommendations, scfg)
 	return update
 }

@@ -6,23 +6,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func ApplyRecommandationsToContainers(containers []corev1.Container, requestRecommandations []TargetRecommandation, limitRecommandations []TargetRecommandation, scfg *config.StrategyConfig) *reporting.UpdateResult {
+func ApplyRecommendationsToContainers(containers []corev1.Container, requestRecommendations []TargetRecommendation, limitRecommendations []TargetRecommendation, scfg *config.StrategyConfig) *reporting.UpdateResult {
 	changes := []reporting.Change{}
 	update := reporting.UpdateResult{
 		Key: scfg.Key,
 	}
 
 	for index, container := range containers {
-		var containerRequestRecommendation *TargetRecommandation
-		var containerLimitRecommendation *TargetRecommandation
+		var containerRequestRecommendation *TargetRecommendation
+		var containerLimitRecommendation *TargetRecommendation
 		containerName := container.Name
-		for _, cr := range requestRecommandations {
+		for _, cr := range requestRecommendations {
 			if cr.ContainerName == containerName {
 				containerRequestRecommendation = &cr
 				break
 			}
 		}
-		for _, cr := range limitRecommandations {
+		for _, cr := range limitRecommendations {
 			if cr.ContainerName == containerName {
 				containerLimitRecommendation = &cr
 				break

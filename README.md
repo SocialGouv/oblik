@@ -263,11 +263,37 @@ The Oblik Kubernetes VPA Operator uses the following environment variables for c
     
     * **Default**: `""`
 
-
-
 ## Contributing
 
 We welcome contributions! Please feel free to submit pull requests or open issues on our GitHub repository.
+
+## Running Tests
+
+The Oblik project includes end-to-end tests that can be run to verify the functionality of the operator. These tests are located in the `tests` directory and are implemented using Go's testing framework.
+
+To run all tests, use the following command from the root of the project:
+
+```sh
+go test ./tests -v
+```
+
+### Running Specific Tests
+
+You can run a specific test case by using the `-test-case` flag. This flag allows you to specify the name of a single test case to run, which is particularly useful when debugging or focusing on a particular feature.
+
+To run a specific test, use the following command:
+
+```sh
+go test ./tests -v -test-case=TestCaseName
+```
+
+Replace `TestCaseName` with the name of the test case you want to run. For example, to run the "TestOffRecommendations" test case:
+
+```sh
+go test ./tests -v -test-case=TestOffRecommendations
+```
+
+This will run only the specified test case, allowing for faster and more focused testing during development or debugging.
 
 ## License
 
