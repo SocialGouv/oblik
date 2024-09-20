@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"flag"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpa_types "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	vpa_clientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -21,7 +25,7 @@ func TestOblikFeatures(t *testing.T) {
 	flag.Parse()
 	t.Logf("Starting TestOblikFeatures")
 
-	clientset, err := setupTestEnvironment(t, oblikE2eTestNamespace)
+	testClientset, vpaClientset, err := setupTestEnvironment(t, oblikE2eTestNamespace)
 	if err != nil {
 		t.Fatalf("Failed to setup test environment: %v", err)
 	}
@@ -40,7 +44,7 @@ func TestOblikFeatures(t *testing.T) {
 			t.Parallel()
 			subCtx, cancel := context.WithTimeout(context.TODO(), 20*time.Minute)
 			defer cancel()
-			testAnnotationsToResources(subCtx, t, clientset, otc)
+			testAnnotationsToResources(subCtx, t, testClientset, vpaClientset, otc)
 			t.Logf("Finished test: %s", otc.name)
 		})
 	}
@@ -48,10 +52,9 @@ func TestOblikFeatures(t *testing.T) {
 	if !found {
 		t.Logf("No test case found for name: %s", *testCaseName)
 	}
-
 }
 
-func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *kubernetes.Clientset, otc OblikTestCase) {
+func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *kubernetes.Clientset, vpaClientset *vpa_clientset.Clientset, otc OblikTestCase) {
 	appName := strings.ToLower(otc.name)
 	labelSelector := map[string]string{"app": appName}
 
@@ -94,6 +97,25 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		if err != nil {
 			t.Fatalf("Failed to delete Deployment: %v", err)
 		}
+		err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(oblikE2eTestNamespace).Delete(ctx, deployment.Name, metav1.DeleteOptions{})
+		if err != nil {
+			t.Errorf("Failed to delete VPA: %v", err)
+		}
+	}()
+
+	// Create VPA asynchronously with random delay
+	go func() {
+		delay := time.Duration(rand.Intn(21)) * time.Second
+		t.Logf("Delaying VPA creation for %v", delay)
+		time.Sleep(delay)
+
+		vpa := generateVPA(appName, otc.annotations)
+		_, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(oblikE2eTestNamespace).Create(ctx, vpa, metav1.CreateOptions{})
+		if err != nil {
+			t.Errorf("Failed to create VPA: %v", err)
+			return
+		}
+		t.Logf("VPA created after delay")
 	}()
 
 	originalResource := deployment.Spec.Template.Spec.Containers[0].Resources
@@ -114,4 +136,35 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			t.Error("Resources update does not match expectations")
 		}
 	}
+}
+
+func generateVPA(name string, annotations map[string]string) *vpa_types.VerticalPodAutoscaler {
+	updateMode := vpa_types.UpdateModeOff
+	vpa := &vpa_types.VerticalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"oblik.socialgouv.io/enabled": "true",
+			},
+			Annotations: annotations,
+		},
+		Spec: vpa_types.VerticalPodAutoscalerSpec{
+			TargetRef: &autoscaling.CrossVersionObjectReference{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				Name:       name,
+			},
+			UpdatePolicy: &vpa_types.PodUpdatePolicy{
+				UpdateMode: &updateMode,
+			},
+			ResourcePolicy: &vpa_types.PodResourcePolicy{
+				ContainerPolicies: []vpa_types.ContainerResourcePolicy{
+					{
+						ContainerName: "*",
+					},
+				},
+			},
+		},
+	}
+	return vpa
 }

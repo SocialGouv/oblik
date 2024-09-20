@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -43,9 +44,7 @@ func init() {
 	}
 }
 
-// isTerminal checks if the output is a terminal
 func isTerminal() bool {
-	// Check if either stdout or stderr is a terminal
 	return term.IsTerminal(int(os.Stdout.Fd())) || term.IsTerminal(int(os.Stderr.Fd()))
 }
 
@@ -53,35 +52,31 @@ func colorize(text, color string) string {
 	return color + text + Reset
 }
 
-func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
-	if value, exists := os.LookupEnv(key); exists {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
-	}
-	return defaultValue
-}
-
 func int32Ptr(i int32) *int32 {
 	return &i
 }
 
-func createKubeClient() (*kubernetes.Clientset, error) {
+func createKubeClient() (*kubernetes.Clientset, *vpaclientset.Clientset, error) {
 	kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
 		&clientcmd.ConfigOverrides{},
 	)
 	config, err := kubeconfig.ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load Kubernetes client configuration: %v", err)
+		return nil, nil, fmt.Errorf("failed to load Kubernetes client configuration: %v", err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+		return nil, nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
-	return clientset, nil
+	vpaClientset, err := vpaclientset.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create Kubernetes VPA client: %v", err)
+	}
+
+	return clientset, vpaClientset, nil
 }
 
 func createNamespace(t *testing.T, clientset *kubernetes.Clientset, namespace string) error {
@@ -98,58 +93,47 @@ func createNamespace(t *testing.T, clientset *kubernetes.Clientset, namespace st
 }
 
 func deleteNamespace(t *testing.T, clientset *kubernetes.Clientset, namespace string) error {
+	// Check if the namespace exists
+	_, err := clientset.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Namespace doesn't exist, no need to delete
+			t.Logf("Namespace %s does not exist, skipping deletion", namespace)
+			return nil
+		}
+		// Other error occurred while checking for namespace
+		return fmt.Errorf("failed to check if namespace exists: %v", err)
+	}
+
+	// Namespace exists, proceed with deletion
 	deleteNsGracePeriodSeconds := int64(1)
-	err := clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{
+	err = clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{
 		GracePeriodSeconds: &deleteNsGracePeriodSeconds,
 	})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil {
 		return fmt.Errorf("failed to delete existing namespace: %v", err)
 	}
+	t.Logf("Namespace %s deleted successfully", namespace)
 	return nil
 }
 
-func createResource(t *testing.T, clientset *kubernetes.Clientset, namespace, kind string, resource metav1.Object) {
-	switch kind {
-	case "Deployment":
-		_, err := clientset.AppsV1().Deployments(namespace).Create(context.TODO(), resource.(*appsv1.Deployment), metav1.CreateOptions{})
-		if err != nil {
-			t.Fatalf("Failed to create Deployment: %v", err)
-		}
-	}
-}
-
-func cleanupResource(t *testing.T, clientset *kubernetes.Clientset, namespace, kind, name string) {
-	switch kind {
-	case "Deployment":
-		err := clientset.AppsV1().Deployments(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
-		if err != nil {
-			t.Fatalf("Failed to delete Deployment: %v", err)
-		}
-	}
-}
-
-func setupTestEnvironment(t *testing.T, ns string) (*kubernetes.Clientset, error) {
+func setupTestEnvironment(t *testing.T, ns string) (*kubernetes.Clientset, *vpaclientset.Clientset, error) {
 	t.Logf("Creating Kubernetes client")
-	clientset, err := createKubeClient()
+	clientset, vpaClientset, err := createKubeClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+		return nil, nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
 	t.Logf("Deleting existing namespace if it exists")
 	err = deleteNamespace(t, clientset, ns)
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete existing namespace: %v", err)
-	}
-
-	if err == nil {
-		t.Logf("Waiting for namespace deletion")
-		time.Sleep(5 * time.Second)
+		return nil, nil, fmt.Errorf("failed to delete existing namespace: %v", err)
 	}
 
 	t.Logf("Creating new namespace: %s", ns)
 	err = createNamespace(t, clientset, ns)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create namespace: %v", err)
+		return nil, nil, fmt.Errorf("failed to create namespace: %v", err)
 	}
 
 	t.Cleanup(func() {
@@ -160,7 +144,7 @@ func setupTestEnvironment(t *testing.T, ns string) (*kubernetes.Clientset, error
 		}
 	})
 
-	return clientset, nil
+	return clientset, vpaClientset, nil
 }
 
 func getResource(clientset *kubernetes.Clientset, namespace, kind, name string) (metav1.Object, error) {
