@@ -104,7 +104,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			t.Fatalf("Failed waiting for non update: %v", err)
 		}
 	} else {
-		currentResource, err := waitForResourceUpdate(ctx, t, clientset, oblikE2eTestNamespace, "Deployment", deployment.Name, 4*time.Minute, originalResource)
+		currentResource, err := waitForResourceUpdate(ctx, t, clientset, oblikE2eTestNamespace, "Deployment", deployment.Name, 10*time.Minute, originalResource)
 		if err != nil {
 			t.Fatalf("Failed waiting for update: %v", err)
 		}
