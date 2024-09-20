@@ -30,5 +30,9 @@ helm upgrade --install --create-namespace --namespace oblik \
   --set env.OBLIK_DEFAULT_MIN_REQUEST_MEMORY=250Mi \
   --set env.OBLIK_DEFAULT_CRON="* * * * *" \
   --set env.OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX="5s" \
+  --set resources.requests.cpu=100m \
+  --set resources.requests.memory=256Mi \
+  --set resources.limits.cpu=500m \
+  --set resources.limits.memory=512Mi \
   --wait \
   oblik charts/oblik

@@ -21,6 +21,7 @@ import (
 const oblikE2eTestNamespace = "oblik-e2e-test"
 
 var testCaseName = flag.String("test-case", "", "Specific test case to run")
+var noParallel = flag.Bool("no-parallel", false, "Disable parallel execution")
 
 func TestOblikFeatures(t *testing.T) {
 	flag.Parse()
@@ -42,7 +43,9 @@ func TestOblikFeatures(t *testing.T) {
 		found = true
 		t.Run(otc.name, func(t *testing.T) {
 			t.Logf("Starting test: %s", colorize(otc.name, Cyan))
-			// t.Parallel()
+			if !*noParallel {
+				t.Parallel()
+			}
 			subCtx, cancel := context.WithTimeout(context.TODO(), 20*time.Minute)
 			defer cancel()
 			testAnnotationsToResources(subCtx, t, testClientset, vpaClientset, otc)
