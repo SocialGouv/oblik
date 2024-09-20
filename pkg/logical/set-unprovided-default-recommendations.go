@@ -8,11 +8,11 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func SetUnprovidedDefaultRecommandations(containers []corev1.Container, recommandations []TargetRecommandation, scfg *config.StrategyConfig, vpaResource *vpa.VerticalPodAutoscaler) []TargetRecommandation {
+func SetUnprovidedDefaultRecommendations(containers []corev1.Container, recommendations []TargetRecommendation, scfg *config.StrategyConfig, vpaResource *vpa.VerticalPodAutoscaler) []TargetRecommendation {
 	for _, container := range containers {
 		containerName := container.Name
 		var found bool
-		for _, containerRecommendation := range recommandations {
+		for _, containerRecommendation := range recommendations {
 			if containerRecommendation.ContainerName != containerName {
 				continue
 			}
@@ -20,22 +20,22 @@ func SetUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 			break
 		}
 		if !found {
-			containerRecommandation := TargetRecommandation{
+			containerRecommendation := TargetRecommendation{
 				ContainerName: containerName,
 			}
 			switch scfg.GetUnprovidedApplyDefaultRequestCPUSource(containerName) {
 			case config.UnprovidedApplyDefaultModeMinAllowed:
 				minCpu := findContainerPolicy(vpaResource, containerName).MinAllowed.Cpu()
-				if scfg.GetMinRequestCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*scfg.GetMinRequestCpu(containerName)) == -1) {
-					minCpu = scfg.GetMinRequestCpu(containerName)
+				if scfg.GetMinAllowedRecommendationCpu(containerName) != nil && (minCpu == nil || minCpu.Cmp(*scfg.GetMinAllowedRecommendationCpu(containerName)) == -1) {
+					minCpu = scfg.GetMinAllowedRecommendationCpu(containerName)
 				}
-				containerRecommandation.Cpu = minCpu
+				containerRecommendation.Cpu = minCpu
 			case config.UnprovidedApplyDefaultModeMaxAllowed:
 				maxCpu := findContainerPolicy(vpaResource, containerName).MaxAllowed.Cpu()
-				if scfg.GetMaxRequestCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*scfg.GetMaxRequestCpu(containerName)) == 1) {
-					maxCpu = scfg.GetMaxRequestCpu(containerName)
+				if scfg.GetMaxAllowedRecommendationCpu(containerName) != nil && (maxCpu == nil || maxCpu.Cmp(*scfg.GetMaxAllowedRecommendationCpu(containerName)) == 1) {
+					maxCpu = scfg.GetMaxAllowedRecommendationCpu(containerName)
 				}
-				containerRecommandation.Cpu = maxCpu
+				containerRecommendation.Cpu = maxCpu
 			case config.UnprovidedApplyDefaultModeValue:
 				value := scfg.GetUnprovidedApplyDefaultRequestCPUValue(containerName)
 				cpu, err := resource.ParseQuantity(value)
@@ -43,21 +43,21 @@ func SetUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 					klog.Warningf("Set unprovided CPU resources, value parsing error: %s. Value was: %s", err.Error(), value)
 					break
 				}
-				containerRecommandation.Cpu = &cpu
+				containerRecommendation.Cpu = &cpu
 			}
 			switch scfg.GetUnprovidedApplyDefaultRequestMemorySource(containerName) {
 			case config.UnprovidedApplyDefaultModeMinAllowed:
 				minMemory := findContainerPolicy(vpaResource, containerName).MinAllowed.Memory()
-				if scfg.GetMinRequestMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*scfg.GetMinRequestMemory(containerName)) == -1) {
-					minMemory = scfg.GetMinRequestMemory(containerName)
+				if scfg.GetMinAllowedRecommendationMemory(containerName) != nil && (minMemory == nil || minMemory.Cmp(*scfg.GetMinAllowedRecommendationMemory(containerName)) == -1) {
+					minMemory = scfg.GetMinAllowedRecommendationMemory(containerName)
 				}
-				containerRecommandation.Memory = minMemory
+				containerRecommendation.Memory = minMemory
 			case config.UnprovidedApplyDefaultModeMaxAllowed:
 				maxMemory := findContainerPolicy(vpaResource, containerName).MaxAllowed.Memory()
-				if scfg.GetMaxRequestMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*scfg.GetMaxRequestMemory(containerName)) == 1) {
-					maxMemory = scfg.GetMaxRequestMemory(containerName)
+				if scfg.GetMaxAllowedRecommendationMemory(containerName) != nil && (maxMemory == nil || maxMemory.Cmp(*scfg.GetMaxAllowedRecommendationMemory(containerName)) == 1) {
+					maxMemory = scfg.GetMaxAllowedRecommendationMemory(containerName)
 				}
-				containerRecommandation.Memory = maxMemory
+				containerRecommendation.Memory = maxMemory
 			case config.UnprovidedApplyDefaultModeValue:
 				value := scfg.GetUnprovidedApplyDefaultRequestMemoryValue(containerName)
 				memory, err := resource.ParseQuantity(value)
@@ -65,13 +65,13 @@ func SetUnprovidedDefaultRecommandations(containers []corev1.Container, recomman
 					klog.Warningf("Set unprovided Memory resources, value parsing error: %s. Value was: %s", err.Error(), value)
 					break
 				}
-				containerRecommandation.Memory = &memory
+				containerRecommendation.Memory = &memory
 			}
 
-			recommandations = append(recommandations, containerRecommandation)
+			recommendations = append(recommendations, containerRecommendation)
 		}
 	}
-	return recommandations
+	return recommendations
 }
 
 func findContainerPolicy(vpaResource *vpa.VerticalPodAutoscaler, containerName string) *vpa.ContainerResourcePolicy {

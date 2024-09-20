@@ -39,6 +39,11 @@ type LoadCfg struct {
 	MinRequestMemory *resource.Quantity
 	MaxRequestMemory *resource.Quantity
 
+	MinAllowedRecommendationCpu    *resource.Quantity
+	MaxAllowedRecommendationCpu    *resource.Quantity
+	MinAllowedRecommendationMemory *resource.Quantity
+	MaxAllowedRecommendationMemory *resource.Quantity
+
 	MinDiffCpuRequestAlgo     *calculator.CalculatorAlgo
 	MinDiffCpuRequestValue    *string
 	MinDiffMemoryRequestAlgo  *calculator.CalculatorAlgo

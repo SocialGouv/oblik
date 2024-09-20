@@ -161,11 +161,11 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		allowRequest(writer, admissionReview.Request.UID)
 		return nil
 	}
-	requestRecommandations := []logical.TargetRecommandation{}
-	limitRecommandations := []logical.TargetRecommandation{}
-	requestRecommandations = logical.SetUnprovidedDefaultRecommandations(containers, requestRecommandations, scfg, nil)
-	limitRecommandations = logical.SetUnprovidedDefaultRecommandations(containers, limitRecommandations, scfg, nil)
-	logical.ApplyRecommandationsToContainers(containers, requestRecommandations, limitRecommandations, scfg)
+	requestRecommendations := []logical.TargetRecommendation{}
+	limitRecommendations := []logical.TargetRecommendation{}
+	requestRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, requestRecommendations, scfg, nil)
+	limitRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, limitRecommendations, scfg, nil)
+	logical.ApplyRecommendationsToContainers(containers, requestRecommendations, limitRecommendations, scfg)
 
 	switch obj.GetKind() {
 	case "Deployment":

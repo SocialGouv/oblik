@@ -40,9 +40,11 @@ jobs:
 
     - name: Run E2E tests
       shell: bash
+      env:
+        OBLIK_TEST_DISABLE_HA: "1"
       run: |
         set -eo errexit
         export KUBECONFIG="${HOME}/.kube/config"
         ./tests/install-dependencies.sh
         ./tests/deploy-oblik.sh
-        ./tests/test-oblik.sh -v
+        ./tests/test-oblik.sh

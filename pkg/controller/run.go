@@ -1,26 +1,43 @@
 package controller
 
 import (
-	"context"
+	"os"
 
 	"github.com/SocialGouv/oblik/pkg/client"
-	"github.com/SocialGouv/oblik/pkg/watcher"
-	"github.com/SocialGouv/oblik/pkg/webhook"
 	"k8s.io/klog/v2"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func Run() {
+func Run(leaderElect bool) {
 	kubeClients := client.NewKubeClients()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		LeaderElection:   leaderElect,
+		LeaderElectionID: "oblik-operator-leader-election",
+	})
+	if err != nil {
+		klog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
 
-	watcher.CronScheduler.Start()
+	if err := mgr.Add(&webhookServerRunnable{
+		KubeClients: kubeClients,
+	}); err != nil {
+		klog.Error(err, "unable to add webhook server runnable")
+		os.Exit(1)
+	}
 
-	go watcher.WatchVPAs(ctx, kubeClients.Clientset, kubeClients.DynamicClient, kubeClients.VpaClientset)
-	go webhook.Server(ctx, kubeClients)
+	if err := mgr.Add(&watcherRunnable{
+		KubeClients: kubeClients,
+	}); err != nil {
+		klog.Error(err, "unable to add watcher runnable")
+		os.Exit(1)
+	}
 
-	klog.Info("Starting VPA Operator...")
-	<-ctx.Done()
-	klog.Info("Shutting down VPA Operator...")
+	klog.Info("Starting Oblik Operator...")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		klog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 }

@@ -27,3 +27,11 @@ docker-push:
 	docker push ghcr.io/socialgouv/oblik
 
 docker: docker-build docker-push
+
+setup-test-env:
+	./tests/kind-with-registry.sh
+	./tests/install-dependencies.sh
+
+test:
+	./tests/deploy-oblik.sh
+	./tests/test-oblik.sh $(ARGS)

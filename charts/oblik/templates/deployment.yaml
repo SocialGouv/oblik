@@ -4,7 +4,7 @@ metadata:
   name: oblik
   annotations: {{ .Values.annotations | toYaml | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: oblik
@@ -24,6 +24,10 @@ spec:
           imagePullPolicy: IfNotPresent
           {{ else }}
           imagePullPolicy: Always
+          {{ end }}
+          {{ if gt .Values.replicas 1 }}
+          args:
+          - "--leader-elect"
           {{ end }}
           ports:
             - containerPort: 9443

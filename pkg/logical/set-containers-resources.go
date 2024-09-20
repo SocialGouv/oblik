@@ -8,17 +8,28 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
+func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuRequest := *container.Resources.Requests.Cpu()
-	newCPURequest := calculator.CalculateResourceValue(*containerRequestRecommendation.Cpu, scfg.GetIncreaseRequestCpuAlgo(containerName), scfg.GetIncreaseRequestCpuValue(containerName))
+
+	newCPURequest := *containerRequestRecommendation.Cpu
+	if scfg.GetMinAllowedRecommendationCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinAllowedRecommendationCpu(containerName)) == -1 {
+		newCPURequest = *scfg.GetMinAllowedRecommendationCpu(containerName)
+	}
+	if scfg.GetMaxAllowedRecommendationCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMaxAllowedRecommendationCpu(containerName)) == 1 {
+		newCPURequest = *scfg.GetMaxAllowedRecommendationCpu(containerName)
+	}
+
+	newCPURequest = calculator.CalculateResourceValue(newCPURequest, scfg.GetIncreaseRequestCpuAlgo(containerName), scfg.GetIncreaseRequestCpuValue(containerName), calculator.ResourceTypeCPU)
+
 	if scfg.GetMinRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinRequestCpu(containerName)) == -1 {
 		newCPURequest = *scfg.GetMinRequestCpu(containerName)
 	}
 	if scfg.GetMaxRequestCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMaxRequestCpu(containerName)) == 1 {
 		newCPURequest = *scfg.GetMaxRequestCpu(containerName)
 	}
-	minDiffCpuRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetMinDiffCpuRequestAlgo(containerName), scfg.GetMinDiffCpuRequestValue(containerName))
+
+	minDiffCpuRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetMinDiffCpuRequestAlgo(containerName), scfg.GetMinDiffCpuRequestValue(containerName), calculator.ResourceTypeCPU)
 	if newCPURequest.Cmp(minDiffCpuRequest) == -1 {
 		newCPURequest = cpuRequest
 	}
@@ -40,13 +51,13 @@ func setContainerCpuRequest(container *corev1.Container, containerRequestRecomme
 	return changes
 }
 
-func setContainerCpuLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
+func setContainerCpuLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, containerLimitRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuLimit := *container.Resources.Limits.Cpu()
 
 	var newCPULimit resource.Quantity
 	if scfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
-		newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetLimitCPUCalculatorAlgo(containerName), scfg.GetLimitCPUCalculatorValue(containerName))
+		newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetLimitCPUCalculatorAlgo(containerName), scfg.GetLimitCPUCalculatorValue(containerName), calculator.ResourceTypeCPU)
 	} else {
 		newCPULimit = *containerLimitRecommendation.Cpu
 	}
@@ -62,7 +73,7 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 		newCPULimit = container.Resources.Requests[corev1.ResourceCPU]
 	}
 
-	minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], scfg.GetMinDiffCpuLimitAlgo(containerName), scfg.GetMinDiffCpuLimitValue(containerName))
+	minDiffCpuLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceCPU], scfg.GetMinDiffCpuLimitAlgo(containerName), scfg.GetMinDiffCpuLimitValue(containerName), calculator.ResourceTypeCPU)
 	if newCPULimit.Cmp(minDiffCpuLimit) == -1 {
 		newCPULimit = cpuLimit
 	}
@@ -84,15 +95,22 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 	return changes
 }
 
-func setContainerMemoryRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
+func setContainerMemoryRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryRequest := *container.Resources.Requests.Memory()
 	var newMemoryRequest resource.Quantity
 	if scfg.GetMemoryRequestFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
-		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryRequestFromCpuAlgo(containerName), scfg.GetMemoryRequestFromCpuValue(containerName))
+		newMemoryRequest = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryRequestFromCpuAlgo(containerName), scfg.GetMemoryRequestFromCpuValue(containerName), calculator.ResourceTypeMemory)
 	} else {
-		newMemoryRequest = calculator.CalculateResourceValue(*containerRequestRecommendation.Memory, scfg.GetIncreaseRequestMemoryAlgo(containerName), scfg.GetIncreaseRequestMemoryValue(containerName))
+		newMemoryRequest = *containerRequestRecommendation.Memory
+		if scfg.GetMinAllowedRecommendationMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMinAllowedRecommendationMemory(containerName)) == -1 {
+			newMemoryRequest = *scfg.GetMinAllowedRecommendationMemory(containerName)
+		}
+		if scfg.GetMaxAllowedRecommendationMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMaxAllowedRecommendationMemory(containerName)) == 1 {
+			newMemoryRequest = *scfg.GetMaxAllowedRecommendationMemory(containerName)
+		}
+		newMemoryRequest = calculator.CalculateResourceValue(newMemoryRequest, scfg.GetIncreaseRequestMemoryAlgo(containerName), scfg.GetIncreaseRequestMemoryValue(containerName), calculator.ResourceTypeMemory)
 	}
 	if scfg.GetMinRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMinRequestMemory(containerName)) == -1 {
 		newMemoryRequest = *scfg.GetMinRequestMemory(containerName)
@@ -100,7 +118,7 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 	if scfg.GetMaxRequestMemory(containerName) != nil && newMemoryRequest.Cmp(*scfg.GetMaxRequestMemory(containerName)) == 1 {
 		newMemoryRequest = *scfg.GetMaxRequestMemory(containerName)
 	}
-	minDiffMemoryRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetMinDiffMemoryRequestAlgo(containerName), scfg.GetMinDiffMemoryRequestValue(containerName))
+	minDiffMemoryRequest := calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetMinDiffMemoryRequestAlgo(containerName), scfg.GetMinDiffMemoryRequestValue(containerName), calculator.ResourceTypeMemory)
 	if newMemoryRequest.Cmp(minDiffMemoryRequest) == -1 {
 		newMemoryRequest = memoryRequest
 	}
@@ -122,16 +140,16 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 	return changes
 }
 
-func setContainerMemoryLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommandation, containerLimitRecommendation *TargetRecommandation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
+func setContainerMemoryLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, containerLimitRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryLimit := *container.Resources.Limits.Memory()
 	var newMemoryLimit resource.Quantity
 	if scfg.GetMemoryLimitFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
-		newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryLimitFromCpuAlgo(containerName), scfg.GetMemoryLimitFromCpuValue(containerName))
+		newMemoryLimit = calculator.CalculateResourceValue(memoryFromCpu, scfg.GetMemoryLimitFromCpuAlgo(containerName), scfg.GetMemoryLimitFromCpuValue(containerName), calculator.ResourceTypeMemory)
 	} else {
 		if scfg.GetLimitMemoryApplyTarget(containerName) == config.LimitApplyTargetAuto {
-			newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetLimitMemoryCalculatorAlgo(containerName), scfg.GetLimitMemoryCalculatorValue(containerName))
+			newMemoryLimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceMemory], scfg.GetLimitMemoryCalculatorAlgo(containerName), scfg.GetLimitMemoryCalculatorValue(containerName), calculator.ResourceTypeMemory)
 		} else {
 			newMemoryLimit = *containerLimitRecommendation.Memory
 		}
@@ -147,7 +165,7 @@ func setContainerMemoryLimit(container *corev1.Container, containerRequestRecomm
 		newMemoryLimit = container.Resources.Requests[corev1.ResourceMemory]
 	}
 
-	minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], scfg.GetMinDiffMemoryLimitAlgo(containerName), scfg.GetMinDiffMemoryLimitValue(containerName))
+	minDiffMemoryLimit := calculator.CalculateResourceValue(container.Resources.Limits[corev1.ResourceMemory], scfg.GetMinDiffMemoryLimitAlgo(containerName), scfg.GetMinDiffMemoryLimitValue(containerName), calculator.ResourceTypeMemory)
 	if newMemoryLimit.Cmp(minDiffMemoryLimit) == -1 {
 		newMemoryLimit = memoryLimit
 	}

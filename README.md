@@ -58,8 +58,12 @@ The operator uses **annotations** on VPA objects to configure its behavior. Belo
 - **`oblik.socialgouv.io/max-limit-memory`**: Value used to cap maximum memory limit.
 - **`oblik.socialgouv.io/min-request-cpu`**: Value used to cap minimum CPU request (this is like an overriding for native VPA minAllowed.cpu).
 - **`oblik.socialgouv.io/max-request-cpu`**: Value used to cap maximum CPU request (this is like an overriding for native VPA maxAllowed.cpu).
-- **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request. (this is like an overriding for native VPA minAllowed.memory)
-- **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request. (this is like an overriding for native VPA maxAllowed.memory)
+- **`oblik.socialgouv.io/min-request-memory`**: Value used to cap minimum memory request.
+- **`oblik.socialgouv.io/max-request-memory`**: Value used to cap maximum memory request.
+- **`oblik.socialgouv.io/min-allowed-recommendation-cpu`**: Value used to cap minimum CPU limit of the recommendation (this is like an overriding for native VPA minAllowed.cpu).
+- **`oblik.socialgouv.io/max-allowed-recommendation-cpu`**: Value used to cap maximum CPU limit (this is like an overriding for native VPA maxAllowed.cpu).
+- **`oblik.socialgouv.io/min-allowed-recommendation-memory`**: Value used to cap minimum memory limit. (this is like an overriding for native VPA minAllowed.memory)
+- **`oblik.socialgouv.io/max-allowed-recommendation-memory`**: Value used to cap maximum memory limit. (this is like an overriding for native VPA maxAllowed.memory)
 - **`oblik.socialgouv.io/min-diff-cpu-request-algo`**: Algorithm to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
 - **`oblik.socialgouv.io/min-diff-cpu-request-value`**: Value used to calculate the minimum cpu request diff between actual and recommendation from which oblik will enforce recommendentation. Default is `0`.
 - **`oblik.socialgouv.io/min-diff-memory-request-algo`**: Algorithm to calculate the minimum memory request diff between actual and recommendation from which oblik will enforce recommendentation. Options: `ratio` (default), `margin`.
@@ -259,11 +263,37 @@ The Oblik Kubernetes VPA Operator uses the following environment variables for c
     
     * **Default**: `""`
 
-
-
 ## Contributing
 
 We welcome contributions! Please feel free to submit pull requests or open issues on our GitHub repository.
+
+## Running Tests
+
+The Oblik project includes end-to-end tests that can be run to verify the functionality of the operator. These tests are located in the `tests` directory and are implemented using Go's testing framework.
+
+To run all tests, use the following command from the root of the project:
+
+```sh
+go test ./tests -v
+```
+
+### Running Specific Tests
+
+You can run a specific test case by using the `-test-case` flag. This flag allows you to specify the name of a single test case to run, which is particularly useful when debugging or focusing on a particular feature.
+
+To run a specific test, use the following command:
+
+```sh
+go test ./tests -v -test-case=TestCaseName
+```
+
+Replace `TestCaseName` with the name of the test case you want to run. For example, to run the "TestOffRecommendations" test case:
+
+```sh
+go test ./tests -v -test-case=TestOffRecommendations
+```
+
+This will run only the specified test case, allowing for faster and more focused testing during development or debugging.
 
 ## License
 

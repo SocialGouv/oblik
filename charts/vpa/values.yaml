@@ -1,9 +1,6 @@
 versionTag: &versionTag 1.1.2
 updateEnabled: false
 
-genVpa:
-  enabled: true
-
 recommender:
   image:
     repository: registry.k8s.io/autoscaling/vpa-recommender
