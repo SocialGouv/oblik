@@ -13,7 +13,7 @@ helm upgrade --install --create-namespace --namespace oblik \
   --set image.tag=test \
   --set image.pullPolicy=Always \
   --set annotations.refreshtime="$(date +'%F-%H:%m:%S')" \
-  --set env.OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU=100m \
+  --set env.OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU=25m \
   --set env.OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY=250Mi \
   --set env.OBLIK_DEFAULT_MIN_REQUEST_CPU=100m \
   --set env.OBLIK_DEFAULT_MIN_REQUEST_MEMORY=250Mi \
