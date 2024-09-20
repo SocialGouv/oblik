@@ -8,6 +8,7 @@ docker build --tag localhost:5001/oblik:test .
 docker push localhost:5001/oblik:test
 
 helm upgrade --install --create-namespace --namespace oblik \
+  --set replicas=3 \
   --set image.repository=localhost:5001/oblik \
   --set image.tag=test \
   --set image.pullPolicy=Always \

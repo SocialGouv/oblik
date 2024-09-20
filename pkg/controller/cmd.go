@@ -10,18 +10,21 @@ import (
 )
 
 func NewCommand() *cobra.Command {
-	return &cobra.Command{
+	var leaderElect bool
+
+	cmd := &cobra.Command{
 		Use:   "oblik",
 		Short: "Oblik operator",
-		Run:   Cmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			go func() {
+				handleSignals()
+			}()
+			Run(leaderElect)
+		},
 	}
-}
 
-func Cmd(cmd *cobra.Command, args []string) {
-	go func() {
-		handleSignals()
-	}()
-	Run()
+	cmd.Flags().BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for controller manager.")
+	return cmd
 }
 
 func handleSignals() {
