@@ -25,7 +25,7 @@ spec:
           {{ else }}
           imagePullPolicy: Always
           {{ end }}
-          {{ if gt .Values.replicas 1 }}
+          {{ if gt (int .Values.replicas) 1 }}
           args:
           - "--leader-elect"
           {{ end }}
