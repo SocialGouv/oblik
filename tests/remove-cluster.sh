@@ -4,3 +4,5 @@ set -eo errexit
 export KUBECONFIG="${HOME}/.kube/config"
 
 kind delete cluster
+docker rm -f kind-registry
+
