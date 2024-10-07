@@ -303,7 +303,7 @@ This will run only the specified test case, allowing for faster and more focused
   https://www.reddit.com/r/kubernetes/comments/11vhfbz/kubereqsizer_open_source_vpa_alternative_for/
 - https://github.com/gardener/hvpa-controller
     
-    the first approach of Oblik was also to try to find a cursor between HPA anv VPA but we changed our approach
+    the first approach of Oblik was also to try to find a cursor between HPA and VPA but we changed our approach
 
 
 ## License
