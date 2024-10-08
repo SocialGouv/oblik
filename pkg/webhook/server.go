@@ -161,8 +161,14 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		allowRequest(writer, admissionReview.Request.UID)
 		return nil
 	}
+
+	// TODO: get the vpa if exists and set requestRecommendations and limitRecommendations accordingly
+	// but before we have to generate the vpa to know deterministically it's name
 	requestRecommendations := []logical.TargetRecommendation{}
 	limitRecommendations := []logical.TargetRecommendation{}
+	// requestRecommendations := getRequestTargetRecommendations(vpaResource, scfg)
+	// limitRecommendations := getLimitTargetRecommendations(vpaResource, scfg)
+
 	requestRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, requestRecommendations, scfg, nil)
 	limitRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, limitRecommendations, scfg, nil)
 	logical.ApplyRecommendationsToContainers(containers, requestRecommendations, limitRecommendations, scfg)
