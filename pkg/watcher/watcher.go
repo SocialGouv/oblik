@@ -95,8 +95,11 @@ func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.Dynamic
 	}
 
 	entryID, err := CronScheduler.AddFunc(scfg.CronExpr, func() {
-		randomDelay := time.Duration(rand.Int63n(scfg.CronMaxRandomDelay.Nanoseconds()))
-		time.Sleep(randomDelay)
+		nsecondsDelay := scfg.CronMaxRandomDelay.Nanoseconds()
+		if nsecondsDelay != 0 {
+			randomDelay := time.Duration(rand.Int63n(nsecondsDelay))
+			time.Sleep(randomDelay)
+		}
 		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, scfg.CronExpr)
 		ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpaResource, scfg)
 	})
