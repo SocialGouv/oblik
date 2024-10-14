@@ -20,11 +20,12 @@ func NewCommand() *cobra.Command {
 	var name string
 	var namespace string
 	var all bool
+	var force bool
 	var Command = &cobra.Command{
 		Use:   "cli",
 		Short: "Oblik CLI",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := Run(namespace, name, selector, all); err != nil {
+			if err := Run(namespace, name, selector, all, force); err != nil {
 				os.Exit(1)
 			}
 		},
@@ -34,10 +35,11 @@ func NewCommand() *cobra.Command {
 	flags.StringVarP(&name, "name", "", "", "Name of the VPA")
 	flags.StringVarP(&namespace, "namespace", "n", "", "Namespace containing VPAs")
 	flags.BoolVarP(&all, "all", "a", false, "Process all namespaces")
+	flags.BoolVarP(&force, "force", "f", false, "Force to run on not enabled")
 	return Command
 }
 
-func Run(namespace string, resourceName string, selector string, all bool) error {
+func Run(namespace string, resourceName string, selector string, all bool, force bool) error {
 	// Validate input parameters
 	if resourceName != "" && namespace == "" {
 		klog.Fatalf("Namespace must be specified when name is provided")
@@ -54,7 +56,7 @@ func Run(namespace string, resourceName string, selector string, all bool) error
 	if resourceName != "" {
 		vpaResource := getVPA(kubeClients.VpaClientset, namespace, resourceName)
 		if vpaResource != nil {
-			if err := processVPA(kubeClients, vpaResource); err != nil {
+			if err := processVPA(kubeClients, vpaResource, force); err != nil {
 				return err
 			}
 		}
@@ -66,7 +68,7 @@ func Run(namespace string, resourceName string, selector string, all bool) error
 			vpaResources = listVPAs(kubeClients.VpaClientset, namespace, selector)
 		}
 		for _, vpaResource := range vpaResources {
-			if err := processVPA(kubeClients, &vpaResource); err != nil {
+			if err := processVPA(kubeClients, &vpaResource, force); err != nil {
 				return err
 			}
 		}
@@ -116,9 +118,13 @@ func listAllVPAs(vpaClient *vpaclientset.Clientset, selector string) []vpa.Verti
 	return vpaList.Items
 }
 
-func processVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAutoscaler) error {
-	klog.Infof("Processing VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
+func processVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAutoscaler, force bool) error {
 	configurable := config.CreateConfigurable(vpaResource)
 	scfg := config.CreateStrategyConfig(configurable)
+	if scfg.Enabled == false && !force {
+		klog.Infof("Skipping VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
+		return nil
+	}
+	klog.Infof("Processing VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
 	return ovpa.ApplyVPARecommendations(kubeClients.Clientset, kubeClients.DynamicClient, vpaResource, scfg)
 }

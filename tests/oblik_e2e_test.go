@@ -3,17 +3,13 @@ package main
 import (
 	"context"
 	"flag"
-	"math/rand"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	vpa_types "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpa_clientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
@@ -66,7 +62,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        appName,
 			Namespace:   oblikE2eTestNamespace,
-			Labels:      labelSelector,
+			Labels:      map[string]string{"app": appName, "oblik.socialgouv.io/enabled": "true"},
 			Annotations: otc.annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -101,41 +97,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		if err != nil {
 			t.Fatalf("Failed to delete Deployment: %v", err)
 		}
-		err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(oblikE2eTestNamespace).Delete(ctx, deployment.Name, metav1.DeleteOptions{})
-		if err != nil {
-			t.Errorf("Failed to delete VPA: %v", err)
-		}
 	}()
-
-	// Create a channel to signal when VPA creation is complete
-	vpaCreated := make(chan struct{})
-
-	// Create VPA asynchronously with random delay
-	var wg sync.WaitGroup
-	wg.Add(1)
-	t.Run("CreateVPA", func(t *testing.T) {
-		defer wg.Done()
-		delay := time.Duration(rand.Intn(21)) * time.Second
-		t.Logf("Delaying VPA creation for %v", delay)
-		time.Sleep(delay)
-
-		vpa := generateVPA(appName, otc.annotations)
-		_, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(oblikE2eTestNamespace).Create(ctx, vpa, metav1.CreateOptions{})
-		if err != nil {
-			t.Errorf("Failed to create VPA: %v", err)
-			return
-		}
-		t.Logf("VPA created after delay")
-		close(vpaCreated)
-	})
-
-	// Wait for VPA creation to complete
-	select {
-	case <-vpaCreated:
-		t.Log("VPA creation completed")
-	case <-ctx.Done():
-		t.Fatal("Context cancelled before VPA creation completed")
-	}
 
 	originalResource := deployment.Spec.Template.Spec.Containers[0].Resources
 
@@ -156,37 +118,4 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		}
 	}
 
-	// Wait for the VPA creation goroutine to finish
-	wg.Wait()
-}
-
-func generateVPA(name string, annotations map[string]string) *vpa_types.VerticalPodAutoscaler {
-	updateMode := vpa_types.UpdateModeOff
-	vpa := &vpa_types.VerticalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				"oblik.socialgouv.io/enabled": "true",
-			},
-			Annotations: annotations,
-		},
-		Spec: vpa_types.VerticalPodAutoscalerSpec{
-			TargetRef: &autoscaling.CrossVersionObjectReference{
-				APIVersion: "apps/v1",
-				Kind:       "Deployment",
-				Name:       name,
-			},
-			UpdatePolicy: &vpa_types.PodUpdatePolicy{
-				UpdateMode: &updateMode,
-			},
-			ResourcePolicy: &vpa_types.PodResourcePolicy{
-				ContainerPolicies: []vpa_types.ContainerResourcePolicy{
-					{
-						ContainerName: "*",
-					},
-				},
-			},
-		},
-	}
-	return vpa
 }

@@ -7,22 +7,24 @@ import (
 	"io"
 	"net/http"
 	"reflect"
-	"strings"
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/config"
 	"github.com/SocialGouv/oblik/pkg/logical"
+	"github.com/SocialGouv/oblik/pkg/utils"
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -51,7 +53,9 @@ func Server(ctx context.Context, kubeClients *client.KubeClients) error {
 	server.Handler = mux
 
 	mux.HandleFunc("/healthz", HealthCheckHandler)
-	mux.HandleFunc("/mutate", MutateHandler)
+	mux.HandleFunc("/mutate", func(writer http.ResponseWriter, request *http.Request) {
+		MutateHandler(writer, request, kubeClients)
+	})
 
 	metricsHandler := promhttp.Handler()
 	go startMetricsServer(metricsHandler)
@@ -77,16 +81,16 @@ func HealthCheckHandler(writer http.ResponseWriter, _ *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 }
 
-func MutateHandler(writer http.ResponseWriter, request *http.Request) {
+func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClients *client.KubeClients) {
 	var admissionReview admissionv1.AdmissionReview
-	err := MutateExec(writer, request, admissionReview)
+	err := MutateExec(writer, request, admissionReview, kubeClients)
 	if err != nil {
 		klog.Error(err)
 		allowRequest(writer, admissionReview.Request.UID)
 	}
 }
+func MutateExec(writer http.ResponseWriter, request *http.Request, admissionReview admissionv1.AdmissionReview, kubeClients *client.KubeClients) error {
 
-func MutateExec(writer http.ResponseWriter, request *http.Request, admissionReview admissionv1.AdmissionReview) error {
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		return fmt.Errorf("Could not read request body: %v", err)
@@ -157,12 +161,21 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 	}
 
 	scfg := config.CreateStrategyConfig(configurable)
-	if !scfg.WebhookEnabled {
+	if !scfg.WebhookEnabled || !scfg.Enabled {
 		allowRequest(writer, admissionReview.Request.UID)
 		return nil
 	}
-	requestRecommendations := []logical.TargetRecommendation{}
-	limitRecommendations := []logical.TargetRecommendation{}
+
+	vpaResource := getVPAResource(obj, kubeClients)
+	var requestRecommendations, limitRecommendations []logical.TargetRecommendation
+	if vpaResource != nil {
+		requestRecommendations = logical.GetRequestTargetRecommendations(vpaResource, scfg)
+		limitRecommendations = logical.GetLimitTargetRecommendations(vpaResource, scfg)
+	} else {
+		requestRecommendations = []logical.TargetRecommendation{}
+		limitRecommendations = []logical.TargetRecommendation{}
+	}
+
 	requestRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, requestRecommendations, scfg, nil)
 	limitRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, limitRecommendations, scfg, nil)
 	logical.ApplyRecommendationsToContainers(containers, requestRecommendations, limitRecommendations, scfg)
@@ -292,7 +305,7 @@ func createJSONPatch(originalJSON []byte, modified *unstructured.Unstructured) (
 
 func compareMaps(prefix string, original, modified map[string]interface{}, patch *[]map[string]interface{}) {
 	for key, modifiedValue := range modified {
-		path := getJSONPath(prefix, key)
+		path := utils.GetJSONPath(prefix, key)
 		originalValue, exists := original[key]
 
 		if !exists {
@@ -333,15 +346,23 @@ func compareMaps(prefix string, original, modified map[string]interface{}, patch
 		if _, exists := modified[key]; !exists {
 			*patch = append(*patch, map[string]interface{}{
 				"op":   "remove",
-				"path": getJSONPath(prefix, key),
+				"path": utils.GetJSONPath(prefix, key),
 			})
 		}
 	}
 }
 
-func getJSONPath(prefix, key string) string {
-	if prefix == "" {
-		return "/" + strings.Replace(key, "/", "~1", -1)
+func getVPAResource(obj *unstructured.Unstructured, kubeClients *client.KubeClients) *autoscalingv1.VerticalPodAutoscaler {
+	namespace := obj.GetNamespace()
+	vpaName := obj.GetName()
+	vpa, err := kubeClients.VpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("No VPA resource found for %s/%s: %v", namespace, vpaName, err)
+		} else {
+			klog.Errorf("Error retrieving VPA for %s/%s: %v", namespace, vpaName, err)
+		}
+		return nil
 	}
-	return prefix + "/" + strings.Replace(key, "/", "~1", -1)
+	return vpa
 }

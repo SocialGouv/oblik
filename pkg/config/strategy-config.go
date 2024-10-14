@@ -24,6 +24,9 @@ func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
 	getAnnotation := func(key string) string {
 		return getAnnotationFromMap(key, annotations)
 	}
+	getLabel := func(key string) string {
+		return getLabelFromMap(key, annotations)
+	}
 
 	cronExpr := getAnnotation("cron")
 	if cronExpr == "" {
@@ -53,6 +56,11 @@ func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
 		cfg.WebhookEnabled = true
 	}
 
+	enabled := getLabel("enabled")
+	if enabled == "true" {
+		cfg.Enabled = true
+	}
+
 	loadAnnotableCommonCfg(cfg.LoadCfg, configurable, "")
 
 	containerNames := configurable.GetContainerNames()
@@ -69,6 +77,7 @@ type StrategyConfig struct {
 	CronExpr           string
 	CronMaxRandomDelay time.Duration
 	DryRun             bool
+	Enabled            bool
 	WebhookEnabled     bool
 	Containers         map[string]*ContainerConfig
 	*LoadCfg
