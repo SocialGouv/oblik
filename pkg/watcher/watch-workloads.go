@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SocialGouv/oblik/pkg/utils"
 	cnpg "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -129,13 +130,13 @@ func createWatcher(ctx context.Context, clientset *kubernetes.Clientset, dynamic
 }
 
 func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := getObjectMetadata(obj)
+	metadata, namespace, name := utils.GetObjectMetadata(obj)
 	if metadata == nil {
 		klog.Errorf("Error getting metadata for object")
 		return
 	}
 
-	annotations := getOblikAnnotations(metadata.GetAnnotations())
+	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
 
 	updateMode := vpa.UpdateModeOff
 	vpa := &vpa.VerticalPodAutoscaler{
@@ -149,8 +150,8 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 		},
 		Spec: vpa.VerticalPodAutoscalerSpec{
 			TargetRef: &autoscaling.CrossVersionObjectReference{
-				APIVersion: getAPIVersion(obj),
-				Kind:       getKind(obj),
+				APIVersion: utils.GetAPIVersion(obj),
+				Kind:       utils.GetKind(obj),
 				Name:       name,
 			},
 			UpdatePolicy: &vpa.PodUpdatePolicy{
@@ -168,13 +169,13 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 }
 
 func updateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := getObjectMetadata(obj)
+	metadata, namespace, name := utils.GetObjectMetadata(obj)
 	if metadata == nil {
 		klog.Errorf("Error getting metadata for object")
 		return
 	}
 
-	annotations := getOblikAnnotations(metadata.GetAnnotations())
+	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
 
 	vpa, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), name+"-vpa", metav1.GetOptions{})
 	if err != nil {
@@ -194,7 +195,7 @@ func updateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 }
 
 func deleteVPA(vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := getObjectMetadata(obj)
+	metadata, namespace, name := utils.GetObjectMetadata(obj)
 	if metadata == nil {
 		klog.Errorf("Error getting metadata for object")
 		return
@@ -205,71 +206,5 @@ func deleteVPA(vpaClientset *vpaclientset.Clientset, obj interface{}) {
 		klog.Errorf("Error deleting VPA for %s/%s: %v", namespace, name, err)
 	} else {
 		klog.Infof("Deleted VPA for %s/%s", namespace, name)
-	}
-}
-
-func getObjectMetadata(obj interface{}) (metav1.Object, string, string) {
-	var metadata metav1.Object
-	var namespace, name string
-
-	switch v := obj.(type) {
-	case *appsv1.Deployment:
-		metadata = &v.ObjectMeta
-	case *appsv1.StatefulSet:
-		metadata = &v.ObjectMeta
-	case *batchv1.CronJob:
-		metadata = &v.ObjectMeta
-	case *appsv1.DaemonSet:
-		metadata = &v.ObjectMeta
-	case *cnpg.Cluster:
-		metadata = &v.ObjectMeta
-	default:
-		klog.Errorf("Unsupported object type: %T", obj)
-		return nil, "", ""
-	}
-
-	namespace = metadata.GetNamespace()
-	name = metadata.GetName()
-
-	return metadata, namespace, name
-}
-
-func getOblikAnnotations(annotations map[string]string) map[string]string {
-	oblikAnnotations := make(map[string]string)
-	for k, v := range annotations {
-		if strings.HasPrefix(k, "oblik.socialgouv.io/") {
-			oblikAnnotations[k] = v
-		}
-	}
-	return oblikAnnotations
-}
-
-func getAPIVersion(obj interface{}) string {
-	switch obj.(type) {
-	case *appsv1.Deployment, *appsv1.StatefulSet, *appsv1.DaemonSet:
-		return "apps/v1"
-	case *batchv1.CronJob:
-		return "batch/v1"
-	case *cnpg.Cluster:
-		return "postgresql.cnpg.io/v1"
-	default:
-		return ""
-	}
-}
-
-func getKind(obj interface{}) string {
-	switch obj.(type) {
-	case *appsv1.Deployment:
-		return "Deployment"
-	case *appsv1.StatefulSet:
-		return "StatefulSet"
-	case *batchv1.CronJob:
-		return "CronJob"
-	case *appsv1.DaemonSet:
-		return "DaemonSet"
-	case *cnpg.Cluster:
-		return "Cluster"
-	default:
-		return ""
 	}
 }

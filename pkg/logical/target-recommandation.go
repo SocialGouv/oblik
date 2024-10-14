@@ -12,7 +12,7 @@ type TargetRecommendation struct {
 	ContainerName string
 }
 
-func getRequestTargetRecommendations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommendation {
+func GetRequestTargetRecommendations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommendation {
 	recommendations := []TargetRecommendation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
@@ -42,7 +42,7 @@ func getRequestTargetRecommendations(vpaResource *vpa.VerticalPodAutoscaler, scf
 	return recommendations
 }
 
-func getLimitTargetRecommendations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommendation {
+func GetLimitTargetRecommendations(vpaResource *vpa.VerticalPodAutoscaler, scfg *config.StrategyConfig) []TargetRecommendation {
 	recommendations := []TargetRecommendation{}
 	if vpaResource.Status.Recommendation != nil {
 		for _, containerRecommendation := range vpaResource.Status.Recommendation.ContainerRecommendations {
