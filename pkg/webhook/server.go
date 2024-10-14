@@ -161,7 +161,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 	}
 
 	scfg := config.CreateStrategyConfig(configurable)
-	if !scfg.WebhookEnabled {
+	if !scfg.WebhookEnabled || !scfg.Enabled {
 		allowRequest(writer, admissionReview.Request.UID)
 		return nil
 	}

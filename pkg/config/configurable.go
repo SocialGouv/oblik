@@ -30,6 +30,15 @@ func (co *Configurable) GetAnnotations() map[string]string {
 	}
 }
 
+func (co *Configurable) GetLabels() map[string]string {
+	switch obj := co.Object.(type) {
+	case metav1.Object:
+		return obj.GetLabels()
+	default:
+		return map[string]string{}
+	}
+}
+
 func (co *Configurable) GetNamespace() string {
 	switch obj := co.Object.(type) {
 	case metav1.Object:
