@@ -1,0 +1,12 @@
+.git/
+.github/
+.vscode/
+*.log
+codebase.md
+tests/
+vendor/
+LICENSE
+Makefile
+go.mod
+go.sum
+charts/
