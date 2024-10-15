@@ -2,8 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.1.8"></a>
+## [v0.1.8] - 2024-10-15
+### Fix
+- vpa name
+
+
 <a name="v0.1.7"></a>
 ## [v0.1.7] - 2024-10-15
+### Chore
+- **release:** v0.1.7
+
 ### Fix
 - vpa name
 
@@ -285,7 +294,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.8...HEAD
+[v0.1.8]: https://github.com/SocialGouv/oblik/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/SocialGouv/oblik/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/SocialGouv/oblik/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/SocialGouv/oblik/compare/v0.1.4...v0.1.5
