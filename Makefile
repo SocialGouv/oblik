@@ -75,4 +75,4 @@ clean:
 
 # Run linter
 lint:
-	golangci-lint run
+	golangci-lint run --timeout=10m
