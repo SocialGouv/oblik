@@ -1,0 +1,53 @@
+name: Tag and Update Changelog
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-changelog:
+    if:  github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.x'
+
+      - name: Get next tag
+        id: next-tag
+        run: echo "tag=$(make next-tag)" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag ${{ steps.next-tag.outputs.tag }}
+          git push origin ${{ steps.next-tag.outputs.tag }}
+
+      - name: Install tools
+        run: make install-release-tools
+
+      - name: Generate changelog
+        run: make changelog
+
+      - name: Amend commit with updated CHANGELOG.md
+        run: |
+          git add CHANGELOG.md
+          git commit --amend --no-edit
+
+      - name: Push changes
+        run: git push --force-with-lease origin main

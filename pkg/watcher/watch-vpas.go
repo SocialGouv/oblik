@@ -101,7 +101,10 @@ func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.Dynamic
 			time.Sleep(randomDelay)
 		}
 		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, scfg.CronExpr)
-		ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpaResource, scfg)
+		err := ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpaResource, scfg)
+		if err != nil {
+			klog.Errorf("Error applying VPA recommendations: %s", err.Error())
+		}
 	})
 	if err != nil {
 		klog.Errorf("Error scheduling cron job: %s", err.Error())

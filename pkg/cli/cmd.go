@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/SocialGouv/oblik/pkg/client"
@@ -15,16 +16,25 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// It will be set during build time
+var Version = "dev"
+
 func NewCommand() *cobra.Command {
 	var selector string
 	var name string
 	var namespace string
 	var all bool
 	var force bool
+	var showVersion bool
+
 	var Command = &cobra.Command{
-		Use:   "cli",
+		Use:   "oblik",
 		Short: "Oblik CLI",
 		Run: func(cmd *cobra.Command, args []string) {
+			if showVersion {
+				fmt.Printf("Oblik version: %s\n", Version)
+				return
+			}
 			if err := Run(namespace, name, selector, all, force); err != nil {
 				os.Exit(1)
 			}
@@ -36,6 +46,7 @@ func NewCommand() *cobra.Command {
 	flags.StringVarP(&namespace, "namespace", "n", "", "Namespace containing VPAs")
 	flags.BoolVarP(&all, "all", "a", false, "Process all namespaces")
 	flags.BoolVarP(&force, "force", "f", false, "Force to run on not enabled")
+	flags.BoolVarP(&showVersion, "version", "v", false, "Show version")
 	return Command
 }
 
@@ -121,7 +132,7 @@ func listAllVPAs(vpaClient *vpaclientset.Clientset, selector string) []vpa.Verti
 func processVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAutoscaler, force bool) error {
 	configurable := config.CreateConfigurable(vpaResource)
 	scfg := config.CreateStrategyConfig(configurable)
-	if scfg.Enabled == false && !force {
+	if !scfg.Enabled && !force {
 		klog.Infof("Skipping VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
 		return nil
 	}

@@ -49,7 +49,10 @@ func isTerminal() bool {
 }
 
 func colorize(text, color string) string {
-	return color + text + Reset
+	if colorEnabled {
+		return color + text + Reset
+	}
+	return text
 }
 
 func int32Ptr(i int32) *int32 {

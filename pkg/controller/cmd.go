@@ -13,7 +13,7 @@ func NewCommand() *cobra.Command {
 	var leaderElect bool
 
 	cmd := &cobra.Command{
-		Use:   "oblik",
+		Use:   "operator",
 		Short: "Oblik operator",
 		Run: func(cmd *cobra.Command, args []string) {
 			go func() {

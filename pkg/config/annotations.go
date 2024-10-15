@@ -17,11 +17,3 @@ func getAnnotations(Annotable Annotable) map[string]string {
 func getLabelFromMap(name string, labels map[string]string) string {
 	return labels[PREFIX+name]
 }
-
-func getLabels(Annotable Annotable) map[string]string {
-	labels := Annotable.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	return labels
-}

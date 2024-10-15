@@ -1,3 +1,7 @@
+.aidigestignore
+.dockerignore
+Dockerfile
+.gitignore
 .git/
 .github/
 .vscode/
@@ -6,6 +10,8 @@ codebase.md
 tests/
 vendor/
 LICENSE
+CHANGELOG.md
+.chglog/
 Makefile
 go.mod
 go.sum

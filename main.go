@@ -13,9 +13,9 @@ import (
 func main() {
 	klog.InitFlags(nil)
 
-	var rootCmd = controller.NewCommand()
+	var rootCmd = cli.NewCommand()
 
-	rootCmd.AddCommand(cli.NewCommand())
+	rootCmd.AddCommand(controller.NewCommand())
 
 	viper.AutomaticEnv()
 
