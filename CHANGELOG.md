@@ -2,8 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.1.5"></a>
+## [v0.1.5] - 2024-10-15
+### Fix
+- go release flags
+
+
 <a name="v0.1.4"></a>
 ## [v0.1.4] - 2024-10-15
+### Chore
+- **release:** v0.1.4
+
 ### Fix
 - go release version
 - lint timeout
@@ -257,7 +266,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.5...HEAD
+[v0.1.5]: https://github.com/SocialGouv/oblik/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/SocialGouv/oblik/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/SocialGouv/oblik/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/SocialGouv/oblik/compare/v0.1.1...v0.1.2
