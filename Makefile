@@ -66,7 +66,7 @@ next-tag:
 
 # Generate changelog
 changelog:
-	git-chglog -o CHANGELOG.md
+	git-chglog --next-tag $(shell make next-tag) -o CHANGELOG.md
 
 # Clean build artifacts
 clean:
