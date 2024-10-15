@@ -2,6 +2,18 @@
 ## [Unreleased]
 
 
+<a name="v0.1.1"></a>
+## [v0.1.1] - 2024-10-15
+### Chore
+- fix release pat
+- beautify
+
+### Fix
+- next-tag
+- release workflow
+- release workflow
+
+
 <a name="v0.1.0"></a>
 ## [v0.1.0] - 2024-10-15
 ### Chore
@@ -219,5 +231,6 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/SocialGouv/oblik/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/SocialGouv/oblik/compare/v0.0.0...v0.1.0
