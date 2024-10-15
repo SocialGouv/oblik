@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  golangci:
-    name: lint
+  makefile-lint:
+    name: Makefile Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,13 +15,10 @@ jobs:
         with:
           go-version: '1.22'
           cache: false
-
-  makefile-lint:
-    name: Makefile Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run lint target
+      - name: Add Go bin to PATH
         run: |
-          make install-lint-tools
-          make lint
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Install linter
+        run: make install-lint-tools
+      - name: Run linter
+        run: make lint
