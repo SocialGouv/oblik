@@ -2,6 +2,8 @@ package watcher
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"strings"
 	"time"
 
@@ -129,6 +131,16 @@ func createWatcher(ctx context.Context, clientset *kubernetes.Clientset, dynamic
 	return controller
 }
 
+func generateVPAName(kind, name string) string {
+	vpaName := fmt.Sprintf("oblik-%s-%s", strings.ToLower(kind), name)
+	if len(vpaName) > 63 {
+		hash := sha256.Sum256([]byte(vpaName))
+		truncatedHash := fmt.Sprintf("%x", hash)[:8]
+		vpaName = vpaName[:54] + "-" + truncatedHash
+	}
+	return vpaName
+}
+
 func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, obj interface{}) {
 	metadata, namespace, name := utils.GetObjectMetadata(obj)
 	if metadata == nil {
@@ -137,11 +149,13 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 	}
 
 	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
+	kind := utils.GetKind(obj)
+	vpaName := generateVPAName(kind, name)
 
 	updateMode := vpa.UpdateModeOff
 	vpa := &vpa.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
+			Name:        vpaName,
 			Namespace:   namespace,
 			Annotations: annotations,
 			Labels: map[string]string{
@@ -151,7 +165,7 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 		Spec: vpa.VerticalPodAutoscalerSpec{
 			TargetRef: &autoscaling.CrossVersionObjectReference{
 				APIVersion: utils.GetAPIVersion(obj),
-				Kind:       utils.GetKind(obj),
+				Kind:       kind,
 				Name:       name,
 			},
 			UpdatePolicy: &vpa.PodUpdatePolicy{
@@ -164,7 +178,7 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 	if err != nil {
 		klog.Errorf("Error creating VPA for %s/%s: %v", namespace, name, err)
 	} else {
-		klog.Infof("Created VPA for %s/%s", namespace, name)
+		klog.Infof("Created VPA %s for %s/%s", vpaName, namespace, name)
 	}
 }
 
@@ -176,8 +190,10 @@ func updateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 	}
 
 	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
+	kind := utils.GetKind(obj)
+	vpaName := generateVPAName(kind, name)
 
-	vpa, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), name+"-vpa", metav1.GetOptions{})
+	vpa, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Error getting VPA for %s/%s: %v", namespace, name, err)
 		return
@@ -190,7 +206,7 @@ func updateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 	if err != nil {
 		klog.Errorf("Error updating VPA for %s/%s: %v", namespace, name, err)
 	} else {
-		klog.Infof("Updated VPA for %s/%s", namespace, name)
+		klog.Infof("Updated VPA %s for %s/%s", vpaName, namespace, name)
 	}
 }
 
@@ -201,10 +217,13 @@ func deleteVPA(vpaClientset *vpaclientset.Clientset, obj interface{}) {
 		return
 	}
 
-	err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Delete(context.TODO(), name+"-vpa", metav1.DeleteOptions{})
+	kind := utils.GetKind(obj)
+	vpaName := generateVPAName(kind, name)
+
+	err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Delete(context.TODO(), vpaName, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Error deleting VPA for %s/%s: %v", namespace, name, err)
 	} else {
-		klog.Infof("Deleted VPA for %s/%s", namespace, name)
+		klog.Infof("Deleted VPA %s for %s/%s", vpaName, namespace, name)
 	}
 }
