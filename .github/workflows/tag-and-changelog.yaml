@@ -1,4 +1,4 @@
-name: Tag and Update Changelog
+name: 🏷️ Tag and Update Changelog
 
 on:
   workflow_dispatch:
