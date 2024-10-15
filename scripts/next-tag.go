@@ -32,16 +32,24 @@ func main() {
 	fmt.Print(nextTag)
 }
 
-// getCurrentGitTag returns the latest Git tag
+// getCurrentGitTag returns the latest Git tag based on version numbers
 func getCurrentGitTag() (string, error) {
-	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	cmd := exec.Command("git", "tag", "--sort=-v:refname")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("could not get current tag: %v", err)
 	}
-	return strings.TrimSpace(out.String()), nil
+
+	// Get the tags list and return the first one (latest version)
+	tags := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(tags) == 0 || tags[0] == "" {
+		return "", fmt.Errorf("no tags found")
+	}
+
+	// Return the first tag (latest version tag)
+	return tags[0], nil
 }
 
 // getGitCommitsSinceTag returns a list of commit messages since the given tag
