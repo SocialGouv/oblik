@@ -31,14 +31,30 @@ jobs:
       - name: Install tools
         run: make install-release-tools
 
-      - name: Generate changelog
-        run: make changelog
+      - name: Get last version tag
+        id: last-tag
+        run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
       - name: Get next tag
         id: next-tag
         run: echo "tag=$(make next-tag)" >> $GITHUB_OUTPUT
 
+      - name: Compare tags and determine if release is needed
+        id: check-release
+        run: |
+          if [ "${{ steps.last-tag.outputs.tag }}" != "${{ steps.next-tag.outputs.tag }}" ]; then
+            echo "release_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No new version to release. Exiting."
+            echo "release_needed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        if: steps.check-release.outputs.release_needed == 'true'
+        run: make changelog
+
       - name: Create release commit, push changes, and create tag
+        if: steps.check-release.outputs.release_needed == 'true'
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com

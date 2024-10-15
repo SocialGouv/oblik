@@ -69,10 +69,10 @@ func getNextTag(currentTag string, commits []string) (string, error) {
 	minor := atoi(versionParts[1])
 	patch := atoi(versionParts[2])
 
-	// Conventional commit patterns
-	featPattern := regexp.MustCompile(`^feat(\(.*\))?:`)
-	fixPattern := regexp.MustCompile(`^fix(\(.*\))?:`)
-	breakingPattern := regexp.MustCompile(`BREAKING CHANGE`)
+	// Conventional commit patterns with optional parentheses
+	featPattern := regexp.MustCompile(`^feat(\([^)]*\))?:`)
+	fixPattern := regexp.MustCompile(`^fix(\([^)]*\))?:`)
+	breakingPattern := regexp.MustCompile(`(?i)BREAKING CHANGE`)
 
 	incrementedMajor, incrementedMinor, incrementedPatch := false, false, false
 
