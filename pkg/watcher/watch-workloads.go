@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/SocialGouv/oblik/pkg/utils"
-	cnpg "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -83,7 +83,7 @@ func WatchWorkloads(ctx context.Context, clientset *kubernetes.Clientset, dynami
 					}).Namespace(corev1.NamespaceAll).Watch(ctx, options)
 				},
 			},
-			&cnpg.Cluster{})
+			&unstructured.Unstructured{})
 		go cnpgClusterWatcher.Run(ctx.Done())
 		klog.Info("CNPG Cluster watcher started")
 	} else {
@@ -141,7 +141,7 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 	updateMode := vpa.UpdateModeOff
 	vpa := &vpa.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name + "-vpa",
+			Name:        name,
 			Namespace:   namespace,
 			Annotations: annotations,
 			Labels: map[string]string{
