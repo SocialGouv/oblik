@@ -42,6 +42,7 @@ var (
 
 func init() {
 	_ = admissionv1.AddToScheme(scheme)
+	_ = cnpgv1.AddToScheme(scheme)
 }
 
 func Server(ctx context.Context, kubeClients *client.KubeClients) error {
@@ -146,12 +147,13 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 			return fmt.Errorf("Unsupported Cluster kind from apiVersion: %s", obj.GetAPIVersion())
 		}
 		cnpgCluster := &cnpgv1.Cluster{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, cnpgCluster); err != nil {
-			return fmt.Errorf("Could not convert to Cluster: %v", err)
+		_, _, err := codecs.UniversalDeserializer().Decode(admissionRequest.Object.Raw, nil, cnpgCluster)
+		if err != nil {
+			return fmt.Errorf("Could not decode to Cluster: %v", err)
 		}
 		configurable = config.CreateConfigurable(cnpgCluster)
 		containers = []corev1.Container{
-			corev1.Container{
+			{
 				Name:      "postgres",
 				Resources: cnpgCluster.Spec.Resources,
 			},
