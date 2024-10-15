@@ -2,8 +2,18 @@
 ## [Unreleased]
 
 
+<a name="v0.1.6"></a>
+## [v0.1.6] - 2024-10-15
+### Fix
+- reflect.Value.Set using value obtained using unexported field
+- rbac
+
+
 <a name="v0.1.5"></a>
 ## [v0.1.5] - 2024-10-15
+### Chore
+- **release:** v0.1.5
+
 ### Fix
 - go release flags
 
@@ -266,7 +276,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.6...HEAD
+[v0.1.6]: https://github.com/SocialGouv/oblik/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/SocialGouv/oblik/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/SocialGouv/oblik/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/SocialGouv/oblik/compare/v0.1.2...v0.1.3
