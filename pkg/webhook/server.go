@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"reflect"
 
 	"github.com/SocialGouv/oblik/pkg/client"
@@ -40,9 +41,17 @@ var (
 	codecs = serializer.NewCodecFactory(scheme)
 )
 
+var (
+	operatorNamespace      = os.Getenv("NAMESPACE")
+	operatorServiceAccount = os.Getenv("SERVICE_ACCOUNT")
+)
+
+var operatorUsername string
+
 func init() {
 	_ = admissionv1.AddToScheme(scheme)
 	_ = cnpgv1.AddToScheme(scheme)
+	operatorUsername = fmt.Sprintf("system:serviceaccount:%s:%s", operatorNamespace, operatorServiceAccount)
 }
 
 func Server(ctx context.Context, kubeClients *client.KubeClients) error {
@@ -84,22 +93,46 @@ func HealthCheckHandler(writer http.ResponseWriter, _ *http.Request) {
 
 func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClients *client.KubeClients) {
 	var admissionReview admissionv1.AdmissionReview
-	err := MutateExec(writer, request, admissionReview, kubeClients)
+
+	// Read the request body
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		klog.Errorf("Could not read request body: %v", err)
+		http.Error(writer, "could not read request", http.StatusBadRequest)
+		return
+	}
+	defer request.Body.Close()
+
+	// Decode the admission review request
+	if _, _, err := codecs.UniversalDeserializer().Decode(body, nil, &admissionReview); err != nil {
+		klog.Errorf("Could not decode request: %v", err)
+		http.Error(writer, "could not decode request", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure that the Request field is not nil
+	if admissionReview.Request == nil {
+		klog.Error("AdmissionReview.Request is nil")
+		http.Error(writer, "admissionReview.Request is nil", http.StatusBadRequest)
+		return
+	}
+
+	// Check if the request comes from the operator's service account
+	if admissionReview.Request.UserInfo.Username == operatorUsername {
+		// Skip mutation as update is requested by operator
+		klog.Infof("Skipping mutation for request from operator service account: %s", operatorUsername)
+		allowRequest(writer, admissionReview.Request.UID)
+		return
+	}
+
+	err = MutateExec(writer, request, admissionReview, kubeClients)
 	if err != nil {
 		klog.Error(err)
 		allowRequest(writer, admissionReview.Request.UID)
 	}
 }
+
 func MutateExec(writer http.ResponseWriter, request *http.Request, admissionReview admissionv1.AdmissionReview, kubeClients *client.KubeClients) error {
-
-	body, err := io.ReadAll(request.Body)
-	if err != nil {
-		return fmt.Errorf("Could not read request body: %v", err)
-	}
-
-	if _, _, err := codecs.UniversalDeserializer().Decode(body, nil, &admissionReview); err != nil {
-		return fmt.Errorf("Could not decode request: %v", err)
-	}
 
 	admissionRequest := admissionReview.Request
 
@@ -234,7 +267,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 	// Log the created patch for debugging
 	klog.Infof("Created patch: %s", string(patch))
 
-	admissionReview.Response = &admissionv1.AdmissionResponse{
+	admissionResponse := &admissionv1.AdmissionResponse{
 		UID:     admissionRequest.UID,
 		Allowed: true,
 		Patch:   patch, // Directly pass the raw JSON patch
@@ -244,12 +277,15 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		}(),
 	}
 
-	respBytes, err := json.Marshal(admissionReview)
+	responseAdmissionReview := admissionv1.AdmissionReview{
+		TypeMeta: admissionReview.TypeMeta,
+		Response: admissionResponse,
+	}
+
+	respBytes, err := json.Marshal(responseAdmissionReview)
 	if err != nil {
 		return fmt.Errorf("Could not marshal response: %v", err)
 	}
-
-	// klog.Infof("Response: %s", string(respBytes))
 
 	writer.Header().Set("Content-Type", "application/json")
 	if _, err := writer.Write(respBytes); err != nil {
@@ -260,15 +296,17 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 }
 
 func allowRequest(writer http.ResponseWriter, uid types.UID) {
+	admissionResponse := &admissionv1.AdmissionResponse{
+		UID:     uid,
+		Allowed: true,
+	}
+
 	admissionReview := admissionv1.AdmissionReview{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "admission.k8s.io/v1",
 			Kind:       "AdmissionReview",
 		},
-		Response: &admissionv1.AdmissionResponse{
-			UID:     uid,
-			Allowed: true,
-		},
+		Response: admissionResponse,
 	}
 
 	respBytes, err := json.Marshal(admissionReview)
