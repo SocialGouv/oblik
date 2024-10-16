@@ -7,6 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 )
 
@@ -25,13 +26,17 @@ func GetObjectMetadata(obj interface{}) (metav1.Object, string, string) {
 		metadata = &v.ObjectMeta
 	case *cnpg.Cluster:
 		metadata = &v.ObjectMeta
+	case *unstructured.Unstructured:
+		metadata = v
 	default:
 		klog.Errorf("Unsupported object type: %T", obj)
 		return nil, "", ""
 	}
 
-	namespace = metadata.GetNamespace()
-	name = metadata.GetName()
+	if metadata != nil {
+		namespace = metadata.GetNamespace()
+		name = metadata.GetName()
+	}
 
 	return metadata, namespace, name
 }
@@ -47,20 +52,22 @@ func GetOblikAnnotations(annotations map[string]string) map[string]string {
 }
 
 func GetAPIVersion(obj interface{}) string {
-	switch obj.(type) {
+	switch v := obj.(type) {
 	case *appsv1.Deployment, *appsv1.StatefulSet, *appsv1.DaemonSet:
 		return "apps/v1"
 	case *batchv1.CronJob:
 		return "batch/v1"
 	case *cnpg.Cluster:
 		return "postgresql.cnpg.io/v1"
+	case *unstructured.Unstructured:
+		return v.GetAPIVersion()
 	default:
 		return ""
 	}
 }
 
 func GetKind(obj interface{}) string {
-	switch obj.(type) {
+	switch v := obj.(type) {
 	case *appsv1.Deployment:
 		return "Deployment"
 	case *appsv1.StatefulSet:
@@ -71,6 +78,8 @@ func GetKind(obj interface{}) string {
 		return "DaemonSet"
 	case *cnpg.Cluster:
 		return "Cluster"
+	case *unstructured.Unstructured:
+		return v.GetKind()
 	default:
 		return ""
 	}
