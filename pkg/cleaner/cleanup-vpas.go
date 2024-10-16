@@ -16,23 +16,23 @@ import (
 	cached "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/klog/v2"
 )
 
-func CleanUpVPAs(ctx context.Context, kubeClients *client.KubeClients) error {
+func CleanUpVPAs(ctx context.Context, kubeClients *client.KubeClients) {
 	// Use VpaClientset to list all VPAs across all namespaces
 	vpaList, err := kubeClients.VpaClientset.AutoscalingV1().VerticalPodAutoscalers("").List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to list VPAs: %w", err)
+		klog.Errorf("Error failed to list VPAs: %s", err.Error())
 	}
 
 	for _, vpa := range vpaList.Items {
 		if strings.HasPrefix(vpa.Name, "oblik-") {
 			if err := processVPA(ctx, kubeClients, &vpa); err != nil {
-				fmt.Printf("Error processing VPA %s: %v\n", vpa.Name, err)
+				klog.Errorf("Error processing VPA %s: %s\n", vpa.Name, err.Error())
 			}
 		}
 	}
-	return nil
 }
 
 func processVPA(ctx context.Context, kubeClients *client.KubeClients, vpa *vpav1.VerticalPodAutoscaler) error {
