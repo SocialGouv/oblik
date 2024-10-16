@@ -2,8 +2,18 @@
 ## [Unreleased]
 
 
+<a name="v0.1.10"></a>
+## [v0.1.10] - 2024-10-16
+### Fix
+- skip mutate on operator request
+- upsert VPA
+
+
 <a name="v0.1.9"></a>
 ## [v0.1.9] - 2024-10-16
+### Chore
+- **release:** v0.1.9
+
 ### Fix
 - updateVPA
 
@@ -303,7 +313,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.10...HEAD
+[v0.1.10]: https://github.com/SocialGouv/oblik/compare/v0.1.9...v0.1.10
 [v0.1.9]: https://github.com/SocialGouv/oblik/compare/v0.1.8...v0.1.9
 [v0.1.8]: https://github.com/SocialGouv/oblik/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/SocialGouv/oblik/compare/v0.1.6...v0.1.7
