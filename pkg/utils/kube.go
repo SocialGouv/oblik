@@ -8,6 +8,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -25,6 +26,8 @@ func GetObjectMetadata(obj interface{}) (metav1.Object, string, string) {
 	case *appsv1.DaemonSet:
 		metadata = &v.ObjectMeta
 	case *cnpg.Cluster:
+		metadata = &v.ObjectMeta
+	case *autoscalingv1.VerticalPodAutoscaler:
 		metadata = &v.ObjectMeta
 	case *unstructured.Unstructured:
 		metadata = v
@@ -59,6 +62,8 @@ func GetAPIVersion(obj interface{}) string {
 		return "batch/v1"
 	case *cnpg.Cluster:
 		return "postgresql.cnpg.io/v1"
+	case *autoscalingv1.VerticalPodAutoscaler:
+		return "autoscaling.k8s.io/v1"
 	case *unstructured.Unstructured:
 		return v.GetAPIVersion()
 	default:
@@ -78,6 +83,8 @@ func GetKind(obj interface{}) string {
 		return "DaemonSet"
 	case *cnpg.Cluster:
 		return "Cluster"
+	case *autoscalingv1.VerticalPodAutoscaler:
+		return "VerticalPodAutoscaler"
 	case *unstructured.Unstructured:
 		return v.GetKind()
 	default:
