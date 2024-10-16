@@ -15,11 +15,11 @@ func (w *watcherRunnable) Start(ctx context.Context) error {
 	watcher.CronScheduler.Start()
 
 	go func() {
-		watcher.WatchWorkloads(ctx, w.KubeClients.Clientset, w.KubeClients.DynamicClient, w.KubeClients.VpaClientset, w.KubeClients.RestConfig)
+		watcher.WatchWorkloads(ctx, w.KubeClients)
 	}()
 
 	go func() {
-		watcher.WatchVPAs(ctx, w.KubeClients.Clientset, w.KubeClients.DynamicClient, w.KubeClients.VpaClientset)
+		watcher.WatchVPAs(ctx, w.KubeClients)
 	}()
 
 	<-ctx.Done()

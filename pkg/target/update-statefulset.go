@@ -7,6 +7,7 @@ import (
 	"github.com/SocialGouv/oblik/pkg/config"
 	"github.com/SocialGouv/oblik/pkg/logical"
 	"github.com/SocialGouv/oblik/pkg/reporting"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
@@ -20,6 +21,9 @@ func UpdateStatefulSet(clientset *kubernetes.Clientset, vpa *vpa.VerticalPodAuto
 
 	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("Error fetching stateful set: %s", err.Error())
 	}
 

@@ -2,14 +2,12 @@ package watcher
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/SocialGouv/oblik/pkg/utils"
+	"github.com/SocialGouv/oblik/pkg/client"
+	ovpa "github.com/SocialGouv/oblik/pkg/vpa"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscaling "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -19,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
-	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -28,7 +25,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func WatchWorkloads(ctx context.Context, clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, config *rest.Config) {
+func WatchWorkloads(ctx context.Context, kubeClients *client.KubeClients) {
+	clientset := kubeClients.Clientset
+	dynamicClient := kubeClients.DynamicClient
+	vpaClientset := kubeClients.VpaClientset
+	config := kubeClients.RestConfig
+
 	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
 
 	deploymentWatcher := createWatcher(ctx, clientset, dynamicClient, vpaClientset,
@@ -118,124 +120,15 @@ func createWatcher(ctx context.Context, clientset *kubernetes.Clientset, dynamic
 		time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				addVPA(clientset, dynamicClient, vpaClientset, obj)
+				ovpa.AddVPA(clientset, dynamicClient, vpaClientset, obj)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				updateVPA(clientset, dynamicClient, vpaClientset, newObj)
+				ovpa.UpdateVPA(clientset, dynamicClient, vpaClientset, newObj)
 			},
 			DeleteFunc: func(obj interface{}) {
-				deleteVPA(vpaClientset, obj)
+				ovpa.DeleteVPA(vpaClientset, obj)
 			},
 		},
 	)
 	return controller
-}
-
-func generateVPAName(kind, name string) string {
-	vpaName := fmt.Sprintf("oblik-%s-%s", strings.ToLower(kind), name)
-	if len(vpaName) > 63 {
-		hash := sha256.Sum256([]byte(vpaName))
-		truncatedHash := fmt.Sprintf("%x", hash)[:8]
-		vpaName = vpaName[:54] + "-" + truncatedHash
-	}
-	return vpaName
-}
-
-func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := utils.GetObjectMetadata(obj)
-	if metadata == nil {
-		klog.Errorf("Error getting metadata for object")
-		return
-	}
-
-	kind := utils.GetKind(obj)
-	vpaName := generateVPAName(kind, name)
-
-	// Check if VPA already exists
-	_, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
-	if err == nil {
-		// VPA exists, update it
-		updateVPA(clientset, dynamicClient, vpaClientset, obj)
-		return
-	} else if !strings.Contains(err.Error(), "not found") {
-		klog.Errorf("Error checking VPA existence for %s/%s: %v", namespace, name, err)
-		return
-	}
-
-	// VPA doesn't exist, create it
-	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
-	updateMode := vpa.UpdateModeOff
-	vpa := &vpa.VerticalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        vpaName,
-			Namespace:   namespace,
-			Annotations: annotations,
-			Labels: map[string]string{
-				"oblik.socialgouv.io/enabled": "true",
-			},
-		},
-		Spec: vpa.VerticalPodAutoscalerSpec{
-			TargetRef: &autoscaling.CrossVersionObjectReference{
-				APIVersion: utils.GetAPIVersion(obj),
-				Kind:       kind,
-				Name:       name,
-			},
-			UpdatePolicy: &vpa.PodUpdatePolicy{
-				UpdateMode: &updateMode,
-			},
-		},
-	}
-
-	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Create(context.TODO(), vpa, metav1.CreateOptions{})
-	if err != nil {
-		klog.Errorf("Error creating VPA for %s/%s: %v", namespace, name, err)
-	} else {
-		klog.Infof("Created VPA %s for %s/%s", vpaName, namespace, name)
-	}
-}
-
-func updateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := utils.GetObjectMetadata(obj)
-	if metadata == nil {
-		klog.Errorf("Error getting metadata for object")
-		return
-	}
-
-	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
-	kind := utils.GetKind(obj)
-	vpaName := generateVPAName(kind, name)
-
-	vpa, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("Error getting VPA for %s/%s: %v", namespace, name, err)
-		return
-	}
-
-	vpa.ObjectMeta.Annotations = annotations
-	vpa.ObjectMeta.Labels["oblik.socialgouv.io/enabled"] = "true"
-
-	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Update(context.TODO(), vpa, metav1.UpdateOptions{})
-	if err != nil {
-		klog.Errorf("Error updating VPA for %s/%s: %v", namespace, name, err)
-	} else {
-		klog.Infof("Updated VPA %s for %s/%s", vpaName, namespace, name)
-	}
-}
-
-func deleteVPA(vpaClientset *vpaclientset.Clientset, obj interface{}) {
-	metadata, namespace, name := utils.GetObjectMetadata(obj)
-	if metadata == nil {
-		klog.Errorf("Error getting metadata for object")
-		return
-	}
-
-	kind := utils.GetKind(obj)
-	vpaName := generateVPAName(kind, name)
-
-	err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Delete(context.TODO(), vpaName, metav1.DeleteOptions{})
-	if err != nil {
-		klog.Errorf("Error deleting VPA for %s/%s: %v", namespace, name, err)
-	} else {
-		klog.Infof("Deleted VPA %s for %s/%s", vpaName, namespace, name)
-	}
 }

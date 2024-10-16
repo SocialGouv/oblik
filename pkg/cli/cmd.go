@@ -7,7 +7,7 @@ import (
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/config"
-	ovpa "github.com/SocialGouv/oblik/pkg/vpa"
+	"github.com/SocialGouv/oblik/pkg/target"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,5 +137,5 @@ func processVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAut
 		return nil
 	}
 	klog.Infof("Processing VPA: %s/%s\n", vpaResource.Namespace, vpaResource.Name)
-	return ovpa.ApplyVPARecommendations(kubeClients.Clientset, kubeClients.DynamicClient, vpaResource, scfg)
+	return target.ApplyVPARecommendations(kubeClients, vpaResource, scfg)
 }

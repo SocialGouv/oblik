@@ -7,15 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/config"
-	ovpa "github.com/SocialGouv/oblik/pkg/vpa"
+	"github.com/SocialGouv/oblik/pkg/target"
 	cron "github.com/robfig/cron/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
-	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -26,7 +24,9 @@ var (
 	cronMutex     sync.Mutex
 )
 
-func WatchVPAs(ctx context.Context, clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaClientset *vpaclientset.Clientset) {
+func WatchVPAs(ctx context.Context, kubeClients *client.KubeClients) {
+	vpaClientset := kubeClients.VpaClientset
+
 	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
 	watchlist := cache.NewFilteredListWatchFromClient(
 		vpaClientset.AutoscalingV1().RESTClient(),
@@ -43,10 +43,10 @@ func WatchVPAs(ctx context.Context, clientset *kubernetes.Clientset, dynamicClie
 		time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				handleVPA(clientset, dynamicClient, obj)
+				handleVPA(kubeClients, obj)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				handleVPA(clientset, dynamicClient, newObj)
+				handleVPA(kubeClients, newObj)
 			},
 			DeleteFunc: func(obj interface{}) {
 				klog.Info("VPA deleted")
@@ -67,7 +67,7 @@ func WatchVPAs(ctx context.Context, clientset *kubernetes.Clientset, dynamicClie
 	controller.Run(ctx.Done())
 }
 
-func handleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, obj interface{}) {
+func handleVPA(kubeClients *client.KubeClients, obj interface{}) {
 	vpa, ok := obj.(*vpa.VerticalPodAutoscaler)
 	if !ok {
 		klog.Error("Could not cast to VPA object")
@@ -76,10 +76,10 @@ func handleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 
 	klog.Infof("Handling VPA: %s/%s", vpa.Namespace, vpa.Name)
 
-	scheduleVPA(clientset, dynamicClient, vpa)
+	scheduleVPA(kubeClients, vpa)
 }
 
-func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClient, vpaResource *vpa.VerticalPodAutoscaler) {
+func scheduleVPA(kubeClients *client.KubeClients, vpaResource *vpa.VerticalPodAutoscaler) {
 	cronMutex.Lock()
 	defer cronMutex.Unlock()
 
@@ -101,7 +101,7 @@ func scheduleVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.Dynamic
 			time.Sleep(randomDelay)
 		}
 		klog.Infof("Applying VPA recommendations for %s with cron: %s", key, scfg.CronExpr)
-		err := ovpa.ApplyVPARecommendations(clientset, dynamicClient, vpaResource, scfg)
+		err := target.ApplyVPARecommendations(kubeClients, vpaResource, scfg)
 		if err != nil {
 			klog.Errorf("Error applying VPA recommendations: %s", err.Error())
 		}
