@@ -8,6 +8,7 @@ import (
 
 	"github.com/SocialGouv/oblik/pkg/utils"
 	autoscaling "k8s.io/api/autoscaling/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
@@ -92,6 +93,9 @@ func UpdateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 
 	vpa, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return
+		}
 		klog.Errorf("Error getting VPA for %s/%s: %v", namespace, name, err)
 		return
 	}
@@ -119,6 +123,9 @@ func DeleteVPA(vpaClientset *vpaclientset.Clientset, obj interface{}) {
 
 	err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Delete(context.TODO(), vpaName, metav1.DeleteOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return
+		}
 		klog.Errorf("Error deleting VPA for %s/%s: %v", namespace, name, err)
 	} else {
 		klog.Infof("Deleted VPA %s for %s/%s", vpaName, namespace, name)
