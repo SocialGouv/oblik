@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 
+	"github.com/SocialGouv/oblik/pkg/cleaner"
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/watcher"
 )
@@ -13,6 +14,10 @@ type watcherRunnable struct {
 
 func (w *watcherRunnable) Start(ctx context.Context) error {
 	watcher.CronScheduler.Start()
+
+	go func() {
+		cleaner.CleanUpVPAs(ctx, w.KubeClients)
+	}()
 
 	go func() {
 		watcher.WatchWorkloads(ctx, w.KubeClients)
