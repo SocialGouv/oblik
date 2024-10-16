@@ -2,10 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.1.12"></a>
+## [v0.1.12] - 2024-10-16
+### Fix
+- error log
+
+
 <a name="v0.1.11"></a>
 ## [v0.1.11] - 2024-10-16
 ### Chore
 - clean debug
+- **release:** v0.1.11
 
 ### Fix
 - cleanUp vpas at startup
@@ -326,7 +333,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.12...HEAD
+[v0.1.12]: https://github.com/SocialGouv/oblik/compare/v0.1.11...v0.1.12
 [v0.1.11]: https://github.com/SocialGouv/oblik/compare/v0.1.10...v0.1.11
 [v0.1.10]: https://github.com/SocialGouv/oblik/compare/v0.1.9...v0.1.10
 [v0.1.9]: https://github.com/SocialGouv/oblik/compare/v0.1.8...v0.1.9
