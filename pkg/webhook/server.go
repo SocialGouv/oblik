@@ -120,7 +120,7 @@ func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClient
 	// Check if the request comes from the operator's service account
 	if admissionReview.Request.UserInfo.Username == operatorUsername {
 		// Skip mutation as update is requested by operator
-		klog.Infof("Skipping mutation for request from operator service account: %s", operatorUsername)
+		// klog.Infof("Skipping mutation for request from operator service account: %s", operatorUsername)
 		allowRequest(writer, admissionReview.Request.UID)
 		return
 	}
