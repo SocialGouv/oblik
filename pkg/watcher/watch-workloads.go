@@ -148,10 +148,22 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 		return
 	}
 
-	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
 	kind := utils.GetKind(obj)
 	vpaName := generateVPAName(kind, name)
 
+	// Check if VPA already exists
+	_, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
+	if err == nil {
+		// VPA exists, update it
+		updateVPA(clientset, dynamicClient, vpaClientset, obj)
+		return
+	} else if !strings.Contains(err.Error(), "not found") {
+		klog.Errorf("Error checking VPA existence for %s/%s: %v", namespace, name, err)
+		return
+	}
+
+	// VPA doesn't exist, create it
+	annotations := utils.GetOblikAnnotations(metadata.GetAnnotations())
 	updateMode := vpa.UpdateModeOff
 	vpa := &vpa.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
@@ -174,7 +186,7 @@ func addVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 		},
 	}
 
-	_, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Create(context.TODO(), vpa, metav1.CreateOptions{})
+	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Create(context.TODO(), vpa, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("Error creating VPA for %s/%s: %v", namespace, name, err)
 	} else {
