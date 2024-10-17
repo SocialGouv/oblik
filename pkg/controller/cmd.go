@@ -1,12 +1,9 @@
 package controller
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
+	"context"
 
 	"github.com/spf13/cobra"
-	"k8s.io/klog/v2"
 )
 
 func NewCommand() *cobra.Command {
@@ -16,24 +13,12 @@ func NewCommand() *cobra.Command {
 		Use:   "operator",
 		Short: "Oblik operator",
 		Run: func(cmd *cobra.Command, args []string) {
-			go func() {
-				handleSignals()
-			}()
-			Run(leaderElect)
+			ctx, cancel := context.WithCancel(context.Background())
+			go handleSignals(ctx, cancel)
+			Run(leaderElect, ctx)
 		},
 	}
 
 	cmd.Flags().BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for controller manager.")
 	return cmd
-}
-
-func handleSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-	klog.Info("Received termination signal, shutting down gracefully...")
-
-	// Perform cleanup
-
-	os.Exit(0)
 }

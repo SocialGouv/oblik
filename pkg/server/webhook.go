@@ -1,39 +1,31 @@
-package webhook
+package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"reflect"
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/config"
 	"github.com/SocialGouv/oblik/pkg/logical"
-	"github.com/SocialGouv/oblik/pkg/utils"
 	cnpgv1 "github.com/cloudnative-pg/cloudnative-pg/api/v1"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/klog/v2"
 )
 
 var (
-	Port        = 9443
-	MetricsPort = 9090
-	CertFile    = "/etc/webhook/certs/cert.pem"
-	KeyFile     = "/etc/webhook/certs/key.pem"
+	CertFile = "/etc/webhook/certs/cert.pem"
+	KeyFile  = "/etc/webhook/certs/key.pem"
 )
 
 var (
@@ -47,49 +39,6 @@ var (
 )
 
 var operatorUsername string
-
-func init() {
-	_ = admissionv1.AddToScheme(scheme)
-	_ = cnpgv1.AddToScheme(scheme)
-	operatorUsername = fmt.Sprintf("system:serviceaccount:%s:%s", operatorNamespace, operatorServiceAccount)
-}
-
-func Server(ctx context.Context, kubeClients *client.KubeClients) error {
-	server := &http.Server{
-		Addr: fmt.Sprintf(":%d", Port),
-	}
-
-	mux := http.NewServeMux()
-	server.Handler = mux
-
-	mux.HandleFunc("/healthz", HealthCheckHandler)
-	mux.HandleFunc("/mutate", func(writer http.ResponseWriter, request *http.Request) {
-		MutateHandler(writer, request, kubeClients)
-	})
-
-	metricsHandler := promhttp.Handler()
-	go startMetricsServer(metricsHandler)
-	return server.ListenAndServeTLS(CertFile, KeyFile)
-}
-
-func startMetricsServer(metricsHandler http.Handler) {
-	klog.Infof("Starting metrics server on port %d\n", MetricsPort)
-	metricsRouter := http.NewServeMux()
-	metricsRouter.Handle("/metrics", metricsHandler)
-
-	metricsServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", MetricsPort),
-		Handler: metricsRouter,
-	}
-
-	if err := metricsServer.ListenAndServe(); err != nil {
-		klog.Fatal("Failed to start metrics server:", err)
-	}
-}
-
-func HealthCheckHandler(writer http.ResponseWriter, _ *http.Request) {
-	writer.WriteHeader(http.StatusOK)
-}
 
 func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClients *client.KubeClients) {
 	var admissionReview admissionv1.AdmissionReview
@@ -322,87 +271,4 @@ func allowRequest(writer http.ResponseWriter, uid types.UID) {
 		http.Error(writer, "could not write allow response", http.StatusInternalServerError)
 		return
 	}
-}
-
-func createJSONPatch(originalJSON []byte, modified *unstructured.Unstructured) ([]byte, error) {
-	var original map[string]interface{}
-	if err := json.Unmarshal(originalJSON, &original); err != nil {
-		return nil, fmt.Errorf("could not unmarshal original object: %v", err)
-	}
-
-	patch := []map[string]interface{}{}
-
-	// Compare and create patch operations
-	compareMaps("", original, modified.Object, &patch)
-
-	// If no changes are needed, return an empty patch
-	if len(patch) == 0 {
-		return []byte("[]"), nil
-	}
-
-	return json.Marshal(patch)
-}
-
-func compareMaps(prefix string, original, modified map[string]interface{}, patch *[]map[string]interface{}) {
-	for key, modifiedValue := range modified {
-		path := utils.GetJSONPath(prefix, key)
-		originalValue, exists := original[key]
-
-		if !exists {
-			// Add operation for new fields
-			*patch = append(*patch, map[string]interface{}{
-				"op":    "add",
-				"path":  path,
-				"value": modifiedValue,
-			})
-		} else if !reflect.DeepEqual(originalValue, modifiedValue) {
-			// Replace operation for changed fields
-			switch modifiedValue.(type) {
-			case map[string]interface{}:
-				// Recursively compare nested maps
-				if originalMap, ok := originalValue.(map[string]interface{}); ok {
-					compareMaps(path, originalMap, modifiedValue.(map[string]interface{}), patch)
-				} else {
-					// If types don't match, replace the entire value
-					*patch = append(*patch, map[string]interface{}{
-						"op":    "replace",
-						"path":  path,
-						"value": modifiedValue,
-					})
-				}
-			default:
-				// For non-map types, use replace operation
-				*patch = append(*patch, map[string]interface{}{
-					"op":    "replace",
-					"path":  path,
-					"value": modifiedValue,
-				})
-			}
-		}
-	}
-
-	// Check for removed fields
-	for key := range original {
-		if _, exists := modified[key]; !exists {
-			*patch = append(*patch, map[string]interface{}{
-				"op":   "remove",
-				"path": utils.GetJSONPath(prefix, key),
-			})
-		}
-	}
-}
-
-func getVPAResource(obj *unstructured.Unstructured, kubeClients *client.KubeClients) *autoscalingv1.VerticalPodAutoscaler {
-	namespace := obj.GetNamespace()
-	vpaName := obj.GetName()
-	vpa, err := kubeClients.VpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("No VPA resource found for %s/%s: %v", namespace, vpaName, err)
-		} else {
-			klog.Errorf("Error retrieving VPA for %s/%s: %v", namespace, vpaName, err)
-		}
-		return nil
-	}
-	return vpa
 }

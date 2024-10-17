@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"os"
 
 	"github.com/SocialGouv/oblik/pkg/client"
@@ -9,7 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func Run(leaderElect bool) {
+func Run(leaderElect bool, ctx context.Context) {
 	kubeClients := client.NewKubeClients()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -21,7 +22,7 @@ func Run(leaderElect bool) {
 		os.Exit(1)
 	}
 
-	if err := mgr.Add(&webhookServerRunnable{
+	if err := mgr.Add(&serverRunnable{
 		KubeClients: kubeClients,
 	}); err != nil {
 		klog.Error(err, "unable to add webhook server runnable")
@@ -36,7 +37,7 @@ func Run(leaderElect bool) {
 	}
 
 	klog.Info("Starting Oblik Operator...")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		klog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
