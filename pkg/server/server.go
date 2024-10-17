@@ -17,6 +17,8 @@ var (
 	Port = 9443
 )
 
+const gracefulShutdownTimeout = 25 * time.Second
+
 func init() {
 	_ = admissionv1.AddToScheme(scheme)
 	_ = cnpgv1.AddToScheme(scheme)
@@ -45,7 +47,7 @@ func Server(ctx context.Context, kubeClients *client.KubeClients) error {
 	go func() {
 		<-ctx.Done()
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {

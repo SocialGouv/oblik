@@ -5,12 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"k8s.io/klog/v2"
 )
-
-const gracefulShutdownTimeout = 25 * time.Second
 
 func handleSignals(ctx context.Context, cancel context.CancelFunc) {
 	sigChan := make(chan os.Signal, 1)
