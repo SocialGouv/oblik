@@ -24,11 +24,6 @@ import (
 )
 
 var (
-	CertFile = "/etc/webhook/certs/cert.pem"
-	KeyFile  = "/etc/webhook/certs/key.pem"
-)
-
-var (
 	scheme = runtime.NewScheme()
 	codecs = serializer.NewCodecFactory(scheme)
 )

@@ -14,7 +14,10 @@ import (
 )
 
 var (
-	Port = 9443
+	HTTPSPort = 9443
+	HTTPPort  = 8081
+	CertFile  = "/etc/webhook/certs/cert.pem"
+	KeyFile   = "/etc/webhook/certs/key.pem"
 )
 
 const gracefulShutdownTimeout = 25 * time.Second
@@ -25,36 +28,73 @@ func init() {
 	operatorUsername = fmt.Sprintf("system:serviceaccount:%s:%s", operatorNamespace, operatorServiceAccount)
 }
 
-func Server(ctx context.Context, kubeClients *client.KubeClients) error {
-	server := &http.Server{
-		Addr: fmt.Sprintf(":%d", Port),
-	}
-
+func createMux(kubeClients *client.KubeClients) *http.ServeMux {
 	mux := http.NewServeMux()
-	server.Handler = mux
 
 	mux.HandleFunc("/healthz", HealthCheckHandler)
 	mux.HandleFunc("/readyz", func(writer http.ResponseWriter, request *http.Request) {
-		ReadyCheckHandler(ctx, writer, request)
+		ReadyCheckHandler(context.Background(), writer, request)
 	})
 	mux.HandleFunc("/mutate", func(writer http.ResponseWriter, request *http.Request) {
 		MutateHandler(writer, request, kubeClients)
 	})
 
+	return mux
+}
+
+func startHTTPServer(ctx context.Context, mux *http.ServeMux) *http.Server {
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", HTTPPort),
+		Handler: mux,
+	}
+
+	go func() {
+		klog.Infof("Starting HTTP server on port %d", HTTPPort)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.Errorf("HTTP server error: %v", err)
+		}
+	}()
+
+	return httpServer
+}
+
+func startHTTPSServer(ctx context.Context, mux *http.ServeMux) *http.Server {
+	httpsServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", HTTPSPort),
+		Handler: mux,
+	}
+
+	go func() {
+		klog.Infof("Starting HTTPS server on port %d", HTTPSPort)
+		if err := httpsServer.ListenAndServeTLS(CertFile, KeyFile); err != nil && err != http.ErrServerClosed {
+			klog.Errorf("HTTPS server error: %v", err)
+		}
+	}()
+
+	return httpsServer
+}
+
+func Server(ctx context.Context, kubeClients *client.KubeClients) error {
+	mux := createMux(kubeClients)
+
+	httpServer := startHTTPServer(ctx, mux)
+	httpsServer := startHTTPSServer(ctx, mux)
+
 	metricsHandler := promhttp.Handler()
 	go startMetricsServer(metricsHandler)
 
-	go func() {
-		<-ctx.Done()
+	<-ctx.Done()
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
-		defer cancel()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
+	defer cancel()
 
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			klog.Errorf("Server forced to shutdown: %v", err)
-		}
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		klog.Errorf("HTTP server forced to shutdown: %v", err)
+	}
 
-	}()
+	if err := httpsServer.Shutdown(shutdownCtx); err != nil {
+		klog.Errorf("HTTPS server forced to shutdown: %v", err)
+	}
 
-	return server.ListenAndServeTLS(CertFile, KeyFile)
+	return nil
 }
