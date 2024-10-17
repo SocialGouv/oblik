@@ -2,8 +2,20 @@
 ## [Unreleased]
 
 
+<a name="v0.2.0"></a>
+## [v0.2.0] - 2024-10-17
+### Feat
+- gracefulshutdown
+
+### Fix
+- ignore ns is being terminated
+
+
 <a name="v0.1.15"></a>
 ## [v0.1.15] - 2024-10-17
+### Chore
+- **release:** v0.1.15
+
 ### Fix
 - ignore ns is being terminated
 
@@ -360,7 +372,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/SocialGouv/oblik/compare/v0.1.15...v0.2.0
 [v0.1.15]: https://github.com/SocialGouv/oblik/compare/v0.1.14...v0.1.15
 [v0.1.14]: https://github.com/SocialGouv/oblik/compare/v0.1.13...v0.1.14
 [v0.1.13]: https://github.com/SocialGouv/oblik/compare/v0.1.12...v0.1.13
