@@ -2,8 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.2.1"></a>
+## [v0.2.1] - 2024-10-17
+### Fix
+- gracefulShutdownTimeout
+
+
 <a name="v0.2.0"></a>
 ## [v0.2.0] - 2024-10-17
+### Chore
+- **release:** v0.2.0
+
 ### Feat
 - gracefulshutdown
 
@@ -372,7 +381,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/SocialGouv/oblik/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/SocialGouv/oblik/compare/v0.1.15...v0.2.0
 [v0.1.15]: https://github.com/SocialGouv/oblik/compare/v0.1.14...v0.1.15
 [v0.1.14]: https://github.com/SocialGouv/oblik/compare/v0.1.13...v0.1.14
