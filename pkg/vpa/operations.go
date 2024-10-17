@@ -74,6 +74,10 @@ func AddVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 
 	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Create(context.TODO(), vpa, metav1.CreateOptions{})
 	if err != nil {
+		if errors.IsNotFound(err) && strings.Contains(err.Error(), "namespaces") {
+			klog.Infof("Namespace %s is being terminated, skipping VPA creation for %s/%s", namespace, kind, name)
+			return
+		}
 		klog.Errorf("Error creating VPA for %s/%s: %v", namespace, name, err)
 	} else {
 		klog.Infof("Created VPA %s for %s/%s", vpaName, namespace, name)
