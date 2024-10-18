@@ -99,6 +99,15 @@ Disable VPA’s automatic memory management and manually configure memory resour
 metadata:
   annotations:
     oblik.socialgouv.io/request-memory-apply-mode: "off"
+spec:
+  containers:
+    - name: jvm-container
+      image: your-jvm-image:latest
+      resources:
+        requests:
+          memory: "3Gi"  # Manually set based on application requirements
+      ports:
+        - containerPort: 8080
 ```
 
 ##### 2. Calculate Memory Based on CPU Usage Recommendations
@@ -113,6 +122,7 @@ Leverage the relationship between CPU and memory usage to derive memory allocati
 
 1. **Enable Memory Calculation from CPU:**
     * Set `oblik.socialgouv.io/memory-request-from-cpu-enabled` to `"true"`.
+
 2. **Specify the Calculation Algorithm and Ratio:**
     * Use `memory-request-from-cpu-algo` set to `"ratio"`.
     * Define the ratio with `memory-request-from-cpu-value`. For instance, a value of `"4"` implies 4 GB of memory per CPU.
@@ -183,28 +193,6 @@ spec:
         * `cpu: "2"`: Limits the container to 2 CPUs.
         * `memory: "4Gi"`: Limits the memory usage to 4 GB.
 
-**Alternative: Manual Memory Configuration**
-
-If you prefer to disable VPA's memory management entirely and set memory resources manually, adjust the annotations and specify memory directly:
-
-```yaml
-metadata:
-  annotations:
-    oblik.socialgouv.io/memory-request-apply-mode: "off"
-spec:
-  containers:
-    - name: jvm-container
-      image: your-jvm-image:latest
-      resources:
-        requests:
-          cpu: "1"
-          memory: "3Gi"  # Manually set based on application requirements
-        limits:
-          cpu: "2"
-          memory: "6Gi"
-      ports:
-        - containerPort: 8080
-```
 
 ### VPA Metrics Collection Period
 
