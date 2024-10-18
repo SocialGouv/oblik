@@ -7,7 +7,7 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 **Summary**
 - [How it works](#how-it-works)
 - [Usage](#usage)
-  - [Minimal Example](#minimal-example)
+  - [Minimal Tuning Example](#minimal-tuning-example)
   - [Example: Uncapping Minimum Memory Limit](#example-uncapping-minimum-memory-limit)
   - [Applying the Workload](#applying-the-workload)
 - [Features](#features)
@@ -50,9 +50,9 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 
 ## Usage
 
-### Minimal Example
+### Minimal Tuning Example
 
-Here is a minimal example using commonly used options such as `min-request-cpu` and `min-request-memory`:
+Here is a minimal tuning example using commonly used options such as `min-request-cpu` and `min-request-memory`:
 
 ```yaml
 apiVersion: apps/v1
