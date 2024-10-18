@@ -4,6 +4,44 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 
 **Oblik makes VPA compatible with HPA**; you can use the Horizontal Pod Autoscaler (HPA) as before. Oblik only handles resource definitions automatically using VPA recommendations.
 
+**Summary**
+- [How it works](#how-it-works)
+- [Usage](#usage)
+  - [Minimal Example](#minimal-example)
+  - [Example: Uncapping Minimum Memory Limit](#example-uncapping-minimum-memory-limit)
+  - [Applying the Workload](#applying-the-workload)
+- [Features](#features)
+- [Installation](#installation)
+  - [Deploying Oblik with ArgoCD](#deploying-oblik-with-argocd)
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+  - [Annotations](#annotations)
+  - [Targeting Specific Containers](#targeting-specific-containers)
+  - [Recommendations:](#recommendations)
+    - [Example](#example)
+- [Using the CLI](#using-the-cli)
+  - [CLI Usage](#cli-usage)
+  - [Downloading the CLI](#downloading-the-cli)
+  - [Docker Image](#docker-image)
+- [Environment Variables](#environment-variables)
+- [Limitations and overcoming them](#limitations-and-overcoming-them)
+  - [VPA Recommendations for Certain Workloads](#vpa-recommendations-for-certain-workloads)
+    - [Recommended Configurations](#recommended-configurations)
+      - [1. Manually Set Memory Requests](#1-manually-set-memory-requests)
+      - [2. Calculate Memory Based on CPU Usage Recommendations](#2-calculate-memory-based-on-cpu-usage-recommendations)
+    - [Example Configuration for a JVM Application](#example-configuration-for-a-jvm-application)
+  - [VPA Metrics Collection Period](#vpa-metrics-collection-period)
+  - [High Resource Usage at Pod Startup](#high-resource-usage-at-pod-startup)
+    - [Solutions](#solutions)
+    - [Example: Uncapping Minimum Memory Limit](#example-uncapping-minimum-memory-limit-1)
+    - [Adjusting Probes](#adjusting-probes)
+- [Running Tests](#running-tests)
+  - [Running Specific Tests](#running-specific-tests)
+- [Contributing](#contributing)
+- [Related Projects and Resources](#related-projects-and-resources)
+  - [Additional Resources](#additional-resources)
+- [License](#license)
+
 ## How it works
 
 * **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
