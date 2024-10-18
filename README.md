@@ -10,12 +10,6 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 * **Cron-like Scheduling**: Oblik runs on a configurable cron schedule to apply VPA recommendations to workloads. You can specify the schedule using annotations on the workloads, and include random delays to stagger updates across your cluster.
 * **Mutating Admission Webhook**: Oblik includes a mutating admission webhook that enforces resource requests and limits default policies on initial deployment of workloads and use eventually available recommendations from VPA on deployment updates.
 
-## Requirements
-
-* **Vertical Pod Autoscaler (VPA) Operator**: Oblik requires the official Kubernetes VPA operator, which is not installed by default on Kubernetes clusters. You can find it here: [Official Kubernetes VPA Operator](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
-    
-    * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and scalability issues of the VPA operator.
-
 ## Usage
 
 ### Minimal Example
@@ -124,6 +118,12 @@ spec:
       jsonPointers:
         - /data
 ```
+
+## Requirements
+
+* **Vertical Pod Autoscaler (VPA) Operator**: Oblik requires the official Kubernetes VPA operator, which is not installed by default on Kubernetes clusters. You can find it here: [Official Kubernetes VPA Operator](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+    
+    * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and scalability issues of the VPA operator.
 
 ## Configuration
 
