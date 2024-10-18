@@ -8,7 +8,7 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 
 * **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
 * **Cron-like Scheduling**: Oblik runs on a configurable cron schedule to apply VPA recommendations to workloads. You can specify the schedule using annotations on the workloads, and include random delays to stagger updates across your cluster.
-* **Mutating Admission Webhook**: Oblik includes a mutating admission webhook that enforces default resource requests and limits on initial deployment of workloads. The webhook applies default resource requests and limits if they are not specified in the workload's manifest.
+* **Mutating Admission Webhook**: Oblik includes a mutating admission webhook that enforces resource requests and limits default policies on initial deployment of workloads and use eventually available recommendations from VPA on deployment updates.
 
 ## Requirements
 
@@ -68,7 +68,7 @@ spec:
     * CronJobs
     * `postgresql.cnpg.io/Cluster` (see [CNPG issue](https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2155389267))
 * **Customizable Algorithms**: Use different algorithms and values for calculating resource adjustments.
-* **Mutating Webhook**: Enforces default resources on initial deployment and applies recommendations if VPA exists.
+* **Mutating Webhook**: Enforces default resources on initial deployment and use recommendations if VPA exists.
 * **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
 * **CLI for Manual Operations**: Provides a command-line interface for manual control.
 
@@ -318,13 +318,9 @@ To apply configurations to a specific container within a workload, suffix the an
 
 * **`oblik.socialgouv.io/min-limit-memory.hasura`**: Sets the minimum memory limit for the container named `hasura`.
 
-### Mutating Admission Webhook
+### Recommendations:
 
-Oblik includes a mutating admission webhook that enforces default resources on the initial deployment of a workload. The webhook applies default resource requests and limits if they are not specified in the workload's manifest.
-
-**Recommendations:**
-
-* **Do not specify resource requests and limits in your workload manifest.** Let Oblik handle them based on VPA recommendations and default settings.
+* **Do not specify resource requests and limits in your workload manifest.** Let Oblik handle them based on VPA recommendations and settings as oblik annotation and default settings on operator deployment.
 * The webhook will read the VPA if it exists and apply recommendations to the workload upon deployment.
 
 #### Example
@@ -387,26 +383,7 @@ If your application requires higher memory consumption during pod startup, you m
     oblik.socialgouv.io/limit-memory-calculator-algo: "margin"
     oblik.socialgouv.io/limit-memory-calculator-value: "256Mi"
     ```
-    
 
-### Adjusting Startup Probes
-
-For applications with high CPU usage at startup, you may need to adjust the startup and readiness probes:
-
-```yaml
-spec:
-  containers:
-    - name: app-container
-      image: your-image
-      readinessProbe:
-        initialDelaySeconds: 30
-        timeoutSeconds: 5
-      startupProbe:
-        initialDelaySeconds: 60
-        timeoutSeconds: 10
-```
-
-Alternatively, you can increase the CPU limit or CPU recommendation to provide more resources during startup.
 
 ### Applying the Workload
 
@@ -424,30 +401,6 @@ Oblik provides a CLI for manual operations. You can download the binary from the
 
 ### CLI Usage
 
-```plaintext
-Oblik CLI
-
-Usage:
-  oblik [flags]
-  oblik [command]
-
-Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  operator    Oblik operator
-
-Flags:
-  -a, --all                Process all namespaces
-  -f, --force              Force to run on not enabled workloads
-  -h, --help               help for oblik
-      --name string        Name of the workload
-  -n, --namespace string   Namespace containing workloads
-  -l, --selector string    Label selector for filtering workloads
-  -v, --version            Show version
-```
-
-### Examples
-
 * **Process all workloads in all namespaces**:
     
     ```sh
@@ -457,19 +410,22 @@ Flags:
 * **Process a specific workload**:
     
     ```sh
-    oblik --namespace default --name example-deployment
+    oblik --namespace my-ns --name example-deployment
     ```
+
+* **Process workloads using selectors**:
     
-* **Dry-run mode**:
-    
-    Add the `dry-run` annotation to simulate updates without applying them.
-    
+    ```sh
+    oblik --namespace my-ns --selector foo=bar
+    ```
+
+
 * **Force Mode**:
     
     Use the `--force` flag to run on workloads that do not have the `oblik.socialgouv.io/enabled: "true"` label.
     
     ```sh
-    oblik --namespace default --name example-deployment --force
+    oblik --namespace my-ns --name example-deployment --force
     ```
     
 
@@ -480,10 +436,6 @@ You can download the latest CLI binary from the [GitHub releases](https://github
 ### Docker Image
 
 The Docker image for the Oblik operator is available and can be used to run the operator in your Kubernetes cluster.
-
-### Helm Charts
-
-Helm charts are provided in the `charts/oblik` directory of the repository for easy deployment.
 
 ## Environment Variables
 
@@ -513,10 +465,6 @@ The Oblik Kubernetes VPA Operator uses the following environment variables for c
 | `OBLIK_DEFAULT_MAX_REQUEST_MEMORY` | Value used to cap maximum memory request. | Any valid memory value | `""` |
 | `OBLIK_MATTERMOST_WEBHOOK_URL` | Webhook URL for Mattermost notifications. | URL | `""` |
 
-## Links
-
-* ["Stop Using CPU Limits"](https://home.robusta.dev/blog/stop-using-cpu-limits)
-* ["Why You Should Keep Using CPU Limits on Kubernetes"](https://dnastacio.medium.com/why-you-should-keep-using-cpu-limits-on-kubernetes-60c4e50dfc61)
 
 ## Running Tests
 
@@ -569,6 +517,8 @@ We welcome contributions! Please feel free to submit pull requests or open issue
 * [11 Ways to Optimize Kubernetes Vertical Pod Autoscaler](https://overcast.blog/11-ways-to-optimize-kubernetes-vertical-pod-autoscaler-930246954fc4)
 * [Multidimensional Pod Autoscaler - AEP](https://github.com/kubernetes/autoscaler/blob/master/multidimensional-pod-autoscaler/AEP.md)
 * [Google Cloud: Multidimensional Pod Autoscaling](https://cloud.google.com/kubernetes-engine/docs/how-to/multidimensional-pod-autoscaling)
+* ["Stop Using CPU Limits"](https://home.robusta.dev/blog/stop-using-cpu-limits)
+* ["Why You Should Keep Using CPU Limits on Kubernetes"](https://dnastacio.medium.com/why-you-should-keep-using-cpu-limits-on-kubernetes-60c4e50dfc61)
 
 ## License
 
