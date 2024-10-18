@@ -71,6 +71,8 @@ spec:
 * **Mutating Webhook**: Enforces default resources on initial deployment and use recommendations if VPA exists.
 * **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
 * **CLI for Manual Operations**: Provides a command-line interface for manual control.
+* **High Availability**: Minimizes the risk of the mutating webhook blocking deployments. Only the leader runs background cron resource updates to prevent conflicts.
+
 
 ## Limitations and overcoming them
 
