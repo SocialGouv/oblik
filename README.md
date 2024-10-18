@@ -14,10 +14,8 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 
 * **Vertical Pod Autoscaler (VPA) Operator**: Oblik requires the official Kubernetes VPA operator, which is not installed by default on Kubernetes clusters. You can find it here: [Official Kubernetes VPA Operator](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
     
-    * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and potential conflicts within your cluster.
-        
-    * **Deployment Example**: When deploying the VPA operator, ensure that only the recommender is enabled.
-        
+    * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and scalability issues of the VPA operator.
+            
 
 ## Installation
 
