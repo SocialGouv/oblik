@@ -66,7 +66,7 @@ spec:
     * StatefulSets
     * DaemonSets
     * CronJobs
-    * `postgresql.cnpg.io/Cluster` (see [CNPG issue](https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2155389267))
+    * `postgresql.cnpg.io/Cluster` (see [CNPG issue](https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2159044747))
 * **Customizable Algorithms**: Use different algorithms and values for calculating resource adjustments.
 * **Mutating Webhook**: Enforces default resources on initial deployment and use recommendations if VPA exists.
 * **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
