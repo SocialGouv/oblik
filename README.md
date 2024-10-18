@@ -555,8 +555,8 @@ We welcome contributions! Please feel free to submit pull requests or open issue
 * [11 Ways to Optimize Kubernetes Vertical Pod Autoscaler](https://overcast.blog/11-ways-to-optimize-kubernetes-vertical-pod-autoscaler-930246954fc4)
 * [Multidimensional Pod Autoscaler - AEP](https://github.com/kubernetes/autoscaler/blob/master/multidimensional-pod-autoscaler/AEP.md)
 * [Google Cloud: Multidimensional Pod Autoscaling](https://cloud.google.com/kubernetes-engine/docs/how-to/multidimensional-pod-autoscaling)
-* ["Stop Using CPU Limits"](https://home.robusta.dev/blog/stop-using-cpu-limits)
-* ["Why You Should Keep Using CPU Limits on Kubernetes"](https://dnastacio.medium.com/why-you-should-keep-using-cpu-limits-on-kubernetes-60c4e50dfc61)
+* [Stop Using CPU Limits](https://home.robusta.dev/blog/stop-using-cpu-limits)
+* [Why You Should Keep Using CPU Limits on Kubernetes](https://dnastacio.medium.com/why-you-should-keep-using-cpu-limits-on-kubernetes-60c4e50dfc61)
 
 ## License
 
