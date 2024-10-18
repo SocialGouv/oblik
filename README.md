@@ -274,18 +274,18 @@ The operator uses **annotations** on workload objects to configure its behavior.
 | `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
 | `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
 | `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
-| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | N/A |
-| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | N/A |
-| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
-| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | N/A |
-| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | N/A |
-| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | N/A |
-| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
-| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | N/A |
-| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | N/A |
-| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | N/A |
-| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | N/A |
-| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | N/A |
+| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | "" |
+| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | "" |
+| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | "" |
+| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | "" |
+| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | "" |
+| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | "" |
+| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | "" |
+| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | "" |
+| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | "" |
+| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | "" |
+| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | "" |
+| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | "" |
 | `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
 | `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
 | `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
