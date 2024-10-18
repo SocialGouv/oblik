@@ -4,10 +4,20 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 
 **Oblik makes VPA compatible with HPA**; you can use the Horizontal Pod Autoscaler (HPA) as before. Oblik only handles resource definitions automatically using VPA recommendations.
 
+## How it works
+
+* **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
+* **Cron-like Scheduling**: Oblik runs on a configurable cron schedule to apply VPA recommendations to workloads. You can specify the schedule using annotations on the workloads, and include random delays to stagger updates across your cluster.
+* **Mutating Admission Webhook**: Oblik includes a mutating admission webhook that enforces default resource requests and limits on initial deployment of workloads. The webhook applies default resource requests and limits if they are not specified in the workload's manifest.
+
 ## Requirements
 
-* **Mutating Admission Webhook**: Oblik includes a mutating webhook to enforce default resources on initial deployment.
-* **Oblik Operator**: Oblik handles the creation, updating, and deletion of VPA objects for workloads that have Oblik enabled.
+* **Vertical Pod Autoscaler (VPA) Operator**: Oblik requires the official Kubernetes VPA operator, which is not installed by default on Kubernetes clusters. You can find it here: [Official Kubernetes VPA Operator](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+    
+    * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and potential conflicts within your cluster.
+        
+    * **Deployment Example**: When deploying the VPA operator, ensure that only the recommender is enabled.
+        
 
 ## Installation
 
@@ -126,8 +136,8 @@ If your application requires higher memory consumption during pod startup, you m
 ```yaml
 spec:
   containers:
-    - name: your-container
-      # ...
+    - name: app-container
+      image: your-image
       readinessProbe:
         initialDelaySeconds: 30
         timeoutSeconds: 5
@@ -146,64 +156,9 @@ The operator uses **annotations** on workload objects to configure its behavior.
 
 ### Annotations
 
-| Annotation Key (without prefix) | Description | Options | Default |
-| --- | --- | --- | --- |
-| `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
-| `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
-| `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
-| `webhook-enabled` | Enable Mattermost webhook notifications on resource updates. | `"true"`, `"false"` | `"false"` |
-| `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-memory-apply-mode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-calculator-algo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-memory-calculator-algo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-cpu-calculator-value` | Value used by the CPU limit calculator algorithm. | Any numeric value | `"1"` |
-| `limit-memory-calculator-value` | Value used by the memory limit calculator algorithm. | Any numeric value | `"1"` |
-| `unprovided-apply-default-request-cpu` | Default CPU request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
-| `unprovided-apply-default-request-memory` | Default memory request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
-| `increase-request-cpu-algo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
-| `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
-| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | N/A |
-| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | N/A |
-| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
-| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | N/A |
-| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | N/A |
-| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | N/A |
-| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
-| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | N/A |
-| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | N/A |
-| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | N/A |
-| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | N/A |
-| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | N/A |
-| `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-request-value` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-cpu-limit-algo` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-limit-value` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-limit-algo` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-limit-value` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
-| `memory-request-from-cpu-enabled` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-limit-from-cpu-enabled` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-request-from-cpu-algo` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-request-from-cpu-value` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
-| `memory-limit-from-cpu-algo` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-limit-from-cpu-value` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
-| `request-apply-target` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-cpu-apply-target` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-memory-apply-target` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `limit-apply-target` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-cpu-apply-target` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-memory-apply-target` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `request-cpu-scale-direction` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `request-memory-scale-direction` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-cpu-scale-direction` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-memory-scale-direction` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+[Please refer to the annotations table in the documentation for detailed configuration options.]
 
-#### Targeting Specific Containers
+### Targeting Specific Containers
 
 To apply configurations to a specific container within a workload, suffix the annotation key with the container name, e.g.:
 
@@ -441,7 +396,7 @@ This will run only the specified test case, allowing for faster and more focused
 
 We welcome contributions! Please feel free to submit pull requests or open issues on our GitHub repository.
 
-## Related Projects
+## Related Projects and Resources
 
 * [Predictive Horizontal Pod Autoscaler](https://github.com/jthomperoo/predictive-horizontal-pod-autoscaler)
 * [Custom Pod Autoscaler](https://github.com/jthomperoo/custom-pod-autoscaler)
@@ -449,6 +404,17 @@ We welcome contributions! Please feel free to submit pull requests or open issue
     * [Reddit Discussion](https://www.reddit.com/r/kubernetes/comments/11vhfbz/kubereqsizer_open_source_vpa_alternative_for/)
 * [HVPA Controller](https://github.com/gardener/hvpa-controller)
     * The initial approach of Oblik was to find a balance between HPA and VPA, but we changed our strategy.
+
+### Additional Resources
+
+* [Vertical Pod Autoscaler Deep Dive: Limitations and Real-world Examples](https://medium.com/infrastructure-adventures/vertical-pod-autoscaler-deep-dive-limitations-and-real-world-examples-9195f8422724)
+* [Vertical Pod Autoscaler (VPA): Know Everything About It](https://foxutech.com/vertical-pod-autoscalervpa-know-everything-about-it/)
+* [Performance Evaluation of the Autoscaling Strategies (Vertical and Horizontal) Using Kubernetes](https://medium.com/@kewynakshlley/performance-evaluation-of-the-autoscaling-strategies-vertical-and-horizontal-using-kubernetes-42d9a1663e6b)
+* [Kubernetes HPA Custom Metrics for Effective CPU/Memory Scaling](https://caiolombello.medium.com/kubernetes-hpa-custom-metrics-for-effective-cpu-memory-scaling-23526bba9b4)
+* [Kubernetes Autoscaling Concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
+* [11 Ways to Optimize Kubernetes Vertical Pod Autoscaler](https://overcast.blog/11-ways-to-optimize-kubernetes-vertical-pod-autoscaler-930246954fc4)
+* [Multidimensional Pod Autoscaler - AEP](https://github.com/kubernetes/autoscaler/blob/master/multidimensional-pod-autoscaler/AEP.md)
+* [Google Cloud: Multidimensional Pod Autoscaling](https://cloud.google.com/kubernetes-engine/docs/how-to/multidimensional-pod-autoscaling)
 
 ## License
 
