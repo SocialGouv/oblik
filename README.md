@@ -15,7 +15,7 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 * **Vertical Pod Autoscaler (VPA) Operator**: Oblik requires the official Kubernetes VPA operator, which is not installed by default on Kubernetes clusters. You can find it here: [Official Kubernetes VPA Operator](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
     
     * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and scalability issues of the VPA operator.
-            
+
 
 ## Installation
 
@@ -60,7 +60,7 @@ spec:
 * **Applies VPA Recommendations**: Automatically applies resource recommendations to workloads.
 * **Configurable via Annotations**: Customize behavior using annotations on workloads.
 * **Supports CPU and Memory Recommendations**: Adjust CPU and memory requests and limits.
-* **Cron Scheduling with Random Delays**: Schedule updates with optional random delays to stagger them.
+* **Cron Scheduling with Random Delays**: Schedule updates with optional random delays to stagger them, avoiding a pods restart dance.
 * **Supported Workload Types**:
     * Deployments
     * StatefulSets
@@ -76,28 +76,60 @@ spec:
 
 ### VPA Recommendations for Certain Workloads
 
-The VPA may not provide relevant memory recommendations for some workloads, such as Java Virtual Machines (JVM) and PostgreSQL databases. These applications manage their own memory usage internally, which can lead to inaccurate recommendations from the VPA.
+The **Vertical Pod Autoscaler (VPA)** may not provide accurate memory recommendations for specific workloads, such as **Java Virtual Machines (JVM)** and **PostgreSQL** databases. These applications manage their own memory usage internally, which can lead to discrepancies in VPA's memory suggestions.
 
-#### Recommended Configuration
+#### Recommended Configurations
 
-For such workloads, it's advisable to calculate memory limits from requests to maintain stability, rather than disabling memory limit adjustments.
+For workloads where VPA's memory recommendations are unreliable, consider the following two options:
 
-* **Calculate Memory Limit from Request**:
-    
-    ```yaml
-    oblik.socialgouv.io/limit-memory-calculator-algo: "ratio"
-    oblik.socialgouv.io/limit-memory-calculator-value: "1"
-    ```
-    
-* **Calculate CPU Limit from Request**:
-    
-    ```yaml
-    oblik.socialgouv.io/limit-cpu-calculator-algo: "ratio"
-    oblik.socialgouv.io/limit-cpu-calculator-value: "1.5"
-    ```
-    
+##### 1. Manually Set Memory Requests
 
-#### Example for a JVM Application
+Disable VPA’s automatic memory management and manually configure memory resources to suit your application’s needs.
+
+**Steps:**
+
+1. **Disable VPA Memory Handling:**
+    * Set the `oblik.socialgouv.io/request-memory-apply-mode` annotation to `"off"` in your deployment.
+2. **Manually Configure Memory Resources:**
+    * Define memory requests and limits directly within your deployment specification.
+
+**Example:**
+
+```yaml
+metadata:
+  annotations:
+    oblik.socialgouv.io/request-memory-apply-mode: "off"
+```
+
+##### 2. Calculate Memory Based on CPU Usage Recommendations
+
+Leverage the relationship between CPU and memory usage to derive memory allocations from CPU recommendations. This method is particularly effective for applications like PostgreSQL, where a typical memory-to-CPU ratio is well-established.
+
+**Example Ratio:**
+
+* **PostgreSQL:** For every 1 CPU, allocate approximately 4 GB of memory.
+
+**Steps:**
+
+1. **Enable Memory Calculation from CPU:**
+    * Set `oblik.socialgouv.io/memory-request-from-cpu-enabled` to `"true"`.
+2. **Specify the Calculation Algorithm and Ratio:**
+    * Use `memory-request-from-cpu-algo` set to `"ratio"`.
+    * Define the ratio with `memory-request-from-cpu-value`. For instance, a value of `"4"` implies 4 GB of memory per CPU.
+
+**Example:**
+
+```yaml
+metadata:
+  annotations:
+    oblik.socialgouv.io/memory-request-from-cpu-enabled: "true"
+    oblik.socialgouv.io/memory-request-from-cpu-algo: "ratio"
+    oblik.socialgouv.io/memory-request-from-cpu-value: "4"
+```
+
+#### Example Configuration for a JVM Application
+
+Below is an example YAML configuration for deploying a JVM application using CPU-based memory calculation:
 
 ```yaml
 apiVersion: apps/v1
@@ -110,13 +142,68 @@ metadata:
   annotations:
     oblik.socialgouv.io/memory-request-from-cpu-enabled: "true"
     oblik.socialgouv.io/memory-request-from-cpu-algo: "ratio"
-    oblik.socialgouv.io/memory-request-from-cpu-value: "4"
-    oblik.socialgouv.io/limit-memory-calculator-algo: "ratio"
-    oblik.socialgouv.io/limit-memory-calculator-value: "1"
-    oblik.socialgouv.io/limit-cpu-calculator-algo: "ratio"
-    oblik.socialgouv.io/limit-cpu-calculator-value: "1.5"
+    oblik.socialgouv.io/memory-request-from-cpu-value: "2"
 spec:
-  # ... your deployment spec
+  replicas: 3
+  selector:
+    matchLabels:
+      app: jvm-app
+  template:
+    metadata:
+      labels:
+        app: jvm-app
+    spec:
+      containers:
+        - name: jvm-container
+          image: your-jvm-image:latest
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"  # Derived from CPU usage (1 CPU * 2 GB)
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          ports:
+            - containerPort: 8080
+```
+
+**Explanation:**
+
+* **Annotations:**
+    
+    * `memory-request-from-cpu-enabled: "true"`: Enables memory calculation based on CPU usage.
+    * `memory-request-from-cpu-algo: "ratio"`: Specifies that a fixed ratio will be used for calculation.
+    * `memory-request-from-cpu-value: "2"`: Sets the memory allocation to 2 GB per CPU.
+* **Resources:**
+    
+    * **Requests:**
+        * `cpu: "1"`: Requests 1 CPU.
+        * `memory: "2Gi"`: Allocates 2 GB of memory based on the ratio (1 CPU * 2 GB).
+    * **Limits:**
+        * `cpu: "2"`: Limits the container to 2 CPUs.
+        * `memory: "4Gi"`: Limits the memory usage to 4 GB.
+
+**Alternative: Manual Memory Configuration**
+
+If you prefer to disable VPA's memory management entirely and set memory resources manually, adjust the annotations and specify memory directly:
+
+```yaml
+metadata:
+  annotations:
+    oblik.socialgouv.io/memory-request-apply-mode: "off"
+spec:
+  containers:
+    - name: jvm-container
+      image: your-jvm-image:latest
+      resources:
+        requests:
+          cpu: "1"
+          memory: "3Gi"  # Manually set based on application requirements
+        limits:
+          cpu: "2"
+          memory: "6Gi"
+      ports:
+        - containerPort: 8080
 ```
 
 ### VPA Metrics Collection Period
@@ -179,7 +266,63 @@ The operator uses **annotations** on workload objects to configure its behavior.
 
 ### Annotations
 
-[Please refer to the annotations table in the documentation for detailed configuration options.]
+| Annotation Key (without prefix) | Description | Options | Default |
+| --- | --- | --- | --- |
+| `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
+| `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
+| `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
+| `webhook-enabled` | Enable Mattermost webhook notifications on resource updates. | `"true"`, `"false"` | `"false"` |
+| `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-memory-apply-mode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-cpu-calculator-algo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-memory-calculator-algo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-cpu-calculator-value` | Value used by the CPU limit calculator algorithm. | Any numeric value | `"1"` |
+| `limit-memory-calculator-value` | Value used by the memory limit calculator algorithm. | Any numeric value | `"1"` |
+| `unprovided-apply-default-request-cpu` | Default CPU request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
+| `unprovided-apply-default-request-memory` | Default memory request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
+| `increase-request-cpu-algo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
+| `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
+| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | N/A |
+| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | N/A |
+| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
+| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | N/A |
+| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | N/A |
+| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | N/A |
+| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | N/A |
+| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | N/A |
+| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | N/A |
+| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | N/A |
+| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | N/A |
+| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | N/A |
+| `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
+| `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-request-value` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
+| `min-diff-cpu-limit-algo` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-limit-value` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
+| `min-diff-memory-limit-algo` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-limit-value` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
+| `memory-request-from-cpu-enabled` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-limit-from-cpu-enabled` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-request-from-cpu-algo` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-request-from-cpu-value` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
+| `memory-limit-from-cpu-algo` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-limit-from-cpu-value` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
+| `request-apply-target` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-cpu-apply-target` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-memory-apply-target` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `limit-apply-target` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-cpu-apply-target` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-memory-apply-target` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `request-cpu-scale-direction` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `request-memory-scale-direction` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-cpu-scale-direction` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-memory-scale-direction` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+
 
 ### Targeting Specific Containers
 
