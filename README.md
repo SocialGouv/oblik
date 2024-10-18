@@ -31,6 +31,31 @@ helm upgrade --install oblik . --namespace oblik
 
 Alternatively, you can use the Docker image for the operator, and download the CLI binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
 
+### Deploying Oblik with ArgoCD
+
+If you're using ArgoCD to manage your Kubernetes deployments, to integrate the Oblik Helm chart you need to include specific settings in your ArgoCD `Application` resource.
+
+Add the following sections to your ArgoCD `Application` spec:
+
+```yaml
+spec:
+  syncPolicy:
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      name: oblik
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: ""
+      kind: Secret
+      name: webhook-certs
+      jsonPointers:
+        - /data
+```
+
 ## Features
 
 * **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
