@@ -16,6 +16,77 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
     
     * **Note**: You only need the **VPA recommender** component. The admission-controller and updater components are not required and can be omitted. This reduces the complexity and scalability issues of the VPA operator.
 
+## Usage
+
+### Minimal Example
+
+Here is a minimal example using commonly used options such as `min-request-cpu` and `min-request-memory`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minimal-app
+  namespace: default
+  labels:
+    oblik.socialgouv.io/enabled: "true"
+  annotations:
+    oblik.socialgouv.io/min-request-cpu: "100m"
+    oblik.socialgouv.io/min-request-memory: "128Mi"
+spec:
+  # Do not specify resources; let Oblik handle them
+  containers:
+    - name: app-container
+      image: your-image
+```
+
+### Example: Uncapping Minimum Memory Limit
+
+If your application requires higher memory consumption during pod startup, you might need to uncap the `min-limit-memory` to a value higher than the request.
+
+* **Using Hardcoded Value**:
+    
+    ```yaml
+    oblik.socialgouv.io/min-limit-memory: "512Mi"
+    ```
+    
+* **Using Calculator Algorithm**:
+    
+    ```yaml
+    oblik.socialgouv.io/limit-memory-calculator-algo: "margin"
+    oblik.socialgouv.io/limit-memory-calculator-value: "256Mi"
+    ```
+
+
+### Applying the Workload
+
+Apply your workload manifest as usual:
+
+```sh
+kubectl apply -f your-deployment.yaml
+```
+
+Oblik will automatically create a corresponding VPA object and manage resource recommendations according to the configured cron schedule and annotations.
+
+## Features
+
+* **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
+* **Applies VPA Recommendations**: Automatically applies resource recommendations to workloads.
+* **Configurable via Annotations**: Customize behavior using annotations on workloads.
+* **Supports CPU and Memory Recommendations**: Adjust CPU and memory requests and limits.
+* **Cron Scheduling with Random Delays**: Schedule updates with optional random delays to stagger them, avoiding a pods restart dance.
+* **Supported Workload Types**:
+    * Deployments
+    * StatefulSets
+    * DaemonSets
+    * CronJobs
+    * `postgresql.cnpg.io/Cluster` (see [CNPG issue](https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2159044747))
+* **Customizable Algorithms**: Use different algorithms and values for calculating resource adjustments.
+* **Mutating Webhook**: Enforces default resources on initial deployment and use recommendations if VPA exists.
+* **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
+* **CLI for Manual Operations**: Provides a command-line interface for manual control.
+* **High Availability**: Minimizes the risk of the mutating webhook blocking deployments. Only the leader runs background cron resource updates to prevent conflicts.
+
 
 ## Installation
 
@@ -54,25 +125,174 @@ spec:
         - /data
 ```
 
-## Features
+## Configuration
 
-* **Automatic VPA Management**: Oblik automatically creates, updates, and deletes VPA objects for enabled workloads.
-* **Applies VPA Recommendations**: Automatically applies resource recommendations to workloads.
-* **Configurable via Annotations**: Customize behavior using annotations on workloads.
-* **Supports CPU and Memory Recommendations**: Adjust CPU and memory requests and limits.
-* **Cron Scheduling with Random Delays**: Schedule updates with optional random delays to stagger them, avoiding a pods restart dance.
-* **Supported Workload Types**:
-    * Deployments
-    * StatefulSets
-    * DaemonSets
-    * CronJobs
-    * `postgresql.cnpg.io/Cluster` (see [CNPG issue](https://github.com/cloudnative-pg/cloudnative-pg/issues/2574#issuecomment-2159044747))
-* **Customizable Algorithms**: Use different algorithms and values for calculating resource adjustments.
-* **Mutating Webhook**: Enforces default resources on initial deployment and use recommendations if VPA exists.
-* **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
-* **CLI for Manual Operations**: Provides a command-line interface for manual control.
-* **High Availability**: Minimizes the risk of the mutating webhook blocking deployments. Only the leader runs background cron resource updates to prevent conflicts.
+To enable Oblik on a workload, you need to add a **label** to your workload object (e.g., Deployment, StatefulSet):
 
+* **`oblik.socialgouv.io/enabled`**: `"true"` or `"false"`. Defaults to `"false"`. Set to `"true"` to enable Oblik on the workload.
+
+The operator uses **annotations** on workload objects to configure its behavior. All annotations should be prefixed with `oblik.socialgouv.io/`.
+
+### Annotations
+
+| Annotation Key (without prefix) | Description | Options | Default |
+| --- | --- | --- | --- |
+| `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
+| `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
+| `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
+| `webhook-enabled` | Enable Mattermost webhook notifications on resource updates. | `"true"`, `"false"` | `"false"` |
+| `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-memory-apply-mode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `limit-cpu-calculator-algo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-memory-calculator-algo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-cpu-calculator-value` | Value used by the CPU limit calculator algorithm. | Any numeric value | `"1"` |
+| `limit-memory-calculator-value` | Value used by the memory limit calculator algorithm. | Any numeric value | `"1"` |
+| `unprovided-apply-default-request-cpu` | Default CPU request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
+| `unprovided-apply-default-request-memory` | Default memory request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
+| `increase-request-cpu-algo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
+| `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
+| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | "" |
+| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | "" |
+| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | "" |
+| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | "" |
+| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | "" |
+| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | "" |
+| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | "" |
+| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | "" |
+| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | "" |
+| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | "" |
+| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | "" |
+| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | "" |
+| `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
+| `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-request-value` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
+| `min-diff-cpu-limit-algo` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-limit-value` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
+| `min-diff-memory-limit-algo` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-limit-value` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
+| `memory-request-from-cpu-enabled` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-limit-from-cpu-enabled` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-request-from-cpu-algo` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-request-from-cpu-value` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
+| `memory-limit-from-cpu-algo` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-limit-from-cpu-value` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
+| `request-apply-target` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-cpu-apply-target` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-memory-apply-target` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `limit-apply-target` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-cpu-apply-target` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-memory-apply-target` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `request-cpu-scale-direction` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `request-memory-scale-direction` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-cpu-scale-direction` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-memory-scale-direction` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+
+
+### Targeting Specific Containers
+
+To apply configurations to a specific container within a workload, suffix the annotation key with the container name, e.g.:
+
+* **`oblik.socialgouv.io/min-limit-memory.hasura`**: Sets the minimum memory limit for the container named `hasura`.
+
+### Recommendations:
+
+* **Do not specify resource requests and limits in your workload manifest.** Let Oblik handle them based on VPA recommendations and settings as oblik annotation and default settings on operator deployment.
+* The webhook will read the VPA if it exists and apply recommendations to the workload upon deployment.
+
+#### Example
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-deployment
+  namespace: default
+  labels:
+    oblik.socialgouv.io/enabled: "true"
+  annotations:
+    oblik.socialgouv.io/min-request-cpu: "100m"
+    oblik.socialgouv.io/min-request-memory: "128Mi"
+spec:
+  # Do not specify resources; let Oblik handle them
+  containers:
+    - name: app-container
+      image: your-image
+```
+
+## Using the CLI
+
+Oblik provides a CLI for manual operations. You can download the binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
+
+### CLI Usage
+
+* **Process all workloads in all namespaces**:
+    
+    ```sh
+    oblik --all
+    ```
+    
+* **Process a specific workload**:
+    
+    ```sh
+    oblik --namespace my-ns --name example-deployment
+    ```
+
+* **Process workloads using selectors**:
+    
+    ```sh
+    oblik --namespace my-ns --selector foo=bar
+    ```
+
+
+* **Force Mode**:
+    
+    Use the `--force` flag to run on workloads that do not have the `oblik.socialgouv.io/enabled: "true"` label.
+    
+    ```sh
+    oblik --namespace my-ns --name example-deployment --force
+    ```
+    
+
+### Downloading the CLI
+
+You can download the latest CLI binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
+
+### Docker Image
+
+The Docker image for the Oblik operator is available and can be used to run the operator in your Kubernetes cluster.
+
+## Environment Variables
+
+The Oblik Kubernetes VPA Operator uses the following environment variables for configuration. These environment variables allow you to set default values and customize the behavior of the operator.
+
+| Environment Variable | Description | Options | Default |
+| --- | --- | --- | --- |
+| `OBLIK_DEFAULT_CRON` | Default cron expression for scheduling when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
+| `OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO` | Default algorithm to use for calculating CPU limits. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO` | Default algorithm to use for calculating memory limits. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE` | Default value to use with the CPU limit calculator algorithm. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE` | Default value to use with the memory limit calculator algorithm. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU` | Default behavior for CPU requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
+| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY` | Default behavior for memory requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO` | Default algorithm to use for increasing CPU requests. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO` | Default algorithm to use for increasing memory requests. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE` | Default value to use with the algorithm for increasing CPU requests. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE` | Default value to use with the algorithm for increasing memory requests. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_MIN_LIMIT_CPU` | Value used to cap minimum CPU limit. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MAX_LIMIT_CPU` | Value used to cap maximum CPU limit. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MIN_LIMIT_MEMORY` | Value used to cap minimum memory limit. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_MAX_LIMIT_MEMORY` | Value used to cap maximum memory limit. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_MIN_REQUEST_CPU` | Value used to cap minimum CPU request. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MAX_REQUEST_CPU` | Value used to cap maximum CPU request. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MIN_REQUEST_MEMORY` | Value used to cap minimum memory request. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_MAX_REQUEST_MEMORY` | Value used to cap maximum memory request. | Any valid memory value | `""` |
+| `OBLIK_MATTERMOST_WEBHOOK_URL` | Webhook URL for Mattermost notifications. | URL | `""` |
 
 ## Limitations and overcoming them
 
@@ -245,228 +465,6 @@ spec:
         initialDelaySeconds: 60
         timeoutSeconds: 10
 ```
-
-## Configuration
-
-To enable Oblik on a workload, you need to add a **label** to your workload object (e.g., Deployment, StatefulSet):
-
-* **`oblik.socialgouv.io/enabled`**: `"true"` or `"false"`. Defaults to `"false"`. Set to `"true"` to enable Oblik on the workload.
-
-The operator uses **annotations** on workload objects to configure its behavior. All annotations should be prefixed with `oblik.socialgouv.io/`.
-
-### Annotations
-
-| Annotation Key (without prefix) | Description | Options | Default |
-| --- | --- | --- | --- |
-| `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
-| `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
-| `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
-| `webhook-enabled` | Enable Mattermost webhook notifications on resource updates. | `"true"`, `"false"` | `"false"` |
-| `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-memory-apply-mode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-calculator-algo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-memory-calculator-algo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-cpu-calculator-value` | Value used by the CPU limit calculator algorithm. | Any numeric value | `"1"` |
-| `limit-memory-calculator-value` | Value used by the memory limit calculator algorithm. | Any numeric value | `"1"` |
-| `unprovided-apply-default-request-cpu` | Default CPU request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
-| `unprovided-apply-default-request-memory` | Default memory request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
-| `increase-request-cpu-algo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
-| `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
-| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | "" |
-| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | "" |
-| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | "" |
-| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | "" |
-| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | "" |
-| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | "" |
-| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | "" |
-| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | "" |
-| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | "" |
-| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | "" |
-| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | "" |
-| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | "" |
-| `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-request-value` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-cpu-limit-algo` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-limit-value` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-limit-algo` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-limit-value` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
-| `memory-request-from-cpu-enabled` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-limit-from-cpu-enabled` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-request-from-cpu-algo` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-request-from-cpu-value` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
-| `memory-limit-from-cpu-algo` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-limit-from-cpu-value` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
-| `request-apply-target` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-cpu-apply-target` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-memory-apply-target` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `limit-apply-target` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-cpu-apply-target` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-memory-apply-target` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `request-cpu-scale-direction` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `request-memory-scale-direction` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-cpu-scale-direction` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-memory-scale-direction` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
-
-
-### Targeting Specific Containers
-
-To apply configurations to a specific container within a workload, suffix the annotation key with the container name, e.g.:
-
-* **`oblik.socialgouv.io/min-limit-memory.hasura`**: Sets the minimum memory limit for the container named `hasura`.
-
-### Recommendations:
-
-* **Do not specify resource requests and limits in your workload manifest.** Let Oblik handle them based on VPA recommendations and settings as oblik annotation and default settings on operator deployment.
-* The webhook will read the VPA if it exists and apply recommendations to the workload upon deployment.
-
-#### Example
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: example-deployment
-  namespace: default
-  labels:
-    oblik.socialgouv.io/enabled: "true"
-  annotations:
-    oblik.socialgouv.io/min-request-cpu: "100m"
-    oblik.socialgouv.io/min-request-memory: "128Mi"
-spec:
-  # Do not specify resources; let Oblik handle them
-  containers:
-    - name: app-container
-      image: your-image
-```
-
-## Usage
-
-### Minimal Example
-
-Here is a minimal example using commonly used options such as `min-request-cpu` and `min-request-memory`:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: minimal-app
-  namespace: default
-  labels:
-    oblik.socialgouv.io/enabled: "true"
-  annotations:
-    oblik.socialgouv.io/min-request-cpu: "100m"
-    oblik.socialgouv.io/min-request-memory: "128Mi"
-spec:
-  # Do not specify resources; let Oblik handle them
-  containers:
-    - name: app-container
-      image: your-image
-```
-
-### Example: Uncapping Minimum Memory Limit
-
-If your application requires higher memory consumption during pod startup, you might need to uncap the `min-limit-memory` to a value higher than the request.
-
-* **Using Hardcoded Value**:
-    
-    ```yaml
-    oblik.socialgouv.io/min-limit-memory: "512Mi"
-    ```
-    
-* **Using Calculator Algorithm**:
-    
-    ```yaml
-    oblik.socialgouv.io/limit-memory-calculator-algo: "margin"
-    oblik.socialgouv.io/limit-memory-calculator-value: "256Mi"
-    ```
-
-
-### Applying the Workload
-
-Apply your workload manifest as usual:
-
-```sh
-kubectl apply -f your-deployment.yaml
-```
-
-Oblik will automatically create a corresponding VPA object and manage resource recommendations according to the configured cron schedule and annotations.
-
-## Using the CLI
-
-Oblik provides a CLI for manual operations. You can download the binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
-
-### CLI Usage
-
-* **Process all workloads in all namespaces**:
-    
-    ```sh
-    oblik --all
-    ```
-    
-* **Process a specific workload**:
-    
-    ```sh
-    oblik --namespace my-ns --name example-deployment
-    ```
-
-* **Process workloads using selectors**:
-    
-    ```sh
-    oblik --namespace my-ns --selector foo=bar
-    ```
-
-
-* **Force Mode**:
-    
-    Use the `--force` flag to run on workloads that do not have the `oblik.socialgouv.io/enabled: "true"` label.
-    
-    ```sh
-    oblik --namespace my-ns --name example-deployment --force
-    ```
-    
-
-### Downloading the CLI
-
-You can download the latest CLI binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
-
-### Docker Image
-
-The Docker image for the Oblik operator is available and can be used to run the operator in your Kubernetes cluster.
-
-## Environment Variables
-
-The Oblik Kubernetes VPA Operator uses the following environment variables for configuration. These environment variables allow you to set default values and customize the behavior of the operator.
-
-| Environment Variable | Description | Options | Default |
-| --- | --- | --- | --- |
-| `OBLIK_DEFAULT_CRON` | Default cron expression for scheduling when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
-| `OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
-| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO` | Default algorithm to use for calculating CPU limits. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO` | Default algorithm to use for calculating memory limits. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE` | Default value to use with the CPU limit calculator algorithm. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE` | Default value to use with the memory limit calculator algorithm. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU` | Default behavior for CPU requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
-| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY` | Default behavior for memory requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO` | Default algorithm to use for increasing CPU requests. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO` | Default algorithm to use for increasing memory requests. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE` | Default value to use with the algorithm for increasing CPU requests. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE` | Default value to use with the algorithm for increasing memory requests. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_MIN_LIMIT_CPU` | Value used to cap minimum CPU limit. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MAX_LIMIT_CPU` | Value used to cap maximum CPU limit. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MIN_LIMIT_MEMORY` | Value used to cap minimum memory limit. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MAX_LIMIT_MEMORY` | Value used to cap maximum memory limit. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MIN_REQUEST_CPU` | Value used to cap minimum CPU request. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MAX_REQUEST_CPU` | Value used to cap maximum CPU request. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MIN_REQUEST_MEMORY` | Value used to cap minimum memory request. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MAX_REQUEST_MEMORY` | Value used to cap maximum memory request. | Any valid memory value | `""` |
-| `OBLIK_MATTERMOST_WEBHOOK_URL` | Webhook URL for Mattermost notifications. | URL | `""` |
-
 
 ## Running Tests
 
