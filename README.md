@@ -72,7 +72,7 @@ spec:
 * **Mattermost Webhook Notifications**: Notify on resource updates (should also work with Slack but not actually tested).
 * **CLI for Manual Operations**: Provides a command-line interface for manual control.
 
-## Limitations
+## Limitations and overcoming them
 
 ### VPA Recommendations for Certain Workloads
 
