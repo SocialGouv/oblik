@@ -23,7 +23,6 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
   - [CLI Usage](#cli-usage)
   - [Downloading the CLI](#downloading-the-cli)
   - [Docker Image](#docker-image)
-- [Environment Variables](#environment-variables)
 - [Limitations and overcoming them](#limitations-and-overcoming-them)
   - [VPA Recommendations for Certain Workloads](#vpa-recommendations-for-certain-workloads)
     - [Recommended Configurations](#recommended-configurations)
@@ -178,7 +177,7 @@ The operator uses **annotations** on workload objects to configure its behavior.
 | `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
 | `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
 | `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
-| `webhook-enabled` | Enable Mattermost webhook notifications on resource updates. | `"true"`, `"false"` | `"false"` |
+| `webhook-enabled` | Enable mutating webhook resources enforcement. | `"true"`, `"false"` | `"true"` |
 | `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
 | `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
 | `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
@@ -304,33 +303,93 @@ You can download the latest CLI binary from the [GitHub releases](https://github
 
 The Docker image for the Oblik operator is available and can be used to run the operator in your Kubernetes cluster.
 
-## Environment Variables
-
-The Oblik Kubernetes VPA Operator uses the following environment variables for configuration. These environment variables allow you to set default values and customize the behavior of the operator.
-
 | Environment Variable | Description | Options | Default |
 | --- | --- | --- | --- |
 | `OBLIK_DEFAULT_CRON` | Default cron expression for scheduling when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
 | `OBLIK_DEFAULT_CRON_ADD_RANDOM_MAX` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
-| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO` | Default algorithm to use for calculating CPU limits. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO` | Default algorithm to use for calculating memory limits. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE` | Default value to use with the CPU limit calculator algorithm. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE` | Default value to use with the memory limit calculator algorithm. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU` | Default behavior for CPU requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
-| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY` | Default behavior for memory requests if not provided. | `"off"`, `"minAllow"`, `"maxAllow"`, or value | `"off"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO` | Default algorithm to use for increasing CPU requests. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO` | Default algorithm to use for increasing memory requests. | `"ratio"`, `"margin"` | `"ratio"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE` | Default value to use with the algorithm for increasing CPU requests. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE` | Default value to use with the algorithm for increasing memory requests. | Any numeric value | `"1"` |
-| `OBLIK_DEFAULT_MIN_LIMIT_CPU` | Value used to cap minimum CPU limit. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MAX_LIMIT_CPU` | Value used to cap maximum CPU limit. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MIN_LIMIT_MEMORY` | Value used to cap minimum memory limit. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MAX_LIMIT_MEMORY` | Value used to cap maximum memory limit. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MIN_REQUEST_CPU` | Value used to cap minimum CPU request. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MAX_REQUEST_CPU` | Value used to cap maximum CPU request. | Any valid CPU value | `""` |
-| `OBLIK_DEFAULT_MIN_REQUEST_MEMORY` | Value used to cap minimum memory request. | Any valid memory value | `""` |
-| `OBLIK_DEFAULT_MAX_REQUEST_MEMORY` | Value used to cap maximum memory request. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_DRY_RUN` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
+| `OBLIK_DEFAULT_WEBHOOK_ENABLED` | Enable mutating webhook resources enforcement. | `"true"`, `"false"` | `"true"` |
+| `OBLIK_DEFAULT_REQUEST_CPU_APPLY_MODE` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `OBLIK_DEFAULT_REQUEST_MEMORY_APPLY_MODE` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_APPLY_MODE` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_APPLY_MODE` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_ALGO` | Algorithm to use for calculating CPU limits. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_ALGO` | Algorithm to use for calculating memory limits. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_CALCULATOR_VALUE` | Value to use with the CPU limit calculator algorithm. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_CALCULATOR_VALUE` | Value to use with the memory limit calculator algorithm. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_CPU` | Default behavior for CPU requests if not provided. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or value (e.g., `"100m"`) | `"off"` |
+| `OBLIK_DEFAULT_UNPROVIDED_APPLY_DEFAULT_REQUEST_MEMORY` | Default behavior for memory requests if not provided. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or value (e.g., `"128Mi"`) | `"off"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_ALGO` | Algorithm to use for increasing CPU requests. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_CPU_VALUE` | Value to use with the algorithm for increasing CPU requests. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_ALGO` | Algorithm to use for increasing memory requests. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_INCREASE_REQUEST_MEMORY_VALUE` | Value to use with the algorithm for increasing memory requests. | Any numeric value | `"1"` |
+| `OBLIK_DEFAULT_MIN_LIMIT_CPU` | Value used to cap minimum CPU limit. | Any valid CPU value (e.g., `"200m"`) | `""` |
+| `OBLIK_DEFAULT_MAX_LIMIT_CPU` | Value used to cap maximum CPU limit. | Any valid CPU value (e.g., `"4"`) | `""` |
+| `OBLIK_DEFAULT_MIN_LIMIT_MEMORY` | Value used to cap minimum memory limit. | Any valid memory value (e.g., `"200Mi"`) | `""` |
+| `OBLIK_DEFAULT_MAX_LIMIT_MEMORY` | Value used to cap maximum memory limit. | Any valid memory value (e.g., `"8Gi"`) | `""` |
+| `OBLIK_DEFAULT_MIN_REQUEST_CPU` | Value used to cap minimum CPU request. | Any valid CPU value (e.g., `"80m"`) | `""` |
+| `OBLIK_DEFAULT_MAX_REQUEST_CPU` | Value used to cap maximum CPU request. | Any valid CPU value (e.g., `"8"`) | `""` |
+| `OBLIK_DEFAULT_MIN_REQUEST_MEMORY` | Value used to cap minimum memory request. | Any valid memory value (e.g., `"200Mi"`) | `""` |
+| `OBLIK_DEFAULT_MAX_REQUEST_MEMORY` | Value used to cap maximum memory request. | Any valid memory value (e.g., `"20Gi"`) | `""` |
+| `OBLIK_DEFAULT_MIN_ALLOWED_RECOMMENDATION_CPU` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_CPU` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | `""` |
+| `OBLIK_DEFAULT_MIN_ALLOWED_RECOMMENDATION_MEMORY` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_MAX_ALLOWED_RECOMMENDATION_MEMORY` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | `""` |
+| `OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_ALGO` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MIN_DIFF_CPU_REQUEST_VALUE` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
+| `OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_ALGO` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MIN_DIFF_MEMORY_REQUEST_VALUE` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
+| `OBLIK_DEFAULT_MIN_DIFF_CPU_LIMIT_ALGO` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MIN_DIFF_CPU_LIMIT_VALUE` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
+| `OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_ALGO` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MIN_DIFF_MEMORY_LIMIT_VALUE` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
+| `OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ENABLED` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_ENABLED` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
+| `OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_ALGO` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MEMORY_REQUEST_FROM_CPU_VALUE` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
+| `OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_ALGO` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
+| `OBLIK_DEFAULT_MEMORY_LIMIT_FROM_CPU_VALUE` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
+| `OBLIK_DEFAULT_REQUEST_APPLY_TARGET` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `OBLIK_DEFAULT_REQUEST_CPU_APPLY_TARGET` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `OBLIK_DEFAULT_REQUEST_MEMORY_APPLY_TARGET` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `OBLIK_DEFAULT_LIMIT_APPLY_TARGET` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_APPLY_TARGET` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_APPLY_TARGET` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `OBLIK_DEFAULT_REQUEST_CPU_SCALE_DIRECTION` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `OBLIK_DEFAULT_REQUEST_MEMORY_SCALE_DIRECTION` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `OBLIK_DEFAULT_LIMIT_CPU_SCALE_DIRECTION` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `OBLIK_DEFAULT_LIMIT_MEMORY_SCALE_DIRECTION` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
 | `OBLIK_MATTERMOST_WEBHOOK_URL` | Webhook URL for Mattermost notifications. | URL | `""` |
+
+**Notes:**
+
+* **Algorithms:** The options `"ratio"` and `"margin"` refer to how values are calculated:
+    
+    * **`ratio`**: Multiplies the base value by a ratio (e.g., `value = base * ratio`).
+    * **`margin`**: Adds a fixed margin to the base value (e.g., `value = base + margin`).
+* **Scaling Directions:** The scaling direction options control whether resources can be increased, decreased, or both when applying recommendations:
+    
+    * **`both`**: Allows both scaling up and down.
+    * **`up`**: Only allows scaling up (increasing resources).
+    * **`down`**: Only allows scaling down (decreasing resources).
+* **Apply Modes:**
+    
+    * **`enforce`**: Oblik will enforce the recommended values.
+    * **`off`**: Oblik will not apply recommendations for this resource.
+* **Apply Targets:**
+    
+    * **`frugal`**: Use the lower bound of recommendations.
+    * **`balanced`**: Use the middle value of recommendations.
+    * **`peak`**: Use the upper bound of recommendations.
+    * **`auto`**: Oblik will decide the best target based on other settings.
+* **Unprovided Defaults:**
+    
+    * **`off`**: Do not apply a default if the recommendation is missing.
+    * **`minAllowed`/`maxAllowed`**: Use the VPA's `minAllowed` or `maxAllowed` values.
+    * **Specific Value**: Provide a specific value to use as the default.
+
+Feel free to set these environment variables in your operator's deployment manifest to establish cluster-wide defaults. Individual workloads can override these defaults by specifying annotations on their resource definitions.
+
 
 ## Limitations and overcoming them
 
