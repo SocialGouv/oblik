@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/SocialGouv/oblik/pkg/calculator"
@@ -11,7 +12,15 @@ import (
 )
 
 func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
-	key := fmt.Sprintf("%s/%s", configurable.GetNamespace(), configurable.GetName())
+	workloadName := configurable.GetName()
+
+	if strings.HasPrefix(workloadName, VpaPrefix) {
+		workloadName = strings.TrimPrefix(workloadName, VpaPrefix)
+		workloadKind := strings.Split(workloadName, "-")[0]
+		workloadName = strings.TrimPrefix(workloadName, workloadKind+"-")
+	}
+
+	key := fmt.Sprintf("%s/%s", configurable.GetNamespace(), workloadName)
 	cfg := &StrategyConfig{
 		Key: key,
 		LoadCfg: &LoadCfg{

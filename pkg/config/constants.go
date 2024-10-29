@@ -3,6 +3,8 @@ package config
 const defaultCron = "0 2 * * *"
 const defaultCronAddRandomMax = "120m"
 
+const VpaPrefix = "oblik-"
+
 type ApplyMode int
 
 const (

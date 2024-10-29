@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SocialGouv/oblik/pkg/config"
 	"github.com/SocialGouv/oblik/pkg/utils"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +19,7 @@ import (
 )
 
 func GenerateVPAName(kind, name string) string {
-	vpaName := fmt.Sprintf("oblik-%s-%s", strings.ToLower(kind), name)
+	vpaName := fmt.Sprintf("%s%s-%s", config.VpaPrefix, strings.ToLower(kind), name)
 	if len(vpaName) > 63 {
 		hash := sha256.Sum256([]byte(vpaName))
 		truncatedHash := fmt.Sprintf("%x", hash)[:8]

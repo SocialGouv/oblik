@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/SocialGouv/oblik/pkg/client"
+	"github.com/SocialGouv/oblik/pkg/config"
 	ovpa "github.com/SocialGouv/oblik/pkg/vpa"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -27,7 +28,7 @@ func CleanUpVPAs(ctx context.Context, kubeClients *client.KubeClients) {
 	}
 
 	for _, vpa := range vpaList.Items {
-		if strings.HasPrefix(vpa.Name, "oblik-") {
+		if strings.HasPrefix(vpa.Name, config.VpaPrefix) {
 			if err := processVPA(ctx, kubeClients, &vpa); err != nil {
 				klog.Errorf("Error processing VPA %s: %s\n", vpa.Name, err.Error())
 			}

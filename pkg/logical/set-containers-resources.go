@@ -39,7 +39,7 @@ func setContainerCpuRequest(container *corev1.Container, containerRequestRecomme
 	if scfg.GetRequestCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPURequest.Cmp(cpuRequest) == -1 {
 		newCPURequest = cpuRequest
 	}
-	if scfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.String() != cpuRequest.String() {
+	if scfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.Cmp(cpuRequest) != 0 {
 		changes = append(changes, reporting.Change{
 			Old:           cpuRequest,
 			New:           newCPURequest,
@@ -83,7 +83,7 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 	if scfg.GetLimitCpuScaleDirection(containerName) == config.ScaleDirectionUp && newCPULimit.Cmp(cpuLimit) == -1 {
 		newCPULimit = cpuLimit
 	}
-	if scfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.String() != cpuLimit.String() {
+	if scfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.Cmp(cpuLimit) != 0 {
 		changes = append(changes, reporting.Change{
 			Old:           cpuLimit,
 			New:           newCPULimit,
@@ -128,7 +128,7 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 	if scfg.GetRequestMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryRequest.Cmp(memoryRequest) == -1 {
 		newMemoryRequest = memoryRequest
 	}
-	if scfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.String() != memoryRequest.String() {
+	if scfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.Cmp(memoryRequest) != 0 {
 		changes = append(changes, reporting.Change{
 			Old:           memoryRequest,
 			New:           newMemoryRequest,
@@ -175,7 +175,7 @@ func setContainerMemoryLimit(container *corev1.Container, containerRequestRecomm
 	if scfg.GetLimitMemoryScaleDirection(containerName) == config.ScaleDirectionUp && newMemoryLimit.Cmp(memoryLimit) == -1 {
 		newMemoryLimit = memoryLimit
 	}
-	if scfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.String() != memoryLimit.String() {
+	if scfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.Cmp(memoryLimit) != 0 {
 		changes = append(changes, reporting.Change{
 			Old:           memoryLimit,
 			New:           newMemoryLimit,
