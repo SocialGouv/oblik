@@ -2,8 +2,37 @@
 ## [Unreleased]
 
 
+<a name="v0.2.3"></a>
+## [v0.2.3] - 2024-10-29
+### Docs
+- fix readme
+- rewrite and complete ([#24](https://github.com/SocialGouv/oblik/issues/24))
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+- wip
+
+### Fix
+- improve cmp + msg + constant
+
+
 <a name="v0.2.2"></a>
 ## [v0.2.2] - 2024-10-17
+### Chore
+- **release:** v0.2.2
+
 ### Fix
 - probes
 
@@ -390,7 +419,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.3...HEAD
+[v0.2.3]: https://github.com/SocialGouv/oblik/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/SocialGouv/oblik/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/SocialGouv/oblik/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/SocialGouv/oblik/compare/v0.1.15...v0.2.0
