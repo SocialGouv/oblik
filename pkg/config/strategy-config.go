@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
+func GetKey(configurable *Configurable) string {
 	workloadName := configurable.GetName()
 
 	if strings.HasPrefix(workloadName, VpaPrefix) {
@@ -21,6 +21,14 @@ func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
 	}
 
 	key := fmt.Sprintf("%s/%s", configurable.GetNamespace(), workloadName)
+
+	return key
+}
+
+func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
+
+	key := GetKey(configurable)
+
 	cfg := &StrategyConfig{
 		Key: key,
 		LoadCfg: &LoadCfg{

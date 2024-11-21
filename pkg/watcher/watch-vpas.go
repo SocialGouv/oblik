@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -55,7 +54,10 @@ func WatchVPAs(ctx context.Context, kubeClients *client.KubeClients) {
 					klog.Error("Could not cast to VPA object")
 					return
 				}
-				key := fmt.Sprintf("%s/%s", vpa.Namespace, vpa.Name)
+
+				configurable := config.CreateConfigurable(vpa)
+				key := config.GetKey(configurable)
+
 				if entryID, exists := cronJobs[key]; exists {
 					CronScheduler.Remove(entryID)
 				}
