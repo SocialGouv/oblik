@@ -2,8 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.2.4"></a>
+## [v0.2.4] - 2024-11-21
+### Fix
+- **unregister cron:** key generation typo while previous refacto
+
+
 <a name="v0.2.3"></a>
 ## [v0.2.3] - 2024-10-29
+### Chore
+- **release:** v0.2.3
+
 ### Docs
 - fix readme
 - rewrite and complete ([#24](https://github.com/SocialGouv/oblik/issues/24))
@@ -419,7 +428,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.4...HEAD
+[v0.2.4]: https://github.com/SocialGouv/oblik/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/SocialGouv/oblik/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/SocialGouv/oblik/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/SocialGouv/oblik/compare/v0.2.0...v0.2.1
