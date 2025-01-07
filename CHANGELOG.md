@@ -2,8 +2,31 @@
 ## [Unreleased]
 
 
+<a name="v0.2.5"></a>
+## [v0.2.5] - 2025-01-07
+### Chore
+- clean
+- wip
+- wip
+
+### Doc
+- fix logging
+
+### Fix
+- getLabels issue
+- logging
+- add more logging for debug
+- ci
+- ci
+- **ci-cd:** use token-bureau ([#25](https://github.com/SocialGouv/oblik/issues/25))
+- **ci-cd:** use token-bureau
+
+
 <a name="v0.2.4"></a>
 ## [v0.2.4] - 2024-11-21
+### Chore
+- **release:** v0.2.4
+
 ### Fix
 - **unregister cron:** key generation typo while previous refacto
 
@@ -428,7 +451,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.5...HEAD
+[v0.2.5]: https://github.com/SocialGouv/oblik/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/SocialGouv/oblik/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/SocialGouv/oblik/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/SocialGouv/oblik/compare/v0.2.1...v0.2.2
