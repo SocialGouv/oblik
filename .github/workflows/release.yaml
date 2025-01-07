@@ -22,7 +22,7 @@ jobs:
         id: token
         uses: SocialGouv/token-bureau@main
         with:
-          token-bureau-url: http://token-bureau.fabrique.social.gouv.fr
+          token-bureau-url: https://token-bureau.fabrique.social.gouv.fr
           audience: socialgouv
 
       - name: Checkout code
