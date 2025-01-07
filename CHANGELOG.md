@@ -2,12 +2,20 @@
 ## [Unreleased]
 
 
+<a name="v0.2.6"></a>
+## [v0.2.6] - 2025-01-07
+### Fix
+- klog warning
+- klog warning
+
+
 <a name="v0.2.5"></a>
 ## [v0.2.5] - 2025-01-07
 ### Chore
 - clean
 - wip
 - wip
+- **release:** v0.2.5
 
 ### Doc
 - fix logging
@@ -451,7 +459,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.6...HEAD
+[v0.2.6]: https://github.com/SocialGouv/oblik/compare/v0.2.5...v0.2.6
 [v0.2.5]: https://github.com/SocialGouv/oblik/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/SocialGouv/oblik/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/SocialGouv/oblik/compare/v0.2.2...v0.2.3
