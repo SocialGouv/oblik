@@ -1,6 +1,8 @@
 name: 🐙 Github Release
 
-on: push
+on:
+  push:
+  workflow_dispatch:
 
 permissions:
   id-token: write  # Required for OIDC token generation
