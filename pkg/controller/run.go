@@ -8,9 +8,14 @@ import (
 	"k8s.io/klog/v2"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func Run(leaderElect bool, ctx context.Context) {
+	// Set up controller-runtime logger
+	log.SetLogger(zap.New())
+
 	kubeClients := client.NewKubeClients()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
