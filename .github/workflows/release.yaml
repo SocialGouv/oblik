@@ -11,17 +11,25 @@ concurrency:
 
 permissions:
   contents: write
+  id-token: write  # Required for OIDC token generation
 
 jobs:
   tag-and-changelog:
     if:  github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
+      - name: Get GitHub App Token
+        id: token
+        uses: SocialGouv/token-bureau@main
+        with:
+          token-bureau-url: http://token-bureau.fabrique.social.gouv.fr
+          audience: socialgouv
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.SOCIALGROOVYBOT_BOTO_PAT }}
+          token: ${{ steps.token.outputs.token }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
