@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 
@@ -40,6 +41,14 @@ func NewCommand() *cobra.Command {
 			}
 		},
 	}
+
+	// Create a new flagset for klog
+	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(klogFlags)
+
+	// Add all klog flags to cobra command
+	Command.PersistentFlags().AddGoFlagSet(klogFlags)
+
 	flags := Command.PersistentFlags()
 	flags.StringVarP(&selector, "selector", "l", "", "Label selector for filtering VPAs")
 	flags.StringVarP(&name, "name", "", "", "Name of the VPA")

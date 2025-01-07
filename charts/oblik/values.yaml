@@ -13,10 +13,8 @@ webhook:
 args: []
 # Example:
 # args:
-#   - "-v"     # Verbosity flag
-#   - "2"      # Debug logging level
-#   - "-v"     # Or for more verbose logging:
-#   - "3"      # Verbose debug logging level
+#   - "-v"  # Verbosity level (0-4)
+#   - "2"   # 0=info, 2=debug, 3=verbose debug
 
 env: {}
 
