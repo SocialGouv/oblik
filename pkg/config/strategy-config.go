@@ -41,8 +41,10 @@ func CreateStrategyConfig(configurable *Configurable) *StrategyConfig {
 	getAnnotation := func(key string) string {
 		return getAnnotationFromMap(key, annotations)
 	}
+
+	labels := getLabels(configurable)
 	getLabel := func(key string) string {
-		return getLabelFromMap(key, annotations)
+		return getLabelFromMap(key, labels)
 	}
 
 	cronExpr := getAnnotation("cron")
