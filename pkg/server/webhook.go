@@ -36,6 +36,8 @@ var (
 var operatorUsername string
 
 func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClients *client.KubeClients) {
+	klog.V(2).Infof("Received mutation request: Method=%s, URL=%s", request.Method, request.URL)
+
 	var admissionReview admissionv1.AdmissionReview
 
 	// Read the request body
@@ -61,10 +63,14 @@ func MutateHandler(writer http.ResponseWriter, request *http.Request, kubeClient
 		return
 	}
 
+	klog.V(2).Infof("Processing admission request for: Namespace=%s, Name=%s, Operation=%s",
+		admissionReview.Request.Namespace,
+		admissionReview.Request.Name,
+		admissionReview.Request.Operation)
+
 	// Check if the request comes from the operator's service account
 	if admissionReview.Request.UserInfo.Username == operatorUsername {
-		// Skip mutation as update is requested by operator
-		// klog.Infof("Skipping mutation for request from operator service account: %s", operatorUsername)
+		klog.V(2).Infof("Skipping mutation for request from operator service account: %s", operatorUsername)
 		allowRequest(writer, admissionReview.Request.UID)
 		return
 	}
@@ -87,6 +93,11 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		return fmt.Errorf("Could not unmarshal object: %v", err)
 	}
 
+	klog.V(2).Infof("Processing object: Kind=%s, Name=%s, Namespace=%s",
+		obj.GetKind(),
+		obj.GetName(),
+		obj.GetNamespace())
+
 	var configurable *config.Configurable
 	var containers []corev1.Container
 	// Determine the kind of the object and convert it to the respective type
@@ -96,6 +107,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, deployment); err != nil {
 			return fmt.Errorf("Could not convert to Deployment: %v", err)
 		}
+		klog.V(2).Infof("Processing Deployment: %s, Replicas=%d", deployment.Name, *deployment.Spec.Replicas)
 		configurable = config.CreateConfigurable(deployment)
 		containers = deployment.Spec.Template.Spec.Containers
 	case "StatefulSet":
@@ -103,6 +115,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, statefulSet); err != nil {
 			return fmt.Errorf("Could not convert to StatefulSet: %v", err)
 		}
+		klog.V(2).Infof("Processing StatefulSet: %s, Replicas=%d", statefulSet.Name, *statefulSet.Spec.Replicas)
 		configurable = config.CreateConfigurable(statefulSet)
 		containers = statefulSet.Spec.Template.Spec.Containers
 	case "DaemonSet":
@@ -110,6 +123,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, daemonSet); err != nil {
 			return fmt.Errorf("Could not convert to DaemonSet: %v", err)
 		}
+		klog.V(2).Infof("Processing DaemonSet: %s", daemonSet.Name)
 		configurable = config.CreateConfigurable(daemonSet)
 		containers = daemonSet.Spec.Template.Spec.Containers
 	case "CronJob":
@@ -117,6 +131,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, cronJob); err != nil {
 			return fmt.Errorf("Could not convert to CronJob: %v", err)
 		}
+		klog.V(2).Infof("Processing CronJob: %s, Schedule=%s", cronJob.Name, cronJob.Spec.Schedule)
 		configurable = config.CreateConfigurable(cronJob)
 		containers = cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers
 	case "Cluster":
@@ -128,6 +143,7 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		if err != nil {
 			return fmt.Errorf("Could not decode to Cluster: %v", err)
 		}
+		klog.V(2).Infof("Processing CNPG Cluster: %s", cnpgCluster.Name)
 		configurable = config.CreateConfigurable(cnpgCluster)
 		containers = []corev1.Container{
 			{
@@ -141,15 +157,21 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 
 	scfg := config.CreateStrategyConfig(configurable)
 	if !scfg.WebhookEnabled || !scfg.Enabled {
+		klog.V(2).Infof("Skipping mutation: WebhookEnabled=%v, Enabled=%v", scfg.WebhookEnabled, scfg.Enabled)
 		allowRequest(writer, admissionReview.Request.UID)
 		return nil
 	}
 
 	vpaResource := getVPAResource(obj, kubeClients)
+	klog.V(2).Infof("VPA resource found: %v", vpaResource != nil)
+
 	var requestRecommendations, limitRecommendations []logical.TargetRecommendation
 	if vpaResource != nil {
 		requestRecommendations = logical.GetRequestTargetRecommendations(vpaResource, scfg)
 		limitRecommendations = logical.GetLimitTargetRecommendations(vpaResource, scfg)
+		klog.V(2).Infof("Got recommendations - Requests: %d, Limits: %d",
+			len(requestRecommendations),
+			len(limitRecommendations))
 	} else {
 		requestRecommendations = []logical.TargetRecommendation{}
 		limitRecommendations = []logical.TargetRecommendation{}
@@ -157,7 +179,12 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 
 	requestRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, requestRecommendations, scfg, nil)
 	limitRecommendations = logical.SetUnprovidedDefaultRecommendations(containers, limitRecommendations, scfg, nil)
+	klog.V(2).Infof("Final recommendations after defaults - Requests: %d, Limits: %d",
+		len(requestRecommendations),
+		len(limitRecommendations))
+
 	logical.ApplyRecommendationsToContainers(containers, requestRecommendations, limitRecommendations, scfg)
+	klog.V(2).Info("Applied recommendations to containers")
 
 	switch obj.GetKind() {
 	case "Deployment":
@@ -208,13 +235,13 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		return fmt.Errorf("Could not create JSON patch: %v", err)
 	}
 
-	// Log the created patch for debugging
-	klog.Infof("Created patch: %s", string(patch))
+	klog.V(2).Infof("Created JSON patch of length: %d bytes", len(patch))
+	klog.V(3).Infof("Patch content: %s", string(patch))
 
 	admissionResponse := &admissionv1.AdmissionResponse{
 		UID:     admissionRequest.UID,
 		Allowed: true,
-		Patch:   patch, // Directly pass the raw JSON patch
+		Patch:   patch,
 		PatchType: func() *admissionv1.PatchType {
 			pt := admissionv1.PatchTypeJSONPatch
 			return &pt
@@ -236,10 +263,13 @@ func MutateExec(writer http.ResponseWriter, request *http.Request, admissionRevi
 		return fmt.Errorf("Could not write response: %v", err)
 	}
 
+	klog.V(2).Infof("Successfully processed mutation request for %s/%s", obj.GetNamespace(), obj.GetName())
 	return nil
 }
 
 func allowRequest(writer http.ResponseWriter, uid types.UID) {
+	klog.V(2).Infof("Allowing request without mutation: UID=%s", uid)
+
 	admissionResponse := &admissionv1.AdmissionResponse{
 		UID:     uid,
 		Allowed: true,

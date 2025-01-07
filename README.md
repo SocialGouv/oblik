@@ -15,6 +15,7 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
   - [Deploying Oblik with ArgoCD](#deploying-oblik-with-argocd)
 - [Requirements](#requirements)
 - [Configuration](#configuration)
+  - [Logging Levels](#logging-levels)
   - [Annotations](#annotations)
   - [Targeting Specific Containers](#targeting-specific-containers)
   - [Recommendations:](#recommendations)
@@ -164,11 +165,38 @@ spec:
 
 ## Configuration
 
-To enable Oblik on a workload, you need to add a **label** to your workload object (e.g., Deployment, StatefulSet):
+### Logging Levels
 
-* **`oblik.socialgouv.io/enabled`**: `"true"` or `"false"`. Defaults to `"false"`. Set to `"true"` to enable Oblik on the workload.
+Oblik uses klog for logging and supports different verbosity levels that can be enabled when running the operator:
 
-The operator uses **annotations** on workload objects to configure its behavior. All annotations should be prefixed with `oblik.socialgouv.io/`.
+* **Level 2 (-v=2)**: Debug level logging
+  - Request processing details
+  - Object processing information
+  - VPA resource detection
+  - Recommendations processing
+  - Resource updates
+
+* **Level 3 (-v=3)**: More verbose debug logging
+  - Detailed patch content
+  - Full JSON payloads
+  - Detailed internal processing information
+
+To enable debug logging, set the appropriate verbosity level when running the operator:
+
+```shell
+# Enable standard debug logging
+helm upgrade --install oblik . --namespace oblik --set args[0]="-v=2"
+
+# Enable verbose debug logging
+helm upgrade --install oblik . --namespace oblik --set args[0]="-v=3"
+```
+
+You can also set the verbosity level in your Helm values.yaml:
+
+```yaml
+args:
+  - "-v=2"  # For debug logging
+```
 
 ### Annotations
 
