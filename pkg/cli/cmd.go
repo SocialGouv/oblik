@@ -31,6 +31,11 @@ func NewCommand() *cobra.Command {
 	var Command = &cobra.Command{
 		Use:   "oblik",
 		Short: "Oblik CLI",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// Ensure klog is properly initialized before any command runs
+			klog.LogToStderr(true)
+			klog.SetOutput(os.Stderr)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if showVersion {
 				fmt.Printf("Oblik version: %s\n", Version)
