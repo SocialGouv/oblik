@@ -2,7 +2,6 @@ name: 🐙 Github Release
 
 on:
   push:
-  workflow_dispatch:
 
 permissions:
   id-token: write  # Required for OIDC token generation
@@ -10,9 +9,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ACTIONS_STEP_DEBUG: true
-      ACTIONS_RUNNER_DEBUG: true
     steps:
       - name: Get GitHub App Token
         id: token
