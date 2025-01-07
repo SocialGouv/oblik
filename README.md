@@ -169,22 +169,16 @@ spec:
 
 Oblik uses klog for logging and supports different verbosity levels that can be enabled when running the operator:
 
-* **Level 2 (-v=2)**: Debug level logging
-  - Request processing details
-  - Object processing information
-  - VPA resource detection
-  - Recommendations processing
-  - Resource updates
+* **Level 0**: Info level logging (default)
 
-* **Level 3 (-v=3)**: More verbose debug logging
-  - Detailed patch content
-  - Full JSON payloads
-  - Detailed internal processing information
+* **Level 2**: Debug level logging
+
+* **Level 3**: More verbose debug logging
 
 To enable debug logging, set the appropriate verbosity level when running the operator:
 
 ```shell
-# Enable standard debug logging
+# Enable debug logging
 helm upgrade --install oblik . --namespace oblik --set args[0]="-v=2"
 
 # Enable verbose debug logging

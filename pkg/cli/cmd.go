@@ -46,7 +46,7 @@ func NewCommand() *cobra.Command {
 	flags.StringVarP(&namespace, "namespace", "n", "", "Namespace containing VPAs")
 	flags.BoolVarP(&all, "all", "a", false, "Process all namespaces")
 	flags.BoolVarP(&force, "force", "f", false, "Force to run on not enabled")
-	flags.BoolVarP(&showVersion, "version", "v", false, "Show version")
+	flags.BoolVar(&showVersion, "version", false, "Show version")
 	return Command
 }
 
