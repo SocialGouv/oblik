@@ -179,10 +179,10 @@ To enable debug logging, set the appropriate verbosity level when running the op
 
 ```shell
 # Enable debug logging
-helm upgrade --install oblik . --namespace oblik --set args[0]="-v=2"
+helm upgrade --install oblik . --namespace oblik --set args[0]="-v" --set args[1]="2"
 
 # Enable verbose debug logging
-helm upgrade --install oblik . --namespace oblik --set args[0]="-v=3"
+helm upgrade --install oblik . --namespace oblik --set args[0]="-v" --set args[1]="3"
 ```
 
 You can also set the verbosity level in your Helm values.yaml:
