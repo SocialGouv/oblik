@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/SocialGouv/oblik/pkg/client"
+	"github.com/SocialGouv/oblik/pkg/constants"
 	ovpa "github.com/SocialGouv/oblik/pkg/vpa"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -31,7 +32,7 @@ func WatchWorkloads(ctx context.Context, kubeClients *client.KubeClients) {
 	vpaClientset := kubeClients.VpaClientset
 	config := kubeClients.RestConfig
 
-	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
+	labelSelector := labels.SelectorFromSet(labels.Set{constants.PREFIX + "enabled": "true"})
 
 	deploymentWatcher := createWatcher(ctx, clientset, dynamicClient, vpaClientset,
 		cache.NewFilteredListWatchFromClient(clientset.AppsV1().RESTClient(), "deployments", corev1.NamespaceAll, func(options *metav1.ListOptions) {

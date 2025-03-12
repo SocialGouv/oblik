@@ -10,10 +10,11 @@ import (
 )
 
 type KubeClients struct {
-	Clientset     *kubernetes.Clientset
-	DynamicClient *dynamic.DynamicClient
-	VpaClientset  *vpaclientset.Clientset
-	RestConfig    *rest.Config
+	Clientset                *kubernetes.Clientset
+	DynamicClient            *dynamic.DynamicClient
+	VpaClientset             *vpaclientset.Clientset
+	ResourcesConfigClientset *ResourcesConfigClientset
+	RestConfig               *rest.Config
 }
 
 func NewKubeClients() *KubeClients {
@@ -38,11 +39,19 @@ func NewKubeClients() *KubeClients {
 		klog.Fatalf("Error creating VPA client: %s", err.Error())
 	}
 
+	// Initialize ResourcesConfig client
+	AddToScheme()
+	resourcesConfigClientset, err := NewResourcesConfigClientset(conf)
+	if err != nil {
+		klog.Fatalf("Error creating ResourcesConfig client: %s", err.Error())
+	}
+
 	kubeClients := &KubeClients{
-		Clientset:     clientset,
-		DynamicClient: dynamicClient,
-		VpaClientset:  vpaClientset,
-		RestConfig:    conf,
+		Clientset:                clientset,
+		DynamicClient:            dynamicClient,
+		VpaClientset:             vpaClientset,
+		ResourcesConfigClientset: resourcesConfigClientset,
+		RestConfig:               conf,
 	}
 
 	return kubeClients

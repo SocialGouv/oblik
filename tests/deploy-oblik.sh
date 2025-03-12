@@ -8,9 +8,6 @@ docker push localhost:5001/oblik:test
 
 
 # deploy
-
-export KUBECONFIG="${HOME}/.kube/config"
-
 export OBLIK_TEST_DISABLE_HA=${OBLIK_TEST_DISABLE_HA:-""}
 if [ -n "$OBLIK_TEST_DISABLE_HA" ]; then
   REPLICAS=1
