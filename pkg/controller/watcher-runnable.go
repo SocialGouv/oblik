@@ -27,6 +27,10 @@ func (w *watcherRunnable) Start(ctx context.Context) error {
 		watcher.WatchVPAs(ctx, w.KubeClients)
 	}()
 
+	go func() {
+		watcher.WatchResourcesConfigs(ctx, w.KubeClients)
+	}()
+
 	<-ctx.Done()
 	return nil
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"strings"
 
+	"github.com/SocialGouv/oblik/pkg/constants"
 	cnpg "github.com/cloudnative-pg/cloudnative-pg/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -47,7 +48,7 @@ func GetObjectMetadata(obj interface{}) (metav1.Object, string, string) {
 func GetOblikAnnotations(annotations map[string]string) map[string]string {
 	oblikAnnotations := make(map[string]string)
 	for k, v := range annotations {
-		if strings.HasPrefix(k, "oblik.socialgouv.io/") {
+		if strings.HasPrefix(k, constants.PREFIX) {
 			oblikAnnotations[k] = v
 		}
 	}

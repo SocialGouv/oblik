@@ -1,0 +1,358 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: resourcesconfigs.oblik.socialgouv.io
+spec:
+  group: oblik.socialgouv.io
+  names:
+    kind: ResourcesConfig
+    listKind: ResourcesConfigList
+    plural: resourcesconfigs
+    singular: resourcesconfig
+    shortNames:
+      - rc
+      - rconfig
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - jsonPath: .spec.targetRef.kind
+          name: Target Kind
+          type: string
+        - jsonPath: .spec.targetRef.name
+          name: Target Name
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      schema:
+        openAPIV3Schema:
+          description: ResourcesConfig is the Schema for the resourcesconfigs API
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object.'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents.'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: ResourcesConfigSpec defines the desired state of ResourcesConfig
+              type: object
+              required:
+                - targetRef
+              properties:
+                targetRef:
+                  description: TargetRef points to the controller managing the set of pods
+                  type: object
+                  required:
+                    - kind
+                    - name
+                  properties:
+                    apiVersion:
+                      description: API version of the referent
+                      type: string
+                    kind:
+                      description: Kind of the referent
+                      type: string
+                      enum: ["Deployment", "StatefulSet", "DaemonSet", "CronJob", "Cluster"]
+                    name:
+                      description: Name of the referent
+                      type: string
+                annotationMode:
+                  description: 'Controls how annotations are managed: "replace" (default) or "merge"'
+                  type: string
+                  enum: ["replace", "merge"]
+                cron:
+                  description: Cron expression to schedule when the recommendations are applied
+                  type: string
+                cronAddRandomMax:
+                  description: Maximum random delay added to the cron schedule
+                  type: string
+                dryRun:
+                  description: If true, Oblik will simulate the updates without applying them
+                  type: boolean
+                webhookEnabled:
+                  description: Enable mutating webhook resources enforcement
+                  type: boolean
+                requestCpuApplyMode:
+                  description: 'CPU request recommendation mode: "enforce" or "off"'
+                  type: string
+                  enum: ["enforce", "off"]
+                requestMemoryApplyMode:
+                  description: 'Memory request recommendation mode: "enforce" or "off"'
+                  type: string
+                  enum: ["enforce", "off"]
+                limitCpuApplyMode:
+                  description: 'CPU limit apply mode: "enforce" or "off"'
+                  type: string
+                  enum: ["enforce", "off"]
+                limitMemoryApplyMode:
+                  description: 'Memory limit apply mode: "enforce" or "off"'
+                  type: string
+                  enum: ["enforce", "off"]
+                limitCpuCalculatorAlgo:
+                  description: 'CPU limit calculator algorithm: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                limitMemoryCalculatorAlgo:
+                  description: 'Memory limit calculator algorithm: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                limitCpuCalculatorValue:
+                  description: Value used by the CPU limit calculator algorithm
+                  type: string
+                limitMemoryCalculatorValue:
+                  description: Value used by the memory limit calculator algorithm
+                  type: string
+                unprovidedApplyDefaultRequestCpu:
+                  description: 'Default CPU request if not provided by the VPA: "off", "minAllowed", "maxAllowed", or value'
+                  type: string
+                unprovidedApplyDefaultRequestMemory:
+                  description: 'Default memory request if not provided by the VPA: "off", "minAllowed", "maxAllowed", or value'
+                  type: string
+                increaseRequestCpuAlgo:
+                  description: 'Algorithm to increase CPU request: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                increaseRequestCpuValue:
+                  description: Value used to increase CPU request
+                  type: string
+                increaseRequestMemoryAlgo:
+                  description: 'Algorithm to increase memory request: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                increaseRequestMemoryValue:
+                  description: Value used to increase memory request
+                  type: string
+                minLimitCpu:
+                  description: Minimum CPU limit value
+                  type: string
+                maxLimitCpu:
+                  description: Maximum CPU limit value
+                  type: string
+                minLimitMemory:
+                  description: Minimum memory limit value
+                  type: string
+                maxLimitMemory:
+                  description: Maximum memory limit value
+                  type: string
+                minRequestCpu:
+                  description: Minimum CPU request value
+                  type: string
+                maxRequestCpu:
+                  description: Maximum CPU request value
+                  type: string
+                minRequestMemory:
+                  description: Minimum memory request value
+                  type: string
+                maxRequestMemory:
+                  description: Maximum memory request value
+                  type: string
+                minAllowedRecommendationCpu:
+                  description: Minimum allowed CPU recommendation value
+                  type: string
+                maxAllowedRecommendationCpu:
+                  description: Maximum allowed CPU recommendation value
+                  type: string
+                minAllowedRecommendationMemory:
+                  description: Minimum allowed memory recommendation value
+                  type: string
+                maxAllowedRecommendationMemory:
+                  description: Maximum allowed memory recommendation value
+                  type: string
+                minDiffCpuRequestAlgo:
+                  description: 'Algorithm to calculate minimum CPU request difference: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                minDiffCpuRequestValue:
+                  description: Value used for minimum CPU request difference calculation
+                  type: string
+                minDiffMemoryRequestAlgo:
+                  description: 'Algorithm to calculate minimum memory request difference: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                minDiffMemoryRequestValue:
+                  description: Value used for minimum memory request difference calculation
+                  type: string
+                minDiffCpuLimitAlgo:
+                  description: 'Algorithm to calculate minimum CPU limit difference: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                minDiffCpuLimitValue:
+                  description: Value used for minimum CPU limit difference calculation
+                  type: string
+                minDiffMemoryLimitAlgo:
+                  description: 'Algorithm to calculate minimum memory limit difference: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                minDiffMemoryLimitValue:
+                  description: Value used for minimum memory limit difference calculation
+                  type: string
+                memoryRequestFromCpuEnabled:
+                  description: Calculate memory request from CPU request instead of recommendation
+                  type: boolean
+                memoryLimitFromCpuEnabled:
+                  description: Calculate memory limit from CPU limit instead of recommendation
+                  type: boolean
+                memoryRequestFromCpuAlgo:
+                  description: 'Algorithm to calculate memory request based on CPU request: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                memoryRequestFromCpuValue:
+                  description: Value used for calculating memory request from CPU request
+                  type: string
+                memoryLimitFromCpuAlgo:
+                  description: 'Algorithm to calculate memory limit based on CPU limit: "ratio" or "margin"'
+                  type: string
+                  enum: ["ratio", "margin"]
+                memoryLimitFromCpuValue:
+                  description: Value used for calculating memory limit from CPU limit
+                  type: string
+                requestApplyTarget:
+                  description: 'Select which recommendation to apply by default on request: "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["frugal", "balanced", "peak"]
+                requestCpuApplyTarget:
+                  description: 'Select which recommendation to apply for CPU request: "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["frugal", "balanced", "peak"]
+                requestMemoryApplyTarget:
+                  description: 'Select which recommendation to apply for memory request: "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["frugal", "balanced", "peak"]
+                limitApplyTarget:
+                  description: 'Select which recommendation to apply by default on limit: "auto", "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["auto", "frugal", "balanced", "peak"]
+                limitCpuApplyTarget:
+                  description: 'Select which recommendation to apply for CPU limit: "auto", "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["auto", "frugal", "balanced", "peak"]
+                limitMemoryApplyTarget:
+                  description: 'Select which recommendation to apply for memory limit: "auto", "frugal", "balanced", "peak"'
+                  type: string
+                  enum: ["auto", "frugal", "balanced", "peak"]
+                requestCpuScaleDirection:
+                  description: 'Allowed scaling direction for CPU request: "both", "up", "down"'
+                  type: string
+                  enum: ["both", "up", "down"]
+                requestMemoryScaleDirection:
+                  description: 'Allowed scaling direction for memory request: "both", "up", "down"'
+                  type: string
+                  enum: ["both", "up", "down"]
+                limitCpuScaleDirection:
+                  description: 'Allowed scaling direction for CPU limit: "both", "up", "down"'
+                  type: string
+                  enum: ["both", "up", "down"]
+                limitMemoryScaleDirection:
+                  description: 'Allowed scaling direction for memory limit: "both", "up", "down"'
+                  type: string
+                  enum: ["both", "up", "down"]
+                containerConfigs:
+                  description: Container specific configurations
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      minLimitCpu:
+                        description: Minimum CPU limit value
+                        type: string
+                      maxLimitCpu:
+                        description: Maximum CPU limit value
+                        type: string
+                      minLimitMemory:
+                        description: Minimum memory limit value
+                        type: string
+                      maxLimitMemory:
+                        description: Maximum memory limit value
+                        type: string
+                      minRequestCpu:
+                        description: Minimum CPU request value
+                        type: string
+                      maxRequestCpu:
+                        description: Maximum CPU request value
+                        type: string
+                      minRequestMemory:
+                        description: Minimum memory request value
+                        type: string
+                      maxRequestMemory:
+                        description: Maximum memory request value
+                        type: string
+                      minAllowedRecommendationCpu:
+                        description: Minimum allowed CPU recommendation value
+                        type: string
+                      maxAllowedRecommendationCpu:
+                        description: Maximum allowed CPU recommendation value
+                        type: string
+                      minAllowedRecommendationMemory:
+                        description: Minimum allowed memory recommendation value
+                        type: string
+                      maxAllowedRecommendationMemory:
+                        description: Maximum allowed memory recommendation value
+                        type: string
+            status:
+              description: ResourcesConfigStatus defines the observed state of ResourcesConfig
+              type: object
+              properties:
+                observedGeneration:
+                  description: The most recent generation observed by the controller
+                  type: integer
+                  format: int64
+                lastUpdateTime:
+                  description: The last time the object was updated
+                  type: string
+                  format: date-time
+                lastSyncTime:
+                  description: The last time the object was successfully synced with the target resource
+                  type: string
+                  format: date-time
+                conditions:
+                  description: Conditions represent the latest available observations of an object's state
+                  type: array
+                  items:
+                    description: "Condition contains details for one aspect of the current state of this API Resource."
+                    type: object
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the last time the condition transitioned from one status to another.
+                        type: string
+                        format: date-time
+                      message:
+                        description: message is a human readable message indicating details about the transition.
+                        type: string
+                        maxLength: 32768
+                      observedGeneration:
+                        description: observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        type: integer
+                        format: int64
+                        minimum: 0
+                      reason:
+                        description: reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        type: string
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        type: string
+                        enum: ["True", "False", "Unknown"]
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        type: string
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+      subresources:
+        status: {}

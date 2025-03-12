@@ -8,6 +8,7 @@ import (
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/constants"
 	"github.com/SocialGouv/oblik/pkg/target"
 	cron "github.com/robfig/cron/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +27,7 @@ var (
 func WatchVPAs(ctx context.Context, kubeClients *client.KubeClients) {
 	vpaClientset := kubeClients.VpaClientset
 
-	labelSelector := labels.SelectorFromSet(labels.Set{"oblik.socialgouv.io/enabled": "true"})
+	labelSelector := labels.SelectorFromSet(labels.Set{constants.PREFIX + "enabled": "true"})
 	watchlist := cache.NewFilteredListWatchFromClient(
 		vpaClientset.AutoscalingV1().RESTClient(),
 		"verticalpodautoscalers",

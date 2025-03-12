@@ -1,9 +1,9 @@
 package config
 
-const PREFIX = "oblik.socialgouv.io/"
+import "github.com/SocialGouv/oblik/pkg/constants"
 
 func getAnnotationFromMap(name string, annotations map[string]string) string {
-	return annotations[PREFIX+name]
+	return annotations[constants.PREFIX+name]
 }
 
 func getAnnotations(Annotable Annotable) map[string]string {
@@ -23,5 +23,5 @@ func getLabels(Annotable Annotable) map[string]string {
 }
 
 func getLabelFromMap(name string, labels map[string]string) string {
-	return labels[PREFIX+name]
+	return labels[constants.PREFIX+name]
 }

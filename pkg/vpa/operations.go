@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/SocialGouv/oblik/pkg/config"
+	"github.com/SocialGouv/oblik/pkg/constants"
 	"github.com/SocialGouv/oblik/pkg/utils"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +59,7 @@ func AddVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicClien
 			Namespace:   namespace,
 			Annotations: annotations,
 			Labels: map[string]string{
-				"oblik.socialgouv.io/enabled": "true",
+				constants.PREFIX + "enabled": "true",
 			},
 		},
 		Spec: vpa.VerticalPodAutoscalerSpec{
@@ -106,7 +107,7 @@ func UpdateVPA(clientset *kubernetes.Clientset, dynamicClient *dynamic.DynamicCl
 	}
 
 	vpa.ObjectMeta.Annotations = annotations
-	vpa.ObjectMeta.Labels["oblik.socialgouv.io/enabled"] = "true"
+	vpa.ObjectMeta.Labels[constants.PREFIX+"enabled"] = "true"
 
 	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Update(context.TODO(), vpa, metav1.UpdateOptions{})
 	if err != nil {

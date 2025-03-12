@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/SocialGouv/oblik/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +63,7 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        appName,
 			Namespace:   oblikE2eTestNamespace,
-			Labels:      map[string]string{"app": appName, "oblik.socialgouv.io/enabled": "true"},
+			Labels:      map[string]string{"app": appName, constants.PREFIX + "enabled": "true"},
 			Annotations: otc.annotations,
 		},
 		Spec: appsv1.DeploymentSpec{

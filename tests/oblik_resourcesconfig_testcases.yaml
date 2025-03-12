@@ -1,0 +1,127 @@
+test_cases:
+  - name: TestResourcesConfigBasic
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      minRequestCpu: "200m"
+      minRequestMemory: "300Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 200m
+        memory: 300Mi
+      limits:
+        cpu: 200m
+        memory: 300Mi
+
+  - name: TestResourcesConfigMergeMode
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "merge"
+      minRequestCpu: "200m"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    initialAnnotations:
+      oblik.socialgouv.io/min-request-memory: "400Mi"
+    expected:
+      requests:
+        cpu: 200m
+        memory: 400Mi
+      limits:
+        cpu: 200m
+        memory: 400Mi
+
+  - name: TestResourcesConfigContainerSpecific
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      containerConfigs:
+        busybox:
+          minRequestCpu: "300m"
+          minRequestMemory: "400Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 300m
+        memory: 400Mi
+      limits:
+        cpu: 300m
+        memory: 400Mi
+
+  - name: TestResourcesConfigLimitCalculation
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      limitCpuCalculatorAlgo: "margin"
+      limitCpuCalculatorValue: "100m"
+      limitCpuApplyMode: "enforce"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 200m
+        memory: 250Mi
+
+  - name: TestResourcesConfigDelete
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      minRequestCpu: "200m"
+      minRequestMemory: "300Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 200m
+        memory: 300Mi
+      limits:
+        cpu: 200m
+        memory: 300Mi
+    deleteTest: true
+    expectedAfterDelete:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
