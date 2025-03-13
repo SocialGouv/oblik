@@ -1,8 +1,7 @@
 module github.com/SocialGouv/oblik
 
 go 1.22.0
-
-toolchain go1.22.2
+toolchain go1.23.7
 
 require (
 	github.com/cloudnative-pg/cloudnative-pg v1.23.1
@@ -11,7 +10,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.19.0
-	golang.org/x/term v0.21.0
+	golang.org/x/term v0.29.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.30.1
 	k8s.io/apiextensions-apiserver v0.30.1
@@ -75,10 +74,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
-	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
