@@ -46,12 +46,11 @@ jobs:
           helm package "${{ matrix.chart_dir }}" -d packaged
           ls -l packaged
 
-      - name: Save and Push Chart to GHCR
+      - name: Push Chart to GHCR
         run: |
           # Locate the packaged chart file (e.g., oblik-0.1.0.tgz)
           CHART_PACKAGE=$(ls packaged | grep "${CHART_NAME}-")
           echo "Found chart package: $CHART_PACKAGE"
-          # Construct the OCI tag using the chart's base directory, name, and version
-          OCI_TAG="oci://ghcr.io/socialgouv/${CHART_BASE}:${CHART_VERSION}"
-          echo "Saving chart to OCI tag: $OCI_TAG"
-          helm push "packaged/${CHART_PACKAGE}" "$OCI_TAG"
+          # Push the chart to GHCR
+          echo "Pushing chart to GHCR"
+          helm push "packaged/${CHART_PACKAGE}" "oci://ghcr.io/socialgouv/helm"
