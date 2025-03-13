@@ -22,4 +22,11 @@ existingSecret:
 
 resources: {}
 
+# Pod Disruption Budget configuration
+pdb:
+  enabled: true
+  # Either minAvailable or maxUnavailable should be set, not both
+  minAvailable: 2  # Ensure at least 2 pods are always available
+  # maxUnavailable: 1  # Alternative: allow at most 1 pod to be unavailable
+
 annotations: {}
