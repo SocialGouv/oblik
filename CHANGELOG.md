@@ -2,8 +2,20 @@
 ## [Unreleased]
 
 
+<a name="v0.3.0"></a>
+## [v0.3.0] - 2025-03-13
+### Feat
+- crd
+
+### Fix
+- use vpa from the mutating webhook + tests
+
+
 <a name="v0.2.6"></a>
 ## [v0.2.6] - 2025-01-07
+### Chore
+- **release:** v0.2.6
+
 ### Fix
 - klog warning
 - klog warning
@@ -459,7 +471,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/SocialGouv/oblik/compare/v0.2.6...v0.3.0
 [v0.2.6]: https://github.com/SocialGouv/oblik/compare/v0.2.5...v0.2.6
 [v0.2.5]: https://github.com/SocialGouv/oblik/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/SocialGouv/oblik/compare/v0.2.3...v0.2.4
