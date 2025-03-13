@@ -16,11 +16,16 @@ type ResourceRequirementsYAML struct {
 
 // OblikTestCaseYAML represents each test case in YAML
 type OblikTestCaseYAML struct {
-	Name           string                   `yaml:"name"`
-	Annotations    map[string]string        `yaml:"annotations"`
-	Original       ResourceRequirementsYAML `yaml:"original"`
-	Expected       ResourceRequirementsYAML `yaml:"expected"`
-	ShouldntUpdate bool                     `yaml:"shouldntUpdate"`
+	Name               string                   `yaml:"name"`
+	Annotations        map[string]string        `yaml:"annotations"`
+	Original           ResourceRequirementsYAML `yaml:"original"`
+	Expected           ResourceRequirementsYAML `yaml:"expected"`
+	ShouldntUpdate     bool                     `yaml:"shouldntUpdate"`
+	UpdateVPA          bool                     `yaml:"updateVPA"`
+	VPARecommendations struct {
+		CPU    string `yaml:"cpu"`
+		Memory string `yaml:"memory"`
+	} `yaml:"vpaRecommendations"`
 }
 
 // TestCasesYAML is the top-level structure for the YAML file
@@ -63,6 +68,14 @@ func LoadTestCasesFromYAML(filename string) ([]OblikTestCase, error) {
 			original:       originalResources,
 			expected:       expectedResources,
 			shouldntUpdate: tcYAML.ShouldntUpdate,
+			updateVPA:      tcYAML.UpdateVPA,
+		}
+
+		if tcYAML.UpdateVPA {
+			testCase.vpaRecommendations = &VPARecommendations{
+				CPU:    tcYAML.VPARecommendations.CPU,
+				Memory: tcYAML.VPARecommendations.Memory,
+			}
 		}
 
 		testCases = append(testCases, testCase)

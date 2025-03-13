@@ -102,6 +102,34 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 
 	originalResource := deployment.Spec.Template.Spec.Containers[0].Resources
 
+	// If updateVPA is true, wait for and update the VPA
+	if otc.updateVPA && otc.vpaRecommendations != nil {
+		t.Logf("Waiting for VPA to be created and updating it with custom recommendations")
+		err := waitForAndUpdateVPA(ctx, t, vpaClientset, oblikE2eTestNamespace, deployment.Name,
+			otc.vpaRecommendations.CPU, otc.vpaRecommendations.Memory)
+		if err != nil {
+			t.Fatalf("Failed to update VPA: %v", err)
+		}
+
+		// Update the deployment to trigger the webhook
+		t.Logf("Updating deployment to trigger the webhook")
+		deployment, err = clientset.AppsV1().Deployments(oblikE2eTestNamespace).Get(ctx, deployment.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Failed to get deployment: %v", err)
+		}
+
+		// Make a small change to trigger the webhook
+		if deployment.Annotations == nil {
+			deployment.Annotations = make(map[string]string)
+		}
+		deployment.Annotations["oblik.socialgouv.io/test-update"] = "true"
+
+		_, err = clientset.AppsV1().Deployments(oblikE2eTestNamespace).Update(ctx, deployment, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatalf("Failed to update Deployment: %v", err)
+		}
+	}
+
 	if otc.shouldntUpdate {
 		_, err := waitForResourceUpdate(ctx, t, clientset, oblikE2eTestNamespace, "Deployment", deployment.Name, 2*time.Minute, originalResource)
 		if err == nil {
@@ -118,5 +146,4 @@ func testAnnotationsToResources(ctx context.Context, t *testing.T, clientset *ku
 			t.Error("Resources update does not match expectations")
 		}
 	}
-
 }
