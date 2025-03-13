@@ -1,38 +1,57 @@
-name: 🗞️ Publish Helm Chart
+name: Publish Helm Charts
 
 on:
-  workflow_dispatch:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches:
+      - main
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart_dir: [charts/oblik, charts/vpa]
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Helm
-      uses: azure/setup-helm@v1
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
 
-    - name: Login to GitHub Container Registry
-      run: helm registry login ghcr.io -u ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry
+        run: helm registry login ghcr.io -u ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Package and Save Chart
-      run: |
-        helm package -d charts/oblik .
-        helm package -d charts/vpa .
-        helm chart save . ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/mychart:0.1.0
-        helm chart push ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/mychart:0.1.0
+      - name: Extract Chart Metadata
+        id: chart_meta
+        run: |
+          CHART_DIR="${{ matrix.chart_dir }}"
+          # Get the base directory name (e.g., oblik or vpa)
+          BASE=$(basename "$CHART_DIR")
+          # Extract name and version from Chart.yaml
+          CHART_NAME=$(grep '^name:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
+          CHART_VERSION=$(grep '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
+          echo "Chart Directory: $CHART_DIR"
+          echo "Chart Base: $BASE"
+          echo "Chart Name: $CHART_NAME"
+          echo "Chart Version: $CHART_VERSION"
+          # Export values for subsequent steps
+          echo "CHART_NAME=$CHART_NAME" >> $GITHUB_ENV
+          echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
+          echo "CHART_BASE=$BASE" >> $GITHUB_ENV
 
-    - name: Generate Helm Index
-      run: |
-        mkdir -p gh-pages
-        cp charts/*.tgz gh-pages/
-        helm repo index gh-pages --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-        
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: gh-pages
+      - name: Package Chart
+        run: |
+          mkdir -p packaged
+          helm package "${{ matrix.chart_dir }}" -d packaged
+          ls -l packaged
+
+      - name: Save and Push Chart to GHCR
+        run: |
+          # Locate the packaged chart file (e.g., oblik-0.1.0.tgz)
+          CHART_PACKAGE=$(ls packaged | grep "${CHART_NAME}-")
+          echo "Found chart package: $CHART_PACKAGE"
+          # Construct the OCI tag using the chart's base directory, name, and version
+          OCI_TAG="ghcr.io/SocialGouv/${CHART_BASE}/${CHART_NAME}:${CHART_VERSION}"
+          echo "Saving chart to OCI tag: $OCI_TAG"
+          helm chart save "packaged/${CHART_PACKAGE}" "$OCI_TAG"
+          helm chart push "$OCI_TAG"
