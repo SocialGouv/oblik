@@ -20,7 +20,8 @@ jobs:
 
     - name: Package and Save Chart
       run: |
-        helm package -d charts/ .
+        helm package -d charts/oblik .
+        helm package -d charts/vpa .
         helm chart save . ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/mychart:0.1.0
         helm chart push ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/mychart:0.1.0
 
