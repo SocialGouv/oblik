@@ -257,6 +257,33 @@ test_cases:
         memory: 250Mi
 
 
+  - name: TestWebhookWithVPARecommendations
+    annotations:
+      oblik.socialgouv.io/webhook-enabled: "true"
+      oblik.socialgouv.io/request-cpu-apply-mode: "enforce"
+      oblik.socialgouv.io/request-memory-apply-mode: "enforce"
+      oblik.socialgouv.io/limit-cpu-apply-mode: "enforce"
+      oblik.socialgouv.io/limit-memory-apply-mode: "enforce"
+      oblik.socialgouv.io/cron: "0 0 31 2 *" # This means "run at midnight on the 31st day of February." Since February never has 31 days, the job will never be executed.
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 200m
+        memory: 400Mi
+      limits:
+        cpu: 200m
+        memory: 400Mi
+    updateVPA: true
+    vpaRecommendations:
+      cpu: 200m
+      memory: 400Mi
+
   # we don't have a good way to test this yet
   # - name: TestLimitApplyTargetPeak
   #   annotations:

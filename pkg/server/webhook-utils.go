@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/SocialGouv/oblik/pkg/client"
 	"github.com/SocialGouv/oblik/pkg/utils"
@@ -85,7 +87,19 @@ func compareMaps(prefix string, original, modified map[string]interface{}, patch
 
 func getVPAResource(obj *unstructured.Unstructured, kubeClients *client.KubeClients) *autoscalingv1.VerticalPodAutoscaler {
 	namespace := obj.GetNamespace()
-	vpaName := obj.GetName()
+	kind := obj.GetKind()
+	name := obj.GetName()
+
+	// Generate the VPA name using the same convention as in pkg/vpa/operations.go
+	// Using the same prefix as defined in pkg/config/constants.go: const VpaPrefix = "oblik-"
+	vpaName := fmt.Sprintf("oblik-%s-%s", strings.ToLower(kind), name)
+	if len(vpaName) > 63 {
+		hash := sha256.Sum256([]byte(vpaName))
+		truncatedHash := fmt.Sprintf("%x", hash)[:8]
+		vpaName = vpaName[:54] + "-" + truncatedHash
+	}
+
+	klog.V(2).Infof("Looking for VPA with name %s in namespace %s", vpaName, namespace)
 	vpa, err := kubeClients.VpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(context.TODO(), vpaName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -95,5 +109,6 @@ func getVPAResource(obj *unstructured.Unstructured, kubeClients *client.KubeClie
 		}
 		return nil
 	}
+	klog.V(2).Infof("Found VPA %s in namespace %s", vpaName, namespace)
 	return vpa
 }

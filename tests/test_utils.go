@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,7 +13,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -265,4 +269,190 @@ func isDiff(original, current corev1.ResourceRequirements) bool {
 		return true
 	}
 	return false
+}
+
+// generateVPAName generates a VPA name from a workload kind and name
+func generateVPAName(kind, name string) string {
+	vpaName := fmt.Sprintf("oblik-%s-%s", strings.ToLower(kind), name)
+	if len(vpaName) > 63 {
+		hash := sha256.Sum256([]byte(vpaName))
+		truncatedHash := fmt.Sprintf("%x", hash)[:8]
+		vpaName = vpaName[:54] + "-" + truncatedHash
+	}
+	return vpaName
+}
+
+func waitForAndUpdateVPA(ctx context.Context, t *testing.T, vpaClientset *vpaclientset.Clientset, namespace, name string, cpuRecommendation, memoryRecommendation string) error {
+	// Generate the VPA name
+	vpaName := generateVPAName("Deployment", name)
+	t.Logf("Waiting for VPA %s to be created...", vpaName)
+
+	// List all VPAs in the namespace to see what's available
+	vpaList, err := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("Error listing VPAs: %v", err)
+	} else {
+		t.Logf("Found %d VPAs in namespace %s", len(vpaList.Items), namespace)
+		for _, v := range vpaList.Items {
+			t.Logf("  VPA: %s", v.Name)
+		}
+	}
+
+	// Wait for the VPA to be created by the controller
+	var vpa *autoscalingv1.VerticalPodAutoscaler
+	backoff := time.Second * 2
+	endTime := time.Now().Add(5 * time.Minute)
+
+	for time.Now().Before(endTime) {
+		var err error
+		vpa, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(ctx, vpaName, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				t.Logf("VPA %s not found yet, waiting...", vpaName)
+
+				// List all VPAs again to see if any new ones were created
+				vpaList, listErr := vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+				if listErr == nil && len(vpaList.Items) > 0 {
+					t.Logf("Found %d VPAs in namespace %s while waiting", len(vpaList.Items), namespace)
+					for _, v := range vpaList.Items {
+						t.Logf("  VPA: %s", v.Name)
+					}
+				}
+
+				time.Sleep(backoff)
+				if backoff < 30*time.Second {
+					backoff *= 2
+				}
+				continue
+			}
+			return fmt.Errorf("error getting VPA: %v", err)
+		}
+
+		t.Logf("VPA %s found", vpaName)
+		break
+	}
+
+	if vpa == nil {
+		return fmt.Errorf("timeout waiting for VPA %s to be created", vpaName)
+	}
+
+	t.Logf("Found VPA: %s", vpa.Name)
+
+	// Parse the CPU and memory recommendations
+	cpuQuantity, err := resource.ParseQuantity(cpuRecommendation)
+	if err != nil {
+		return fmt.Errorf("failed to parse CPU recommendation: %v", err)
+	}
+
+	memoryQuantity, err := resource.ParseQuantity(memoryRecommendation)
+	if err != nil {
+		return fmt.Errorf("failed to parse memory recommendation: %v", err)
+	}
+
+	// Create a copy of the VPA to modify
+	updatedVPA := vpa.DeepCopy()
+
+	// Set minAllowed to our custom recommendations
+	// This will influence the VPA's recommendations
+	if updatedVPA.Spec.ResourcePolicy == nil {
+		updatedVPA.Spec.ResourcePolicy = &autoscalingv1.PodResourcePolicy{
+			ContainerPolicies: []autoscalingv1.ContainerResourcePolicy{},
+		}
+	}
+
+	containerPolicy := autoscalingv1.ContainerResourcePolicy{
+		ContainerName: "*", // Apply to all containers
+		MinAllowed: corev1.ResourceList{
+			corev1.ResourceCPU:    cpuQuantity,
+			corev1.ResourceMemory: memoryQuantity,
+		},
+		MaxAllowed: corev1.ResourceList{
+			corev1.ResourceCPU:    cpuQuantity,
+			corev1.ResourceMemory: memoryQuantity,
+		},
+	}
+
+	// Add or update the container policy
+	found := false
+	for i, policy := range updatedVPA.Spec.ResourcePolicy.ContainerPolicies {
+		if policy.ContainerName == "*" {
+			updatedVPA.Spec.ResourcePolicy.ContainerPolicies[i] = containerPolicy
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		updatedVPA.Spec.ResourcePolicy.ContainerPolicies = append(
+			updatedVPA.Spec.ResourcePolicy.ContainerPolicies,
+			containerPolicy,
+		)
+	}
+
+	// Update the VPA
+	_, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Update(ctx, updatedVPA, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update VPA: %v", err)
+	}
+
+	t.Logf("Updated VPA %s with custom recommendations: CPU=%s, Memory=%s", vpaName, cpuRecommendation, memoryRecommendation)
+
+	// Wait for the VPA to process the update and for the recommendations to be aligned with the minAllowed values
+	t.Logf("Waiting for VPA recommendations to be aligned with minAllowed values")
+	backoff = time.Second * 2
+	endTime = time.Now().Add(5 * time.Minute)
+
+	for time.Now().Before(endTime) {
+		// Get the latest VPA
+		vpa, err = vpaClientset.AutoscalingV1().VerticalPodAutoscalers(namespace).Get(ctx, vpaName, metav1.GetOptions{})
+		if err != nil {
+			t.Logf("Error getting VPA: %v", err)
+			time.Sleep(backoff)
+			if backoff < 30*time.Second {
+				backoff *= 2
+			}
+			continue
+		}
+
+		// Check if the recommendations are aligned with the minAllowed values
+		if vpa.Status.Recommendation == nil || len(vpa.Status.Recommendation.ContainerRecommendations) == 0 {
+			t.Logf("VPA %s has no recommendations yet, waiting...", vpaName)
+			time.Sleep(backoff)
+			if backoff < 30*time.Second {
+				backoff *= 2
+			}
+			continue
+		}
+
+		aligned := true
+		for _, containerRec := range vpa.Status.Recommendation.ContainerRecommendations {
+			// Check CPU recommendation
+			if containerRec.Target.Cpu().Cmp(cpuQuantity) != 0 {
+				t.Logf("VPA %s CPU recommendation (%s) not aligned with minAllowed (%s) yet, waiting...",
+					vpaName, containerRec.Target.Cpu().String(), cpuQuantity.String())
+				aligned = false
+				break
+			}
+
+			// Check Memory recommendation
+			if containerRec.Target.Memory().Cmp(memoryQuantity) != 0 {
+				t.Logf("VPA %s Memory recommendation (%s) not aligned with minAllowed (%s) yet, waiting...",
+					vpaName, containerRec.Target.Memory().String(), memoryQuantity.String())
+				aligned = false
+				break
+			}
+		}
+
+		if aligned {
+			t.Logf("VPA %s recommendations are now aligned with minAllowed values", vpaName)
+			break
+		}
+
+		time.Sleep(backoff)
+		if backoff < 30*time.Second {
+			backoff *= 2
+		}
+	}
+
+	return nil
 }
