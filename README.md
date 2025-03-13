@@ -21,10 +21,25 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
 - [Requirements](#requirements)
 - [Configuration](#configuration)
   - [Logging Levels](#logging-levels)
-  - [Annotations](#annotations)
+  - [Configuration with Annotations](#configuration-with-annotations)
   - [Targeting Specific Containers](#targeting-specific-containers)
   - [Recommendations:](#recommendations)
     - [Example](#example)
+- [ResourcesConfig CRD](#resourcesconfig-crd)
+  - [Overview](#overview)
+  - [When to Use ResourcesConfig vs. Annotations](#when-to-use-resourcesconfig-vs-annotations)
+  - [Configuration Reference](#configuration-reference)
+    - [1. Basic Configuration](#1-basic-configuration)
+    - [2. CPU Request Settings](#2-cpu-request-settings)
+    - [3. Memory Request Settings](#3-memory-request-settings)
+    - [4. CPU Limit Settings](#4-cpu-limit-settings)
+    - [5. Memory Limit Settings](#5-memory-limit-settings)
+    - [6. Cross-Resource Calculation](#6-cross-resource-calculation)
+    - [7. Minimum Difference Thresholds](#7-minimum-difference-thresholds)
+    - [8. Container-Specific Configurations](#8-container-specific-configurations)
+  - [Example Usage](#example-usage)
+    - [Complete ResourcesConfig Example:](#complete-resourcesconfig-example)
+    - [Comparison: Annotations vs. ResourcesConfig](#comparison-annotations-vs-resourcesconfig)
 - [Using the CLI](#using-the-cli)
   - [CLI Usage](#cli-usage)
   - [Downloading the CLI](#downloading-the-cli)
@@ -150,7 +165,7 @@ helm upgrade --install oblik . --namespace oblik --create-namespace
 
 ### Prerequisites
 
-* **Kubernetes**: Version 1.27 or higher
+* **Kubernetes**: only tested from version 1.27 and highers
 * **Vertical Pod Autoscaler (VPA)**: Oblik requires the VPA recommender component to function properly. See the [official VPA installation documentation](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler#installation) for more details.
 
 #### Installing VPA
@@ -296,64 +311,9 @@ args:
   - "-v=2"  # For debug logging
 ```
 
-### Annotations
+### Configuration with Annotations
 
-| Annotation Key (without prefix) | Description | Options | Default |
-| --- | --- | --- | --- |
-| `cron` | Cron expression to schedule when the recommendations are applied. | Any valid cron expression | `"0 2 * * *"` |
-| `cron-add-random-max` | Maximum random delay added to the cron schedule. | Duration (e.g., `"120m"`) | `"120m"` |
-| `dry-run` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
-| `webhook-enabled` | Enable mutating webhook resources enforcement. | `"true"`, `"false"` | `"true"` |
-| `request-cpu-apply-mode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `request-memory-apply-mode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-apply-mode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-memory-apply-mode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
-| `limit-cpu-calculator-algo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-memory-calculator-algo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
-| `limit-cpu-calculator-value` | Value used by the CPU limit calculator algorithm. | Any numeric value | `"1"` |
-| `limit-memory-calculator-value` | Value used by the memory limit calculator algorithm. | Any numeric value | `"1"` |
-| `unprovided-apply-default-request-cpu` | Default CPU request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
-| `unprovided-apply-default-request-memory` | Default memory request if not provided by the VPA. | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
-| `increase-request-cpu-algo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-cpu-value` | Value used to increase CPU request. | Any numeric value | `"1"` |
-| `increase-request-memory-algo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `increase-request-memory-value` | Value used to increase memory request. | Any numeric value | `"1"` |
-| `min-limit-cpu` | Minimum CPU limit value. | Any valid CPU value (e.g., `"200m"`) | "" |
-| `max-limit-cpu` | Maximum CPU limit value. | Any valid CPU value (e.g., `"4"`) | "" |
-| `min-limit-memory` | Minimum memory limit value. | Any valid memory value (e.g., `"200Mi"`) | "" |
-| `max-limit-memory` | Maximum memory limit value. | Any valid memory value (e.g., `"8Gi"`) | "" |
-| `min-request-cpu` | Minimum CPU request value. | Any valid CPU value (e.g., `"80m"`) | "" |
-| `max-request-cpu` | Maximum CPU request value. | Any valid CPU value (e.g., `"8"`) | "" |
-| `min-request-memory` | Minimum memory request value. | Any valid memory value (e.g., `"200Mi"`) | "" |
-| `max-request-memory` | Maximum memory request value. | Any valid memory value (e.g., `"20Gi"`) | "" |
-| `min-allowed-recommendation-cpu` | Minimum allowed CPU recommendation value. Overrides VPA `minAllowed.cpu`. | Any valid CPU value | "" |
-| `max-allowed-recommendation-cpu` | Maximum allowed CPU recommendation value. Overrides VPA `maxAllowed.cpu`. | Any valid CPU value | "" |
-| `min-allowed-recommendation-memory` | Minimum allowed memory recommendation value. Overrides VPA `minAllowed.memory`. | Any valid memory value | "" |
-| `max-allowed-recommendation-memory` | Maximum allowed memory recommendation value. Overrides VPA `maxAllowed.memory`. | Any valid memory value | "" |
-| `min-diff-cpu-request-algo` | Algorithm to calculate the minimum CPU request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-request-value` | Value used for minimum CPU request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-request-algo` | Algorithm to calculate the minimum memory request difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-request-value` | Value used for minimum memory request difference calculation. | Any numeric value | `"0"` |
-| `min-diff-cpu-limit-algo` | Algorithm to calculate the minimum CPU limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-cpu-limit-value` | Value used for minimum CPU limit difference calculation. | Any numeric value | `"0"` |
-| `min-diff-memory-limit-algo` | Algorithm to calculate the minimum memory limit difference for applying recommendations. | `"ratio"`, `"margin"` | `"ratio"` |
-| `min-diff-memory-limit-value` | Value used for minimum memory limit difference calculation. | Any numeric value | `"0"` |
-| `memory-request-from-cpu-enabled` | Calculate memory request from CPU request instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-limit-from-cpu-enabled` | Calculate memory limit from CPU limit instead of recommendation. | `"true"`, `"false"` | `"false"` |
-| `memory-request-from-cpu-algo` | Algorithm to calculate memory request based on CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-request-from-cpu-value` | Value used for calculating memory request from CPU request. | Any numeric value | `"2"` |
-| `memory-limit-from-cpu-algo` | Algorithm to calculate memory limit based on CPU limit. | `"ratio"`, `"margin"` | `"ratio"` |
-| `memory-limit-from-cpu-value` | Value used for calculating memory limit from CPU limit. | Any numeric value | `"2"` |
-| `request-apply-target` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-cpu-apply-target` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `request-memory-apply-target` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
-| `limit-apply-target` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-cpu-apply-target` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `limit-memory-apply-target` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
-| `request-cpu-scale-direction` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `request-memory-scale-direction` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-cpu-scale-direction` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
-| `limit-memory-scale-direction` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+Oblik can be configured using annotations on workloads. All available annotation options are documented in the [Configuration Reference](#configuration-reference) section under the ResourcesConfig CRD documentation. The annotation keys use kebab-case format (e.g., `oblik.socialgouv.io/min-request-cpu`) while the equivalent ResourcesConfig fields use camelCase (e.g., `minRequestCpu`).
 
 
 ### Targeting Specific Containers
@@ -385,6 +345,249 @@ spec:
   containers:
     - name: app-container
       image: your-image
+```
+
+## ResourcesConfig CRD
+
+The ResourcesConfig CRD provides a Kubernetes-native way to configure Oblik's resource management behavior for specific workloads. Unlike annotations that are applied directly to workloads, ResourcesConfig is a separate resource that targets workloads using a reference.
+
+### Overview
+
+ResourcesConfig is a Custom Resource Definition (CRD) that allows you to define resource management policies for Kubernetes workloads in a more structured and maintainable way. It supports all the same configuration options as annotations, but uses camelCase field names instead of kebab-case annotation keys.
+
+Key benefits of using ResourcesConfig:
+- Separate resource management configuration from workload definitions
+- Kubernetes-native approach with full YAML/JSON schema validation
+- Ability to version control resource configurations independently
+- Cleaner workload manifests without numerous annotations
+
+### When to Use ResourcesConfig vs. Annotations
+
+- **Use ResourcesConfig when**:
+  - You want to manage resource configurations separately from workload definitions
+  - You prefer a more Kubernetes-native approach with separate resources
+
+- **Use Annotations when**:
+  - You want to keep all configuration in the workload manifest
+  - You're making simple, workload-specific adjustments
+  - You prefer the simplicity of annotating existing resources
+
+### Configuration Reference
+
+The ResourcesConfig CRD fields use camelCase versions of the annotation keys. For example:
+
+* **Annotation:** `oblik.socialgouv.io/min-request-cpu`
+* **CRD Field:** `minRequestCpu`
+
+Below are the configuration options organized by category:
+
+* * *
+
+#### 1. Basic Configuration
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| N/A | `targetRef` | Points to the controller managing the set of pods. Must be an object with `kind`, `name`, and an optional `apiVersion`. | Object with kind, name, and optional apiVersion | **Required** |
+| `cron` | `cron` | Cron expression to schedule when the recommendations are applied. Accepts any valid cron expression (e.g., `"0 2 * * *"`). | Any valid cron expression | `"0 2 * * *"` |
+| `cron-add-random-max` | `cronAddRandomMax` | Maximum random delay added to the cron schedule. Accepts duration values (e.g., `"120m"`). | Duration (e.g., `"120m"`) | `"120m"` |
+| `dry-run` | `dryRun` | If set to `"true"`, Oblik will simulate the updates without applying them. | `"true"`, `"false"` | `"false"` |
+| `webhook-enabled` | `webhookEnabled` | Enable mutating webhook resources enforcement. | `"true"`, `"false"` | `"true"` |
+| `annotation-mode` | `annotationMode` | Controls how annotations are managed. | `"replace"`, `"merge"` | `"replace"` |
+| `unprovided-apply-default-request-cpu` | `unprovidedApplyDefaultRequestCpu` | Default CPU request if not provided by the VPA. **Overrides VPA** values (`minAllowed.cpu`/`maxAllowed.cpu`) when applicable. Accepts `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`). | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"100m"`) | `"off"` |
+| `unprovided-apply-default-request-memory` | `unprovidedApplyDefaultRequestMemory` | Default memory request if not provided by the VPA. **Overrides VPA** values (`minAllowed.memory`/`maxAllowed.memory`) when applicable. Accepts `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`). | `"off"`, `"minAllowed"`, `"maxAllowed"`, or an arbitrary value (e.g., `"128Mi"`) | `"off"` |
+
+* * *
+
+#### 2. CPU Request Settings
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `request-apply-target` | `requestApplyTarget` | Select which recommendation to apply by default on request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-cpu-apply-mode` | `requestCpuApplyMode` | CPU request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `min-request-cpu` | `minRequestCpu` | Minimum CPU request value. Accepts any valid CPU value (e.g., `"80m"`). | Any valid CPU value | `""` |
+| `max-request-cpu` | `maxRequestCpu` | Maximum CPU request value. Accepts any valid CPU value (e.g., `"8"`) | Any valid CPU value | `""` |
+| `request-cpu-apply-target` | `requestCpuApplyTarget` | Select which recommendation to apply for CPU request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-cpu-scale-direction` | `requestCpuScaleDirection` | Allowed scaling direction for CPU request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `min-allowed-recommendation-cpu` | `minAllowedRecommendationCpu` | Minimum allowed CPU recommendation value. **Overrides VPA** `minAllowed.cpu`. Accepts any valid CPU value (e.g., `"80m"`). | Any valid CPU value | `""` |
+| `max-allowed-recommendation-cpu` | `maxAllowedRecommendationCpu` | Maximum allowed CPU recommendation value. **Overrides VPA** `maxAllowed.cpu`. Accepts any valid CPU value (e.g., `"8"`). | Any valid CPU value | `""` |
+| `increase-request-cpu-algo` | `increaseRequestCpuAlgo` | Algorithm to increase CPU request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-cpu-value` | `increaseRequestCpuValue` | Value used to increase CPU request. Accepts any numeric value. | Any numeric value | `"1"` |
+
+* * *
+
+#### 3. Memory Request Settings
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `request-memory-apply-mode` | `requestMemoryApplyMode` | Memory request recommendation mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `min-request-memory` | `minRequestMemory` | Minimum memory request value. Accepts any valid memory value (e.g., `"200Mi"`). | Any valid memory value | `""` |
+| `max-request-memory` | `maxRequestMemory` | Maximum memory request value. Accepts any valid memory value (e.g., `"20Gi"`). | Any valid memory value | `""` |
+| `request-memory-apply-target` | `requestMemoryApplyTarget` | Select which recommendation to apply for memory request. | `"frugal"`, `"balanced"`, `"peak"` | `"balanced"` |
+| `request-memory-scale-direction` | `requestMemoryScaleDirection` | Allowed scaling direction for memory request. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `min-allowed-recommendation-memory` | `minAllowedRecommendationMemory` | Minimum allowed memory recommendation value. **Overrides VPA** `minAllowed.memory`. Accepts any valid memory value (e.g., `"200Mi"`). | Any valid memory value | `""` |
+| `max-allowed-recommendation-memory` | `maxAllowedRecommendationMemory` | Maximum allowed memory recommendation value. **Overrides VPA** `maxAllowed.memory`. Accepts any valid memory value (e.g., `"20Gi"`). | Any valid memory value | `""` |
+| `increase-request-memory-algo` | `increaseRequestMemoryAlgo` | Algorithm to increase memory request. | `"ratio"`, `"margin"` | `"ratio"` |
+| `increase-request-memory-value` | `increaseRequestMemoryValue` | Value used to increase memory request. Accepts any numeric value. | Any numeric value | `"1"` |
+
+* * *
+
+#### 4. CPU Limit Settings
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `limit-apply-target` | `limitApplyTarget` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-cpu-apply-mode` | `limitCpuApplyMode` | CPU limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `min-limit-cpu` | `minLimitCpu` | Minimum CPU limit value. Accepts any valid CPU value (e.g., `"200m"`). | Any valid CPU value | `""` |
+| `max-limit-cpu` | `maxLimitCpu` | Maximum CPU limit value. Accepts any valid CPU value (e.g., `"4"`) | Any valid CPU value | `""` |
+| `limit-cpu-apply-target` | `limitCpuApplyTarget` | Select which recommendation to apply for CPU limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-cpu-scale-direction` | `limitCpuScaleDirection` | Allowed scaling direction for CPU limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-cpu-calculator-algo` | `limitCpuCalculatorAlgo` | CPU limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-cpu-calculator-value` | `limitCpuCalculatorValue` | Value used by the CPU limit calculator algorithm. Accepts any numeric value. | Any numeric value | `"1"` |
+
+* * *
+
+#### 5. Memory Limit Settings
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `limit-apply-target` | `limitApplyTarget` | Select which recommendation to apply by default on limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-memory-apply-mode` | `limitMemoryApplyMode` | Memory limit apply mode. | `"enforce"`, `"off"` | `"enforce"` |
+| `min-limit-memory` | `minLimitMemory` | Minimum memory limit value. Accepts any valid memory value (e.g., `"200Mi"`). | Any valid memory value | `""` |
+| `max-limit-memory` | `maxLimitMemory` | Maximum memory limit value. Accepts any valid memory value (e.g., `"8Gi"`). | Any valid memory value | `""` |
+| `limit-memory-apply-target` | `limitMemoryApplyTarget` | Select which recommendation to apply for memory limit. | `"auto"`, `"frugal"`, `"balanced"`, `"peak"` | `"auto"` |
+| `limit-memory-scale-direction` | `limitMemoryScaleDirection` | Allowed scaling direction for memory limit. | `"both"`, `"up"`, `"down"` | `"both"` |
+| `limit-memory-calculator-algo` | `limitMemoryCalculatorAlgo` | Memory limit calculator algorithm. | `"ratio"`, `"margin"` | `"ratio"` |
+| `limit-memory-calculator-value` | `limitMemoryCalculatorValue` | Value used by the memory limit calculator algorithm. Accepts any numeric value. | Any numeric value | `"1"` |
+
+* * *
+
+#### 6. Cross-Resource Calculation
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `memory-request-from-cpu-enabled` | `memoryRequestFromCpuEnabled` | Calculate memory request from CPU request instead of using the recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-request-from-cpu-algo` | `memoryRequestFromCpuAlgo` | Algorithm to calculate memory request from CPU. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-request-from-cpu-value` | `memoryRequestFromCpuValue` | Value used for calculating memory request from CPU. Accepts any numeric value. | Any numeric value | `"2"` |
+| `memory-limit-from-cpu-enabled` | `memoryLimitFromCpuEnabled` | Calculate memory limit from CPU limit instead of using the recommendation. | `"true"`, `"false"` | `"false"` |
+| `memory-limit-from-cpu-algo` | `memoryLimitFromCpuAlgo` | Algorithm to calculate memory limit from CPU. | `"ratio"`, `"margin"` | `"ratio"` |
+| `memory-limit-from-cpu-value` | `memoryLimitFromCpuValue` | Value used for calculating memory limit from CPU. Accepts any numeric value. | Any numeric value | `"2"` |
+
+* * *
+
+#### 7. Minimum Difference Thresholds
+
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `min-diff-cpu-request-algo` | `minDiffCpuRequestAlgo` | Algorithm for minimum CPU request difference. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-request-value` | `minDiffCpuRequestValue` | Value for minimum CPU request difference calculation. Accepts any numeric value. | Any numeric value | `"0"` |
+| `min-diff-memory-request-algo` | `minDiffMemoryRequestAlgo` | Algorithm for minimum memory request difference. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-request-value` | `minDiffMemoryRequestValue` | Value for minimum memory request difference calculation. Accepts any numeric value. | Any numeric value | `"0"` |
+| `min-diff-cpu-limit-algo` | `minDiffCpuLimitAlgo` | Algorithm for minimum CPU limit difference. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-cpu-limit-value` | `minDiffCpuLimitValue` | Value for minimum CPU limit difference calculation. Accepts any numeric value. | Any numeric value | `"0"` |
+| `min-diff-memory-limit-algo` | `minDiffMemoryLimitAlgo` | Algorithm for minimum memory limit difference. | `"ratio"`, `"margin"` | `"ratio"` |
+| `min-diff-memory-limit-value` | `minDiffMemoryLimitValue` | Value for minimum memory limit difference calculation. Accepts any numeric value. | Any numeric value | `"0"` |
+
+#### 8. Container-Specific Configurations
+
+The ResourcesConfig CRD allows you to specify container-specific configurations using the `containerConfigs` field. This is a map where the keys are container names and the values are objects containing any of the resource configuration fields.
+
+### Example Usage
+
+#### Complete ResourcesConfig Example:
+
+```yaml
+apiVersion: oblik.socialgouv.io/v1
+kind: ResourcesConfig
+metadata:
+  name: web-app-resources
+  namespace: default
+spec:
+  targetRef:
+    kind: Deployment
+    name: web-app
+  # Basic settings
+  cron: "0 3 * * *"
+  cronAddRandomMax: "60m"
+  dryRun: false
+  webhookEnabled: true
+  
+  # General settings
+  requestApplyTarget: "balanced"
+  limitApplyTarget: "auto"
+  
+  # CPU request settings
+  requestCpuApplyMode: "enforce"
+  minRequestCpu: "100m"
+  maxRequestCpu: "2"
+  requestCpuApplyTarget: "balanced"
+  
+  # Memory request settings
+  requestMemoryApplyMode: "enforce"
+  minRequestMemory: "128Mi"
+  maxRequestMemory: "4Gi"
+  
+  # CPU limit settings
+  limitCpuApplyMode: "enforce"
+  minLimitCpu: "200m"
+  
+  # Memory limit settings
+  limitMemoryApplyMode: "enforce"
+  minLimitMemory: "256Mi"
+  
+  # Container-specific settings
+  containerConfigs:
+    nginx:
+      minRequestCpu: "50m"
+      maxRequestMemory: "256Mi"
+```
+
+#### Comparison: Annotations vs. ResourcesConfig
+
+The same configuration using annotations would look like:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: default
+  labels:
+    oblik.socialgouv.io/enabled: "true"
+  annotations:
+    # Basic settings
+    oblik.socialgouv.io/cron: "0 3 * * *"
+    oblik.socialgouv.io/cron-add-random-max: "60m"
+    oblik.socialgouv.io/dry-run: "false"
+    oblik.socialgouv.io/webhook-enabled: "true"
+    
+    # General settings
+    oblik.socialgouv.io/request-apply-target: "balanced"
+    oblik.socialgouv.io/limit-apply-target: "auto"
+    
+    # CPU request settings
+    oblik.socialgouv.io/request-cpu-apply-mode: "enforce"
+    oblik.socialgouv.io/min-request-cpu: "100m"
+    oblik.socialgouv.io/max-request-cpu: "2"
+    oblik.socialgouv.io/request-cpu-apply-target: "balanced"
+    
+    # Memory request settings
+    oblik.socialgouv.io/request-memory-apply-mode: "enforce"
+    oblik.socialgouv.io/min-request-memory: "128Mi"
+    oblik.socialgouv.io/max-request-memory: "4Gi"
+    
+    # CPU limit settings
+    oblik.socialgouv.io/limit-cpu-apply-mode: "enforce"
+    oblik.socialgouv.io/min-limit-cpu: "200m"
+    
+    # Memory limit settings
+    oblik.socialgouv.io/limit-memory-apply-mode: "enforce"
+    oblik.socialgouv.io/min-limit-memory: "256Mi"
+    
+    # Container-specific settings
+    oblik.socialgouv.io/min-request-cpu.nginx: "50m"
+    oblik.socialgouv.io/max-request-memory.nginx: "256Mi"
+spec:
+  # ...
 ```
 
 ## Using the CLI
