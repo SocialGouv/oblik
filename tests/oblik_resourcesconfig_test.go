@@ -344,7 +344,7 @@ func waitForAnnotationSync(ctx context.Context, t *testing.T, clientset *kuberne
 	backoff := time.Second * 2
 
 	var lastErr error
-	err := wait.PollUntil(backoff, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, backoff, true, func(ctx context.Context) (bool, error) {
 		// Get the deployment
 		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
@@ -360,7 +360,7 @@ func waitForAnnotationSync(ctx context.Context, t *testing.T, clientset *kuberne
 
 		t.Logf("Waiting for annotations to be synced to Deployment %s", name)
 		return false, nil
-	}, ctx.Done())
+	})
 
 	if err != nil {
 		if lastErr != nil {
@@ -378,7 +378,7 @@ func waitForAnnotationsRemoval(ctx context.Context, t *testing.T, clientset *kub
 	backoff := time.Second * 2
 
 	var lastErr error
-	err := wait.PollUntil(backoff, func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, backoff, true, func(ctx context.Context) (bool, error) {
 		// Get the deployment
 		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
@@ -402,7 +402,7 @@ func waitForAnnotationsRemoval(ctx context.Context, t *testing.T, clientset *kub
 
 		t.Logf("Waiting for annotations to be removed from Deployment %s", name)
 		return false, nil
-	}, ctx.Done())
+	})
 
 	if err != nil {
 		if lastErr != nil {
