@@ -52,6 +52,6 @@ jobs:
           CHART_PACKAGE=$(ls packaged | grep "${CHART_NAME}-")
           echo "Found chart package: $CHART_PACKAGE"
           # Construct the OCI tag using the chart's base directory, name, and version
-          OCI_TAG="oci://ghcr.io/SocialGouv/${CHART_BASE}/${CHART_NAME}:${CHART_VERSION}"
+          OCI_TAG="oci://ghcr.io/socialgouv/${CHART_BASE}/${CHART_NAME}:${CHART_VERSION}"
           echo "Saving chart to OCI tag: $OCI_TAG"
           helm push "packaged/${CHART_PACKAGE}" "$OCI_TAG"
