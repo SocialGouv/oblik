@@ -1,4 +1,4 @@
-name: Publish Helm Charts
+name: 🗞️ Publish Helm Charts
 
 on:
   workflow_dispatch:
@@ -54,5 +54,5 @@ jobs:
           # Construct the OCI tag using the chart's base directory, name, and version
           OCI_TAG="ghcr.io/SocialGouv/${CHART_BASE}/${CHART_NAME}:${CHART_VERSION}"
           echo "Saving chart to OCI tag: $OCI_TAG"
-          helm chart save "packaged/${CHART_PACKAGE}" "$OCI_TAG"
-          helm chart push "$OCI_TAG"
+          helm package "packaged/${CHART_PACKAGE}" "$OCI_TAG"
+          helm push "$OCI_TAG"
