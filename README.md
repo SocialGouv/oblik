@@ -12,6 +12,11 @@ Oblik is a Kubernetes operator designed to apply Vertical Pod Autoscaler (VPA) r
   - [Applying the Workload](#applying-the-workload)
 - [Features](#features)
 - [Installation](#installation)
+  - [Installing from the OCI Registry](#installing-from-the-oci-registry)
+  - [Installing from Source](#installing-from-source)
+  - [Prerequisites](#prerequisites)
+    - [Installing VPA](#installing-vpa)
+  - [Configuration Options](#configuration-options)
   - [Deploying Oblik with ArgoCD](#deploying-oblik-with-argocd)
 - [Requirements](#requirements)
 - [Configuration](#configuration)
@@ -122,12 +127,111 @@ Oblik will automatically create a corresponding VPA object and manage resource r
 
 ## Installation
 
-You can deploy Oblik using the provided Helm chart:
+Oblik can be installed using Helm in several ways:
+
+### Installing from the OCI Registry
+
+The recommended way to install Oblik is using the Helm chart from the OCI registry:
+
+```shell
+# Add the Oblik Helm repository
+helm install oblik oci://ghcr.io/socialgouv/helm/oblik --version 0.1.0 --namespace oblik --create-namespace
+```
+
+### Installing from Source
+
+Alternatively, you can clone the repository and install from the local chart:
 
 ```shell
 git clone https://github.com/SocialGouv/oblik.git
 cd oblik/charts/oblik
-helm upgrade --install oblik . --namespace oblik
+helm upgrade --install oblik . --namespace oblik --create-namespace
+```
+
+### Prerequisites
+
+* **Kubernetes**: Version 1.27 or higher
+* **Vertical Pod Autoscaler (VPA)**: Oblik requires the VPA recommender component to function properly. See the [official VPA installation documentation](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler#installation) for more details.
+
+#### Installing VPA
+
+You can install the VPA recommender using the included Helm chart. Before installing, you need to generate the required certificates:
+
+```shell
+# Clone the repository if you haven't already
+git clone https://github.com/SocialGouv/oblik.git
+cd oblik/charts/vpa
+
+# Generate certificates for the VPA admission controller
+./gencerts.sh
+
+# Install the VPA components
+helm install vpa . --namespace vpa --create-namespace
+```
+
+Alternatively, you can install from the OCI registry:
+
+```shell
+# First, download and run the gencerts.sh script
+curl -O https://raw.githubusercontent.com/SocialGouv/oblik/main/charts/vpa/gencerts.sh
+chmod +x gencerts.sh
+./gencerts.sh
+
+# Then install the VPA chart
+helm install vpa oci://ghcr.io/socialgouv/helm/vpa --version 0.1.0 --namespace vpa --create-namespace
+```
+
+Note: The VPA chart included with Oblik is configured to install only the necessary components required for Oblik to function properly.
+
+### Configuration Options
+
+The Oblik Helm chart supports the following configuration options:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `replicas` | Number of Oblik operator replicas | `3` |
+| `image.repository` | Oblik image repository | `ghcr.io/socialgouv/oblik` |
+| `image.tag` | Oblik image tag | Latest release |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `webhook.enabled` | Enable mutating webhook | `true` |
+| `webhook.failurePolicy` | Webhook failure policy | `Fail` |
+| `args` | Additional arguments for the operator | `[]` |
+| `env` | Environment variables for the operator | `{}` |
+| `existingSecret` | Name of existing secret to use | `""` |
+| `resources` | Resource requests and limits | `{}` |
+| `annotations` | Annotations to add to the deployment | `{}` |
+
+Example `values.yaml`:
+
+```yaml
+replicas: 2
+
+image:
+  repository: ghcr.io/socialgouv/oblik
+  tag: latest
+  pullPolicy: Always
+
+webhook:
+  enabled: true
+  failurePolicy: Ignore
+
+args:
+  - "-v"
+  - "2"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+```
+
+To install with custom values:
+
+```shell
+helm install oblik oci://ghcr.io/socialgouv/helm/oblik --version 0.1.0 --namespace oblik --create-namespace -f values.yaml
 ```
 
 Alternatively, you can use the Docker image for the operator, and download the CLI binary from the [GitHub releases](https://github.com/SocialGouv/oblik/releases).
