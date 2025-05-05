@@ -22,6 +22,145 @@ test_cases:
         cpu: 200m
         memory: 300Mi
 
+  - name: TestResourcesConfigDirectFlatStyle
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      requestCpu: "150m"
+      requestMemory: "350Mi"
+      limitCpu: "250m"
+      limitMemory: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi
+
+  - name: TestResourcesConfigDirectNestedStyle
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      request:
+        cpu: "150m"
+        memory: "350Mi"
+      limit:
+        cpu: "250m"
+        memory: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi
+
+  - name: TestResourcesConfigContainerSpecificDirectResources
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      containerConfigs:
+        busybox:
+          requestCpu: "150m"
+          requestMemory: "350Mi"
+          limitCpu: "250m"
+          limitMemory: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi
+
+  - name: TestResourcesConfigContainerSpecificNestedStyle
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      containerConfigs:
+        busybox:
+          request.cpu: "150m"
+          request.memory: "350Mi"
+          limit.cpu: "250m"
+          limit.memory: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi
+
+  - name: TestResourcesConfigDirectResourcesDelete
+    resourcesConfig:
+      targetRef:
+        kind: "Deployment"
+        name: "test-deployment"
+      annotationMode: "replace"
+      requestCpu: "150m"
+      requestMemory: "350Mi"
+      limitCpu: "250m"
+      limitMemory: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi
+    deleteTest: true
+    expectedAfterDelete:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+
   - name: TestResourcesConfigMergeMode
     resourcesConfig:
       targetRef:

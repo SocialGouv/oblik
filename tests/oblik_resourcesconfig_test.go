@@ -35,6 +35,16 @@ type ResourcesConfigSpecYAML struct {
 	LimitCpuCalculatorAlgo  string `yaml:"limitCpuCalculatorAlgo"`
 	LimitCpuCalculatorValue string `yaml:"limitCpuCalculatorValue"`
 	LimitCpuApplyMode       string `yaml:"limitCpuApplyMode"`
+
+	// Direct resource specifications (flat style)
+	RequestCpu    string `yaml:"requestCpu"`
+	RequestMemory string `yaml:"requestMemory"`
+	LimitCpu      string `yaml:"limitCpu"`
+	LimitMemory   string `yaml:"limitMemory"`
+
+	// Kubernetes-native style resource specifications (nested)
+	Request map[string]string `yaml:"request"`
+	Limit   map[string]string `yaml:"limit"`
 }
 
 // ResourcesConfigTestCaseYAML represents each test case in YAML
@@ -297,17 +307,88 @@ func createResourcesConfigObject(rtc ResourcesConfigTestCase, name, namespace st
 		rc.Spec.LimitCpuApplyMode = rtc.resourcesConfig.LimitCpuApplyMode
 	}
 
+	// Set direct resource specifications (flat style)
+	if rtc.resourcesConfig.RequestCpu != "" {
+		rc.Spec.RequestCpu = rtc.resourcesConfig.RequestCpu
+	}
+	if rtc.resourcesConfig.RequestMemory != "" {
+		rc.Spec.RequestMemory = rtc.resourcesConfig.RequestMemory
+	}
+	if rtc.resourcesConfig.LimitCpu != "" {
+		rc.Spec.LimitCpu = rtc.resourcesConfig.LimitCpu
+	}
+	if rtc.resourcesConfig.LimitMemory != "" {
+		rc.Spec.LimitMemory = rtc.resourcesConfig.LimitMemory
+	}
+
+	// Set Kubernetes-native style resource specifications (nested)
+	if rtc.resourcesConfig.Request != nil {
+		rc.Spec.Request = &oblikv1.ResourceList{
+			CPU:    rtc.resourcesConfig.Request["cpu"],
+			Memory: rtc.resourcesConfig.Request["memory"],
+		}
+	}
+	if rtc.resourcesConfig.Limit != nil {
+		rc.Spec.Limit = &oblikv1.ResourceList{
+			CPU:    rtc.resourcesConfig.Limit["cpu"],
+			Memory: rtc.resourcesConfig.Limit["memory"],
+		}
+	}
+
 	// Set container configs if present
 	if len(rtc.resourcesConfig.ContainerConfigs) > 0 {
 		rc.Spec.ContainerConfigs = make(map[string]oblikv1.ContainerConfig)
 		for containerName, config := range rtc.resourcesConfig.ContainerConfigs {
 			containerConfig := oblikv1.ContainerConfig{}
+
+			// Set standard fields
 			if minCpu, ok := config["minRequestCpu"]; ok {
 				containerConfig.MinRequestCpu = minCpu
 			}
 			if minMem, ok := config["minRequestMemory"]; ok {
 				containerConfig.MinRequestMemory = minMem
 			}
+
+			// Set direct resource specifications (flat style)
+			if reqCpu, ok := config["requestCpu"]; ok {
+				containerConfig.RequestCpu = reqCpu
+			}
+			if reqMem, ok := config["requestMemory"]; ok {
+				containerConfig.RequestMemory = reqMem
+			}
+			if limCpu, ok := config["limitCpu"]; ok {
+				containerConfig.LimitCpu = limCpu
+			}
+			if limMem, ok := config["limitMemory"]; ok {
+				containerConfig.LimitMemory = limMem
+			}
+
+			// Set Kubernetes-native style resource specifications (nested)
+			if reqCpu, ok := config["request.cpu"]; ok {
+				if containerConfig.Request == nil {
+					containerConfig.Request = &oblikv1.ResourceList{}
+				}
+				containerConfig.Request.CPU = reqCpu
+			}
+			if reqMem, ok := config["request.memory"]; ok {
+				if containerConfig.Request == nil {
+					containerConfig.Request = &oblikv1.ResourceList{}
+				}
+				containerConfig.Request.Memory = reqMem
+			}
+			if limCpu, ok := config["limit.cpu"]; ok {
+				if containerConfig.Limit == nil {
+					containerConfig.Limit = &oblikv1.ResourceList{}
+				}
+				containerConfig.Limit.CPU = limCpu
+			}
+			if limMem, ok := config["limit.memory"]; ok {
+				if containerConfig.Limit == nil {
+					containerConfig.Limit = &oblikv1.ResourceList{}
+				}
+				containerConfig.Limit.Memory = limMem
+			}
+
 			rc.Spec.ContainerConfigs[containerName] = containerConfig
 		}
 	}

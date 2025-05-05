@@ -306,3 +306,102 @@ test_cases:
   #     limits:
   #       cpu: 50m  # Assuming peak (upperBound) recommendation is 50m
   #       memory: 250Mi
+
+  # Direct resource specifications tests
+  - name: TestDirectCpuRequest
+    annotations:
+      # oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/request-cpu: "150m"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 250Mi
+      limits:
+        cpu: 150m
+        memory: 250Mi
+
+  - name: TestDirectMemoryRequest
+    annotations:
+      # oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/request-memory: "350Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 100m
+        memory: 350Mi
+      limits:
+        cpu: 100m
+        memory: 350Mi
+
+  - name: TestDirectCpuLimit
+    annotations:
+      # oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/limit-cpu: "200m"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 200m
+        memory: 250Mi
+
+  - name: TestDirectMemoryLimit
+    annotations:
+      # oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/limit-memory: "500Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 500Mi
+
+  - name: TestContainerSpecificDirectResources
+    annotations:
+      # oblik.socialgouv.io/webhook-enabled: "false"
+      oblik.socialgouv.io/request-cpu.busybox: "150m"
+      oblik.socialgouv.io/request-memory.busybox: "350Mi"
+      oblik.socialgouv.io/limit-cpu.busybox: "250m"
+      oblik.socialgouv.io/limit-memory.busybox: "550Mi"
+    original:
+      requests:
+        cpu: 100m
+        memory: 250Mi
+      limits:
+        cpu: 100m
+        memory: 250Mi
+    expected:
+      requests:
+        cpu: 150m
+        memory: 350Mi
+      limits:
+        cpu: 250m
+        memory: 550Mi

@@ -340,9 +340,74 @@ func addAnnotationsFromResourcesConfig(annotations map[string]string, rc *oblikv
 		annotations[constants.PREFIX+"limit-memory-scale-direction"] = rc.Spec.LimitMemoryScaleDirection
 	}
 
+	// Add direct resource specifications (flat style)
+	if rc.Spec.RequestCpu != "" {
+		annotations[constants.PREFIX+"request-cpu"] = rc.Spec.RequestCpu
+	}
+	if rc.Spec.RequestMemory != "" {
+		annotations[constants.PREFIX+"request-memory"] = rc.Spec.RequestMemory
+	}
+	if rc.Spec.LimitCpu != "" {
+		annotations[constants.PREFIX+"limit-cpu"] = rc.Spec.LimitCpu
+	}
+	if rc.Spec.LimitMemory != "" {
+		annotations[constants.PREFIX+"limit-memory"] = rc.Spec.LimitMemory
+	}
+
+	// Add Kubernetes-native style resource specifications (nested)
+	if rc.Spec.Request != nil {
+		if rc.Spec.Request.CPU != "" {
+			annotations[constants.PREFIX+"request-cpu"] = rc.Spec.Request.CPU
+		}
+		if rc.Spec.Request.Memory != "" {
+			annotations[constants.PREFIX+"request-memory"] = rc.Spec.Request.Memory
+		}
+	}
+	if rc.Spec.Limit != nil {
+		if rc.Spec.Limit.CPU != "" {
+			annotations[constants.PREFIX+"limit-cpu"] = rc.Spec.Limit.CPU
+		}
+		if rc.Spec.Limit.Memory != "" {
+			annotations[constants.PREFIX+"limit-memory"] = rc.Spec.Limit.Memory
+		}
+	}
+
 	// Handle container-specific configurations
 	if rc.Spec.ContainerConfigs != nil {
 		for containerName, containerConfig := range rc.Spec.ContainerConfigs {
+			// Direct resource specifications (flat style)
+			if containerConfig.RequestCpu != "" {
+				annotations[constants.PREFIX+"request-cpu."+containerName] = containerConfig.RequestCpu
+			}
+			if containerConfig.RequestMemory != "" {
+				annotations[constants.PREFIX+"request-memory."+containerName] = containerConfig.RequestMemory
+			}
+			if containerConfig.LimitCpu != "" {
+				annotations[constants.PREFIX+"limit-cpu."+containerName] = containerConfig.LimitCpu
+			}
+			if containerConfig.LimitMemory != "" {
+				annotations[constants.PREFIX+"limit-memory."+containerName] = containerConfig.LimitMemory
+			}
+			
+			// Kubernetes-native style resource specifications (nested)
+			if containerConfig.Request != nil {
+				if containerConfig.Request.CPU != "" {
+					annotations[constants.PREFIX+"request-cpu."+containerName] = containerConfig.Request.CPU
+				}
+				if containerConfig.Request.Memory != "" {
+					annotations[constants.PREFIX+"request-memory."+containerName] = containerConfig.Request.Memory
+				}
+			}
+			if containerConfig.Limit != nil {
+				if containerConfig.Limit.CPU != "" {
+					annotations[constants.PREFIX+"limit-cpu."+containerName] = containerConfig.Limit.CPU
+				}
+				if containerConfig.Limit.Memory != "" {
+					annotations[constants.PREFIX+"limit-memory."+containerName] = containerConfig.Limit.Memory
+				}
+			}
+			
+			// Original container-specific configurations
 			if containerConfig.MinLimitCpu != "" {
 				annotations[constants.PREFIX+"min-limit-cpu."+containerName] = containerConfig.MinLimitCpu
 			}

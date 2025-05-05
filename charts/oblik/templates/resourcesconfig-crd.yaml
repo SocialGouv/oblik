@@ -255,12 +255,81 @@ spec:
                   description: 'Allowed scaling direction for memory limit: "both", "up", "down"'
                   type: string
                   enum: ["both", "up", "down"]
+                # Direct resource specifications (flat style)
+                requestCpu:
+                  description: Direct CPU request value
+                  type: string
+                requestMemory:
+                  description: Direct memory request value
+                  type: string
+                limitCpu:
+                  description: Direct CPU limit value
+                  type: string
+                limitMemory:
+                  description: Direct memory limit value
+                  type: string
+                # Kubernetes-native style resource specifications (nested)
+                request:
+                  description: Kubernetes-native style CPU and memory request specifications
+                  type: object
+                  properties:
+                    cpu:
+                      description: CPU request value
+                      type: string
+                    memory:
+                      description: Memory request value
+                      type: string
+                limit:
+                  description: Kubernetes-native style CPU and memory limit specifications
+                  type: object
+                  properties:
+                    cpu:
+                      description: CPU limit value
+                      type: string
+                    memory:
+                      description: Memory limit value
+                      type: string
                 containerConfigs:
                   description: Container specific configurations
                   type: object
                   additionalProperties:
                     type: object
                     properties:
+                      # Direct resource specifications (flat style)
+                      requestCpu:
+                        description: Direct CPU request value
+                        type: string
+                      requestMemory:
+                        description: Direct memory request value
+                        type: string
+                      limitCpu:
+                        description: Direct CPU limit value
+                        type: string
+                      limitMemory:
+                        description: Direct memory limit value
+                        type: string
+                      # Kubernetes-native style resource specifications (nested)
+                      request:
+                        description: Kubernetes-native style CPU and memory request specifications
+                        type: object
+                        properties:
+                          cpu:
+                            description: CPU request value
+                            type: string
+                          memory:
+                            description: Memory request value
+                            type: string
+                      limit:
+                        description: Kubernetes-native style CPU and memory limit specifications
+                        type: object
+                        properties:
+                          cpu:
+                            description: CPU limit value
+                            type: string
+                          memory:
+                            description: Memory limit value
+                            type: string
+                      # Original container-specific configurations
                       minLimitCpu:
                         description: Minimum CPU limit value
                         type: string

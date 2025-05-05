@@ -9,6 +9,12 @@ import (
 type LoadCfg struct {
 	Key string
 
+	// Direct resource specifications
+	RequestCpuValue    *string
+	RequestMemoryValue *string
+	LimitCpuValue      *string
+	LimitMemoryValue   *string
+
 	RequestCPUApplyMode    *ApplyMode
 	RequestMemoryApplyMode *ApplyMode
 	LimitCPUApplyMode      *ApplyMode
@@ -621,5 +627,26 @@ func loadAnnotableCommonCfg(cfg *LoadCfg, annotable Annotable, annotationSuffix 
 		default:
 			klog.Warningf("Unknown scale-direction: %s", limitMemoryScaleDirection)
 		}
+	}
+
+	// Process direct resource specifications
+	requestCpuValue := getAnnotation("request-cpu")
+	if requestCpuValue != "" {
+		cfg.RequestCpuValue = &requestCpuValue
+	}
+
+	requestMemoryValue := getAnnotation("request-memory")
+	if requestMemoryValue != "" {
+		cfg.RequestMemoryValue = &requestMemoryValue
+	}
+
+	limitCpuValue := getAnnotation("limit-cpu")
+	if limitCpuValue != "" {
+		cfg.LimitCpuValue = &limitCpuValue
+	}
+
+	limitMemoryValue := getAnnotation("limit-memory")
+	if limitMemoryValue != "" {
+		cfg.LimitMemoryValue = &limitMemoryValue
 	}
 }

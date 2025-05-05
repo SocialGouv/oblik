@@ -487,13 +487,26 @@ Below are the configuration options organized by category:
 | `min-diff-memory-limit-algo` | `minDiffMemoryLimitAlgo` | Algorithm for minimum memory limit difference. | `"ratio"`, `"margin"` | `"ratio"` |
 | `min-diff-memory-limit-value` | `minDiffMemoryLimitValue` | Value for minimum memory limit difference calculation. Accepts any numeric value. | Any numeric value | `"0"` |
 
-#### 8. Container-Specific Configurations
+#### 8. Direct Resource Specifications
 
-The ResourcesConfig CRD allows you to specify container-specific configurations using the `containerConfigs` field. This is a map where the keys are container names and the values are objects containing any of the resource configuration fields.
+| Annotation Key | ResourcesConfig Field | Description | Options | Default |
+| --- | --- | --- | --- | --- |
+| `request-cpu` | `requestCpu` | Direct CPU request value. Takes precedence over VPA recommendations. | Any valid CPU value | `""` |
+| `request-memory` | `requestMemory` | Direct memory request value. Takes precedence over VPA recommendations. | Any valid memory value | `""` |
+| `limit-cpu` | `limitCpu` | Direct CPU limit value. Takes precedence over VPA recommendations. | Any valid CPU value | `""` |
+| `limit-memory` | `limitMemory` | Direct memory limit value. Takes precedence over VPA recommendations. | Any valid memory value | `""` |
+| N/A | `request.cpu` | Kubernetes-native style CPU request. Takes precedence over VPA recommendations. | Any valid CPU value | `""` |
+| N/A | `request.memory` | Kubernetes-native style memory request. Takes precedence over VPA recommendations. | Any valid memory value | `""` |
+| N/A | `limit.cpu` | Kubernetes-native style CPU limit. Takes precedence over VPA recommendations. | Any valid CPU value | `""` |
+| N/A | `limit.memory` | Kubernetes-native style memory limit. Takes precedence over VPA recommendations. | Any valid memory value | `""` |
+
+#### 9. Container-Specific Configurations
+
+The ResourcesConfig CRD allows you to specify container-specific configurations using the `containerConfigs` field. This is a map where the keys are container names and the values are objects containing any of the resource configuration fields, including direct resource specifications.
 
 ### Example Usage
 
-#### Complete ResourcesConfig Example:
+#### Complete ResourcesConfig Example (Using VPA Recommendations):
 
 ```yaml
 apiVersion: oblik.socialgouv.io/v1
@@ -539,6 +552,66 @@ spec:
     nginx:
       minRequestCpu: "50m"
       maxRequestMemory: "256Mi"
+```
+
+#### Direct Resource Specifications (Flat Style):
+
+```yaml
+apiVersion: oblik.socialgouv.io/v1
+kind: ResourcesConfig
+metadata:
+  name: web-app-resources
+  namespace: default
+spec:
+  targetRef:
+    kind: Deployment
+    name: web-app
+  
+  # Direct resource specifications (flat style)
+  requestCpu: "100m"
+  requestMemory: "128Mi"
+  limitCpu: "200m"
+  limitMemory: "256Mi"
+  
+  # Container-specific settings
+  containerConfigs:
+    nginx:
+      requestCpu: "50m"
+      requestMemory: "64Mi"
+      limitCpu: "100m"
+      limitMemory: "128Mi"
+```
+
+#### Direct Resource Specifications (Kubernetes-Native Style):
+
+```yaml
+apiVersion: oblik.socialgouv.io/v1
+kind: ResourcesConfig
+metadata:
+  name: web-app-resources
+  namespace: default
+spec:
+  targetRef:
+    kind: Deployment
+    name: web-app
+  
+  # Kubernetes-native style resource specifications
+  request:
+    cpu: "100m"
+    memory: "128Mi"
+  limit:
+    cpu: "200m"
+    memory: "256Mi"
+  
+  # Container-specific settings
+  containerConfigs:
+    nginx:
+      request:
+        cpu: "50m"
+        memory: "64Mi"
+      limit:
+        cpu: "100m"
+        memory: "128Mi"
 ```
 
 #### Comparison: Annotations vs. ResourcesConfig

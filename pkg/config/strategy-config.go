@@ -1071,3 +1071,47 @@ func (v *StrategyConfig) GetLimitMemoryScaleDirection(containerName string) Scal
 	}
 	return ScaleDirectionBoth
 }
+
+// GetRequestCpuValue returns the direct CPU request value for the container
+func (v *StrategyConfig) GetRequestCpuValue(containerName string) *string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestCpuValue != nil {
+		return v.Containers[containerName].RequestCpuValue
+	}
+	if v.RequestCpuValue != nil {
+		return v.RequestCpuValue
+	}
+	return nil
+}
+
+// GetRequestMemoryValue returns the direct memory request value for the container
+func (v *StrategyConfig) GetRequestMemoryValue(containerName string) *string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].RequestMemoryValue != nil {
+		return v.Containers[containerName].RequestMemoryValue
+	}
+	if v.RequestMemoryValue != nil {
+		return v.RequestMemoryValue
+	}
+	return nil
+}
+
+// GetLimitCpuValue returns the direct CPU limit value for the container
+func (v *StrategyConfig) GetLimitCpuValue(containerName string) *string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitCpuValue != nil {
+		return v.Containers[containerName].LimitCpuValue
+	}
+	if v.LimitCpuValue != nil {
+		return v.LimitCpuValue
+	}
+	return nil
+}
+
+// GetLimitMemoryValue returns the direct memory limit value for the container
+func (v *StrategyConfig) GetLimitMemoryValue(containerName string) *string {
+	if v.Containers[containerName] != nil && v.Containers[containerName].LimitMemoryValue != nil {
+		return v.Containers[containerName].LimitMemoryValue
+	}
+	if v.LimitMemoryValue != nil {
+		return v.LimitMemoryValue
+	}
+	return nil
+}

@@ -16,6 +16,15 @@ type ResourcesConfig struct {
 	Status ResourcesConfigStatus `json:"status,omitempty"`
 }
 
+// ResourceList represents CPU and memory resource specifications
+type ResourceList struct {
+	// CPU resource value
+	CPU string `json:"cpu,omitempty"`
+
+	// Memory resource value
+	Memory string `json:"memory,omitempty"`
+}
+
 // ResourcesConfigSpec defines the desired state of ResourcesConfig
 type ResourcesConfigSpec struct {
 	// TargetRef points to the controller managing the set of pods
@@ -188,6 +197,16 @@ type ResourcesConfigSpec struct {
 	// Allowed scaling direction for memory limit: "both", "up", "down"
 	LimitMemoryScaleDirection string `json:"limitMemoryScaleDirection,omitempty"`
 
+	// Direct resource specifications (flat style)
+	RequestCpu    string `json:"requestCpu,omitempty"`
+	RequestMemory string `json:"requestMemory,omitempty"`
+	LimitCpu      string `json:"limitCpu,omitempty"`
+	LimitMemory   string `json:"limitMemory,omitempty"`
+	
+	// Kubernetes-native style resource specifications (nested)
+	Request *ResourceList `json:"request,omitempty"`
+	Limit   *ResourceList `json:"limit,omitempty"`
+
 	// Container specific configurations
 	ContainerConfigs map[string]ContainerConfig `json:"containerConfigs,omitempty"`
 }
@@ -206,6 +225,15 @@ type TargetRef struct {
 
 // ContainerConfig defines container-specific configurations
 type ContainerConfig struct {
+	// Direct resource specifications (flat style)
+	RequestCpu    string `json:"requestCpu,omitempty"`
+	RequestMemory string `json:"requestMemory,omitempty"`
+	LimitCpu      string `json:"limitCpu,omitempty"`
+	LimitMemory   string `json:"limitMemory,omitempty"`
+	
+	// Kubernetes-native style resource specifications (nested)
+	Request *ResourceList `json:"request,omitempty"`
+	Limit   *ResourceList `json:"limit,omitempty"`
 	// Minimum CPU limit value
 	MinLimitCpu string `json:"minLimitCpu,omitempty"`
 

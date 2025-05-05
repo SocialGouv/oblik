@@ -6,12 +6,34 @@ import (
 	"github.com/SocialGouv/oblik/pkg/reporting"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/klog/v2"
 )
 
 func setContainerCpuRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	cpuRequest := *container.Resources.Requests.Cpu()
 
+	// Check if a direct CPU request value is specified
+	if scfg.GetRequestCpuValue(containerName) != nil {
+		directCpuRequest, err := resource.ParseQuantity(*scfg.GetRequestCpuValue(containerName))
+		if err == nil {
+			newCPURequest := directCpuRequest
+			if scfg.GetRequestCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPURequest.Cmp(cpuRequest) != 0 {
+				changes = append(changes, reporting.Change{
+					Old:           cpuRequest,
+					New:           newCPURequest,
+					Type:          reporting.UpdateTypeCpuRequest,
+					ContainerName: containerName,
+				})
+				container.Resources.Requests[corev1.ResourceCPU] = newCPURequest
+			}
+			return changes
+		} else {
+			klog.Warningf("Error parsing direct CPU request value: %s, error: %s", *scfg.GetRequestCpuValue(containerName), err.Error())
+		}
+	}
+
+	// If no direct value is specified, use the VPA recommendation
 	newCPURequest := *containerRequestRecommendation.Cpu
 	if scfg.GetMinAllowedRecommendationCpu(containerName) != nil && newCPURequest.Cmp(*scfg.GetMinAllowedRecommendationCpu(containerName)) == -1 {
 		newCPURequest = *scfg.GetMinAllowedRecommendationCpu(containerName)
@@ -55,6 +77,27 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 	containerName := container.Name
 	cpuLimit := *container.Resources.Limits.Cpu()
 
+	// Check if a direct CPU limit value is specified
+	if scfg.GetLimitCpuValue(containerName) != nil {
+		directCpuLimit, err := resource.ParseQuantity(*scfg.GetLimitCpuValue(containerName))
+		if err == nil {
+			newCPULimit := directCpuLimit
+			if scfg.GetLimitCPUApplyMode(containerName) == config.ApplyModeEnforce && newCPULimit.Cmp(cpuLimit) != 0 {
+				changes = append(changes, reporting.Change{
+					Old:           cpuLimit,
+					New:           newCPULimit,
+					Type:          reporting.UpdateTypeCpuLimit,
+					ContainerName: containerName,
+				})
+				container.Resources.Limits[corev1.ResourceCPU] = newCPULimit
+			}
+			return changes
+		} else {
+			klog.Warningf("Error parsing direct CPU limit value: %s, error: %s", *scfg.GetLimitCpuValue(containerName), err.Error())
+		}
+	}
+
+	// If no direct value is specified, use the VPA recommendation or calculator
 	var newCPULimit resource.Quantity
 	if scfg.GetLimitCpuApplyTarget(containerName) == config.LimitApplyTargetAuto {
 		newCPULimit = calculator.CalculateResourceValue(container.Resources.Requests[corev1.ResourceCPU], scfg.GetLimitCPUCalculatorAlgo(containerName), scfg.GetLimitCPUCalculatorValue(containerName), calculator.ResourceTypeCPU)
@@ -98,6 +141,28 @@ func setContainerCpuLimit(container *corev1.Container, containerRequestRecommend
 func setContainerMemoryRequest(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryRequest := *container.Resources.Requests.Memory()
+
+	// Check if a direct memory request value is specified
+	if scfg.GetRequestMemoryValue(containerName) != nil {
+		directMemoryRequest, err := resource.ParseQuantity(*scfg.GetRequestMemoryValue(containerName))
+		if err == nil {
+			newMemoryRequest := directMemoryRequest
+			if scfg.GetRequestMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryRequest.Cmp(memoryRequest) != 0 {
+				changes = append(changes, reporting.Change{
+					Old:           memoryRequest,
+					New:           newMemoryRequest,
+					Type:          reporting.UpdateTypeMemoryRequest,
+					ContainerName: containerName,
+				})
+				container.Resources.Requests[corev1.ResourceMemory] = newMemoryRequest
+			}
+			return changes
+		} else {
+			klog.Warningf("Error parsing direct memory request value: %s, error: %s", *scfg.GetRequestMemoryValue(containerName), err.Error())
+		}
+	}
+
+	// If no direct value is specified, use the VPA recommendation or calculator
 	var newMemoryRequest resource.Quantity
 	if scfg.GetMemoryRequestFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Requests[corev1.ResourceCPU])
@@ -143,6 +208,28 @@ func setContainerMemoryRequest(container *corev1.Container, containerRequestReco
 func setContainerMemoryLimit(container *corev1.Container, containerRequestRecommendation *TargetRecommendation, containerLimitRecommendation *TargetRecommendation, changes []reporting.Change, scfg *config.StrategyConfig) []reporting.Change {
 	containerName := container.Name
 	memoryLimit := *container.Resources.Limits.Memory()
+
+	// Check if a direct memory limit value is specified
+	if scfg.GetLimitMemoryValue(containerName) != nil {
+		directMemoryLimit, err := resource.ParseQuantity(*scfg.GetLimitMemoryValue(containerName))
+		if err == nil {
+			newMemoryLimit := directMemoryLimit
+			if scfg.GetLimitMemoryApplyMode(containerName) == config.ApplyModeEnforce && newMemoryLimit.Cmp(memoryLimit) != 0 {
+				changes = append(changes, reporting.Change{
+					Old:           memoryLimit,
+					New:           newMemoryLimit,
+					Type:          reporting.UpdateTypeMemoryLimit,
+					ContainerName: containerName,
+				})
+				container.Resources.Limits[corev1.ResourceMemory] = newMemoryLimit
+			}
+			return changes
+		} else {
+			klog.Warningf("Error parsing direct memory limit value: %s, error: %s", *scfg.GetLimitMemoryValue(containerName), err.Error())
+		}
+	}
+
+	// If no direct value is specified, use the VPA recommendation or calculator
 	var newMemoryLimit resource.Quantity
 	if scfg.GetMemoryLimitFromCpuEnabled(containerName) {
 		memoryFromCpu := calculator.CalculateCpuToMemory(container.Resources.Limits[corev1.ResourceCPU])
