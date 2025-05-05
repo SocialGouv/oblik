@@ -2,8 +2,38 @@
 ## [Unreleased]
 
 
+<a name="v0.4.0"></a>
+## [v0.4.0] - 2025-05-05
+### Chore
+- fix go linting
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+- publish helm chart (wip)
+
+### Docs
+- crd rconfig + restructure
+- helm
+
+### Feat
+- direct resources setup using crd
+
+### Fix
+- add pdb
+
+
 <a name="v0.3.0"></a>
 ## [v0.3.0] - 2025-03-13
+### Chore
+- **release:** v0.3.0
+
 ### Feat
 - crd
 
@@ -471,7 +501,8 @@
 - decouple logical from target
 
 
-[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/SocialGouv/oblik/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/SocialGouv/oblik/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/SocialGouv/oblik/compare/v0.2.6...v0.3.0
 [v0.2.6]: https://github.com/SocialGouv/oblik/compare/v0.2.5...v0.2.6
 [v0.2.5]: https://github.com/SocialGouv/oblik/compare/v0.2.4...v0.2.5
