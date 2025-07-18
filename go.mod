@@ -1,8 +1,6 @@
 module github.com/SocialGouv/oblik
 
-go 1.22.0
-
-toolchain go1.22.2
+go 1.23.0
 
 require (
 	github.com/cloudnative-pg/cloudnative-pg v1.23.1
@@ -76,7 +74,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
